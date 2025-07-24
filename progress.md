@@ -63,11 +63,13 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 
 | Dependency | Version | Integrated | Notes |
 |------------|---------|------------|-------|
-| bubbletea | v0.27.1 | No | TUI framework |
-| bubbles | v0.18.0 | No | TUI components |
-| sonic | latest | No | JSON parsing |
-| fsnotify | latest | No | File watching |
-| testify | latest | No | Testing helpers |
+| bubbletea | v0.27.1 | Yes | TUI framework (installed) |
+| bubbles | v0.18.0 | Yes | TUI components (installed) |
+| sonic | v1.14.0 | Yes | JSON parsing (installed, used in models) |
+| fsnotify | v1.9.0 | Yes | File watching (installed) |
+| testify | v1.10.0 | Yes | Testing helpers (installed, used in tests) |
+| cobra | v1.9.1 | Yes | CLI framework (installed) |
+| viper | v1.20.1 | Yes | Configuration (installed) |
 
 ## Known Issues
 - None yet
