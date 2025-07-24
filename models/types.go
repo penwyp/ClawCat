@@ -79,3 +79,36 @@ func (s *SessionBlock) CalculateTotals() {
 		s.TotalTokens += stat.TotalTokens
 	}
 }
+
+// AnalysisResult represents the result of data analysis operations
+type AnalysisResult struct {
+	Timestamp           time.Time `json:"timestamp"`
+	Model               string    `json:"model"`
+	SessionID           string    `json:"session_id"`
+	InputTokens         int       `json:"input_tokens"`
+	OutputTokens        int       `json:"output_tokens"`
+	CacheCreationTokens int       `json:"cache_creation_tokens"`
+	CacheReadTokens     int       `json:"cache_read_tokens"`
+	TotalTokens         int       `json:"total_tokens"`
+	CostUSD             float64   `json:"cost_usd"`
+	Count               int       `json:"count"` // For grouped results
+	GroupKey            string    `json:"group_key,omitempty"` // For grouped results
+}
+
+// SummaryStats represents summary statistics for analysis results
+type SummaryStats struct {
+	StartTime           time.Time          `json:"start_time"`
+	EndTime             time.Time          `json:"end_time"`
+	TotalEntries        int                `json:"total_entries"`
+	TotalTokens         int                `json:"total_tokens"`
+	TotalCost           float64            `json:"total_cost"`
+	InputTokens         int                `json:"input_tokens"`
+	OutputTokens        int                `json:"output_tokens"`
+	CacheCreationTokens int                `json:"cache_creation_tokens"`
+	CacheReadTokens     int                `json:"cache_read_tokens"`
+	MaxCost             float64            `json:"max_cost"`
+	MaxTokens           int                `json:"max_tokens"`
+	AvgCost             float64            `json:"avg_cost"`
+	AvgTokens           float64            `json:"avg_tokens"`
+	ModelCounts         map[string]int     `json:"model_counts"`
+}
