@@ -31,12 +31,11 @@ type Session struct {
 
 // SessionStats contains aggregated statistics for a session
 type SessionStats struct {
-	TotalTokens         int                           `json:"total_tokens"`
-	TotalCost           float64                       `json:"total_cost"`
-	ModelBreakdown      map[string]models.ModelStats  `json:"model_breakdown"`
-	BurnRate            calculations.BurnRate         `json:"burn_rate"`
-	TimeRemaining       time.Duration                 `json:"time_remaining"`
-	PercentageUsed      float64                       `json:"percentage_used"`
+	TotalTokens         int                               `json:"total_tokens"`
+	TotalCost           float64                           `json:"total_cost"`
+	ModelBreakdown      map[string]calculations.ModelStats `json:"model_breakdown"`
+	TimeRemaining       time.Duration                     `json:"time_remaining"`
+	PercentageUsed      float64                           `json:"percentage_used"`
 }
 
 const (
@@ -164,7 +163,6 @@ func (m *Manager) findOrCreateSession(timestamp time.Time) *Session {
 
 // updateActiveSessions refreshes the list of active sessions
 func (m *Manager) updateActiveSessions() {
-	now := time.Now()
 	m.activeSessions = m.activeSessions[:0] // Clear without reallocating
 
 	for _, session := range m.sessions {
@@ -188,7 +186,7 @@ func CreateSession(timestamp time.Time) *Session {
 		EndTime:      startTime.Add(SessionDuration),
 		IsActive:     true,
 		Entries:      make([]models.UsageEntry, 0),
-		Stats:        SessionStats{ModelBreakdown: make(map[string]models.ModelStats)},
+		Stats:        SessionStats{ModelBreakdown: make(map[string]calculations.ModelStats)},
 		LastUpdate:   timestamp,
 	}
 }
@@ -214,31 +212,28 @@ func (s *Session) UpdateStats(calc *calculations.CostCalculator) error {
 	// Calculate total tokens and cost
 	s.Stats.TotalTokens = 0
 	s.Stats.TotalCost = 0
-	s.Stats.ModelBreakdown = make(map[string]models.ModelStats)
+	s.Stats.ModelBreakdown = make(map[string]calculations.ModelStats)
 
 	for _, entry := range s.Entries {
-		s.Stats.TotalTokens += entry.TotalTokens()
+		s.Stats.TotalTokens += entry.CalculateTotalTokens()
 		
-		cost, err := calc.CalculateEntryCost(entry)
+		result, err := calc.Calculate(entry)
 		if err != nil {
 			return fmt.Errorf("failed to calculate cost for entry: %w", err)
 		}
-		s.Stats.TotalCost += cost
+		s.Stats.TotalCost += result.TotalCost
 
 		// Update model breakdown
 		modelStats := s.Stats.ModelBreakdown[entry.Model]
-		modelStats.TotalTokens += entry.TotalTokens()
-		modelStats.TotalCost += cost
-		modelStats.RequestCount++
+		modelStats.TotalTokens += entry.CalculateTotalTokens()
+		modelStats.TotalCost += result.TotalCost
+		modelStats.EntryCount++
 		s.Stats.ModelBreakdown[entry.Model] = modelStats
 	}
 
 	// Calculate time-based metrics
 	s.Stats.TimeRemaining = s.TimeRemaining()
 	s.Stats.PercentageUsed = s.PercentageComplete()
-
-	// Calculate burn rate
-	s.Stats.BurnRate = calculations.CalculateSessionBurnRate(s.Entries, s.StartTime, s.EndTime)
 
 	return nil
 }

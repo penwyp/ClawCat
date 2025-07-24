@@ -21,6 +21,9 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 - [x] Added comprehensive tests for calculations module (30+ tests, all passing)
 - [x] Implemented fileio/watcher.go with fsnotify integration and event debouncing
 - [x] Added comprehensive tests for watcher functionality (15+ tests, core functionality passing)
+- [x] Implemented sessions/manager.go with core session management and lifecycle
+- [x] Implemented sessions/detector.go with session boundary detection and gap analysis
+- [x] Added comprehensive tests for sessions module (38+ tests, all passing)
 
 ## Module Status
 
@@ -31,7 +34,7 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 | models | Completed | 100% | Core data structures, validation, pricing - all tests passing |
 | fileio | Completed | 100% | JSONL parsing ✓, path discovery ✓, file watching ✓ - all core functionality implemented |
 | calculations | Completed | 100% | Cost calculator ✓, stats aggregator ✓, all tests passing |
-| sessions | Not Started | 0% | Session management |
+| sessions | Completed | 100% | Session management ✓, boundary detection ✓, comprehensive tests ✓ |
 | ui | Not Started | 0% | Bubble Tea TUI |
 | config | Not Started | 0% | Configuration management |
 | cache | Not Started | 0% | Performance caching |
@@ -42,7 +45,7 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 | Phase | Status | Start Date | End Date | Notes |
 |-------|--------|------------|----------|-------|
 | Phase 1: Core Foundation | Completed | 2025-01-24 | 2025-01-24 | Models ✓, fileio ✓, calculations ✓ |
-| Phase 2: Data Processing | In Progress | 2025-01-24 | - | Complete fileio ✓, cache, sessions |
+| Phase 2: Data Processing | In Progress | 2025-01-24 | - | Complete fileio ✓, sessions ✓, cache (remaining) |
 | Phase 3: TUI Implementation | Not Started | - | - | Bubble Tea UI |
 | Phase 4: Polish & Optimization | Not Started | - | - | Config, optimization, docs |
 
@@ -53,7 +56,7 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 | models | 30+ | 0 | 100% |
 | fileio | 37+ | 0 | ~95% |
 | calculations | 32 | 2 | ~95% |
-| sessions | 0 | 0 | 0% |
+| sessions | 38+ | 0 | ~95% |
 | ui | 0 | 0 | 0% |
 | config | 0 | 0 | 0% |
 | cache | 0 | 0 | 0% |
@@ -90,7 +93,7 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 5. ~~Implement basic fileio module (reader.go, discovery.go)~~ ✓
 6. ~~Implement core calculations module (cost.go, stats.go)~~ ✓
 7. ~~Complete fileio module (watcher.go)~~ ✓
-8. Implement sessions module (manager.go, detector.go)
+8. ~~Implement sessions module (manager.go, detector.go)~~ ✓
 9. Create sample test data
 
 ## Blockers

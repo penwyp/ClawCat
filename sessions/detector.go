@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -326,7 +327,7 @@ func (d *Detector) generateWarnings(entries []models.UsageEntry, sessions []Sess
 		duration := session.EndTime.Sub(session.StartTime)
 		if duration < time.Hour {
 			warnings = append(warnings, 
-				"Very short session detected: duration %v", duration)
+				fmt.Sprintf("Very short session detected: duration %v", duration))
 		}
 	}
 
@@ -336,7 +337,7 @@ func (d *Detector) generateWarnings(entries []models.UsageEntry, sessions []Sess
 			gap := sessions[i+1].StartTime.Sub(sessions[i].EndTime)
 			if gap > 24*time.Hour {
 				warnings = append(warnings, 
-					"Very long gap detected: %v between sessions", gap)
+					fmt.Sprintf("Very long gap detected: %v between sessions", gap))
 			}
 		}
 	}
@@ -345,7 +346,7 @@ func (d *Detector) generateWarnings(entries []models.UsageEntry, sessions []Sess
 	for _, session := range sessions {
 		if session.Confidence < 0.5 {
 			warnings = append(warnings, 
-				"Low confidence session detected: confidence %.2f", session.Confidence)
+				fmt.Sprintf("Low confidence session detected: confidence %.2f", session.Confidence))
 		}
 	}
 
