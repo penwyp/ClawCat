@@ -1,0 +1,30 @@
+# ClawCat Configuration File
+# This is a sample configuration for testing
+
+# Application settings
+app:
+  debug: false
+  log_level: "info"
+  
+# File paths
+paths:
+  data_dir: "~/.claude"
+  cache_dir: "~/.cache/clawcat"
+  config_dir: "~/.config/clawcat"
+
+# UI settings  
+ui:
+  theme: "dark"
+  refresh_interval: "1s"
+  page_size: 20
+
+# Cache settings
+cache:
+  max_memory: "100MB"
+  eviction_policy: "lru"
+  ttl: "1h"
+
+# Export settings
+export:
+  default_format: "csv"
+  include_metadata: true
