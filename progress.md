@@ -75,11 +75,13 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 - None yet
 
 ## Upcoming Tasks
-1. Initialize Go module with dependencies
-2. Create project structure
-3. Implement models package
-4. Set up testing framework
-5. Create sample test data
+1. ~~Initialize Go module with dependencies~~ ✓
+2. ~~Create project structure~~ ✓
+3. ~~Implement models package~~ ✓
+4. ~~Set up testing framework~~ ✓
+5. Implement basic fileio module (reader.go, discovery.go)
+6. Implement core calculations module (cost.go, stats.go)
+7. Create sample test data
 
 ## Blockers
 - None
