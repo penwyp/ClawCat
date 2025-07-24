@@ -39,6 +39,19 @@ func Execute() error {
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// Disable default completion command
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
+	// Disable help command by setting a hidden command that returns error
+	rootCmd.SetHelpCommand(&cobra.Command{
+		Use:    "no-help",
+		Hidden: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Printf("Error: unknown command \"help\" for \"clawcat\"\n")
+			cmd.Printf("Run 'clawcat --help' for usage.\n")
+		},
+	})
+
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.clawcat.yaml)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "log level (debug, info, warn, error)")
