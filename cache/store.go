@@ -78,7 +78,7 @@ func NewStore(config StoreConfig) *Store {
 	
 	// Create memory manager
 	memManager := NewMemoryManager(config.MaxMemory)
-	memManager.Register(lruCache)
+	_ = memManager.Register(lruCache)
 	
 	store := &Store{
 		fileCache:  fileCache,

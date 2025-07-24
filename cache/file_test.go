@@ -351,7 +351,7 @@ func BenchmarkFileCache_CacheFile(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cache.CacheFileContent(testFile, content, entries)
+		_ = cache.CacheFileContent(testFile, content, entries)
 	}
 }
 
@@ -366,7 +366,7 @@ func BenchmarkFileCache_GetFile(b *testing.B) {
 	require.NoError(b, err)
 	
 	entries := []models.UsageEntry{{InputTokens: 100}}
-	cache.CacheFileContent(testFile, content, entries)
+	_ = cache.CacheFileContent(testFile, content, entries)
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

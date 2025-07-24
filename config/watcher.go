@@ -253,7 +253,7 @@ func NewMultiWatcher(paths []string, onChange func(*Config)) (*MultiWatcher, err
 		if err != nil {
 			// Clean up already created watchers
 			for _, w := range mw.watchers {
-				w.Stop()
+				_ = w.Stop()
 			}
 			return nil, fmt.Errorf("failed to create watcher for %s: %w", path, err)
 		}
@@ -269,7 +269,7 @@ func (mw *MultiWatcher) Start() error {
 		if err := watcher.Start(); err != nil {
 			// Stop already started watchers
 			for _, w := range mw.watchers {
-				w.Stop()
+				_ = w.Stop()
 			}
 			return fmt.Errorf("failed to start watcher: %w", err)
 		}

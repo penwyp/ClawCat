@@ -74,13 +74,13 @@ func (f *FileCache) GetFile(path string) (*CachedFile, bool) {
 	cached, ok := value.(*CachedFile)
 	if !ok {
 		// Invalid cache entry, remove it
-		f.cache.Delete(path)
+		_ = f.cache.Delete(path)
 		return nil, false
 	}
 	
 	// Check if file has been modified
 	if !cached.ModTime.Equal(info.ModTime()) {
-		f.cache.Delete(path)
+		_ = f.cache.Delete(path)
 		return nil, false
 	}
 	
@@ -207,7 +207,7 @@ func (f *FileCache) Preload(paths []string) error {
 			Checksum: checksum,
 		}
 		
-		f.SetFile(path, cached)
+		_ = f.SetFile(path, cached)
 	}
 	
 	return nil

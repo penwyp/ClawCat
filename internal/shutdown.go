@@ -115,15 +115,15 @@ func (a *Application) emergencyShutdown() {
 	
 	// Force stop all components immediately
 	if a.fileWatcher != nil {
-		a.fileWatcher.Stop()
+		_ = a.fileWatcher.Stop()
 	}
 	
 	if a.ui != nil {
-		a.ui.Stop()
+		_ = a.ui.Stop()
 	}
 	
 	if a.metrics != nil {
-		a.metrics.Stop()
+		_ = a.metrics.Stop()
 	}
 	
 	a.logger.Warn("Emergency shutdown completed")

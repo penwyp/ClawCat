@@ -301,7 +301,9 @@ func (f *FlagSource) Priority() int {
 // Load loads configuration from command-line flags
 func (f *FlagSource) Load() (*Config, error) {
 	v := viper.New()
-	v.BindPFlags(f.flags)
+	if err := v.BindPFlags(f.flags); err != nil {
+		return nil, fmt.Errorf("failed to bind pflags: %w", err)
+	}
 
 	var config Config
 	if err := v.Unmarshal(&config); err != nil {

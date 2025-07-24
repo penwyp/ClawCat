@@ -102,9 +102,9 @@ func init() {
 	analyzeCmd.Flags().IntVar(&analyzeLimit, "limit", 0, "limit number of results (0 = no limit)")
 
 	// Bind to viper
-	viper.BindPFlag("analyze.output", analyzeCmd.Flags().Lookup("output"))
-	viper.BindPFlag("analyze.from", analyzeCmd.Flags().Lookup("from"))
-	viper.BindPFlag("analyze.to", analyzeCmd.Flags().Lookup("to"))
+	_ = viper.BindPFlag("analyze.output", analyzeCmd.Flags().Lookup("output"))
+	_ = viper.BindPFlag("analyze.from", analyzeCmd.Flags().Lookup("from"))
+	_ = viper.BindPFlag("analyze.to", analyzeCmd.Flags().Lookup("to"))
 
 	rootCmd.AddCommand(analyzeCmd)
 }
@@ -371,17 +371,17 @@ func outputCSV(results []models.AnalysisResult) error {
 
 	// Header
 	if analyzeGroupBy != "" {
-		writer.Write([]string{"Group", "Model", "Entries", "Input Tokens", "Output Tokens", 
+		_ = writer.Write([]string{"Group", "Model", "Entries", "Input Tokens", "Output Tokens", 
 			"Cache Creation", "Cache Read", "Total Tokens", "Cost USD"})
 	} else {
-		writer.Write([]string{"Timestamp", "Model", "Session", "Input Tokens", "Output Tokens",
+		_ = writer.Write([]string{"Timestamp", "Model", "Session", "Input Tokens", "Output Tokens",
 			"Cache Creation", "Cache Read", "Total Tokens", "Cost USD"})
 	}
 
 	// Data rows
 	for _, result := range results {
 		if analyzeGroupBy != "" {
-			writer.Write([]string{
+			_ = writer.Write([]string{
 				result.GroupKey,
 				result.Model,
 				strconv.Itoa(result.Count),
@@ -393,7 +393,7 @@ func outputCSV(results []models.AnalysisResult) error {
 				fmt.Sprintf("%.4f", result.CostUSD),
 			})
 		} else {
-			writer.Write([]string{
+			_ = writer.Write([]string{
 				result.Timestamp.Format("2006-01-02 15:04:05"),
 				result.Model,
 				result.SessionID,

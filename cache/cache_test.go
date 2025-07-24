@@ -110,8 +110,10 @@ func TestCacheInterface(t *testing.T) {
 	assert.False(t, exists)
 	
 	// Test clear
-	cache.Set("key2", "value2")
-	cache.Set("key3", "value3")
+	err = cache.Set("key2", "value2")
+	require.NoError(t, err)
+	err = cache.Set("key3", "value3")
+	require.NoError(t, err)
 	assert.Equal(t, 2, cache.Size())
 	
 	err = cache.Clear()
@@ -133,10 +135,11 @@ func TestManagedCacheInterface(t *testing.T) {
 	
 	assert.False(t, cache.CanEvict()) // Empty cache
 	
-	cache.Set("key1", "value1")
+	err := cache.Set("key1", "value1")
+	require.NoError(t, err)
 	assert.True(t, cache.CanEvict())
 	
-	err := cache.EvictOldest(1)
+	err = cache.EvictOldest(1)
 	require.NoError(t, err)
 	assert.Equal(t, 0, cache.Size())
 	

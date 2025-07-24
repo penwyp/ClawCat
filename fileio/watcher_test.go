@@ -37,7 +37,7 @@ func TestNewWatcher(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, watcher)
 
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	assert.Equal(t, paths, watcher.GetWatchedPaths())
 	assert.False(t, watcher.IsRunning())
@@ -58,7 +58,7 @@ func TestNewWatcherWithConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, watcher)
 
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	assert.Equal(t, 200, watcher.debounceMs)
 	assert.Equal(t, paths, watcher.GetWatchedPaths())
@@ -68,7 +68,7 @@ func TestWatcher_StartStop(t *testing.T) {
 	tempDir := t.TempDir()
 	watcher, err := NewWatcher([]string{tempDir})
 	require.NoError(t, err)
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	// Test starting
 	err = watcher.Start()
@@ -101,7 +101,7 @@ func TestWatcher_FileEvents(t *testing.T) {
 
 	watcher, err := NewWatcherWithConfig([]string{tempDir}, config)
 	require.NoError(t, err)
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Start()
 	require.NoError(t, err)
@@ -175,7 +175,7 @@ func TestWatcher_AddRemovePath(t *testing.T) {
 
 	watcher, err := NewWatcher([]string{tempDir1})
 	require.NoError(t, err)
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Start()
 	require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestWatcher_ErrorHandling(t *testing.T) {
 	tempDir := t.TempDir()
 	watcher, err := NewWatcher([]string{tempDir})
 	require.NoError(t, err)
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Start()
 	require.NoError(t, err)
@@ -238,7 +238,7 @@ func TestWatcher_ConcurrentAccess(t *testing.T) {
 	tempDir := t.TempDir()
 	watcher, err := NewWatcher([]string{tempDir})
 	require.NoError(t, err)
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Start()
 	require.NoError(t, err)
@@ -275,7 +275,7 @@ func TestWatcher_MultipleFiles(t *testing.T) {
 
 	watcher, err := NewWatcherWithConfig([]string{tempDir}, config)
 	require.NoError(t, err)
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Start()
 	require.NoError(t, err)
@@ -393,7 +393,7 @@ func TestWatcher_NoDebounce(t *testing.T) {
 
 	watcher, err := NewWatcherWithConfig([]string{tempDir}, config)
 	require.NoError(t, err)
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Start()
 	require.NoError(t, err)
@@ -453,7 +453,7 @@ func BenchmarkWatcher_EventProcessing(b *testing.B) {
 
 	watcher, err := NewWatcherWithConfig([]string{tempDir}, config)
 	require.NoError(b, err)
-	defer watcher.Close()
+	defer func() { _ = watcher.Close() }()
 
 	err = watcher.Start()
 	require.NoError(b, err)

@@ -383,7 +383,7 @@ func TestStore_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(file string) {
 			defer func() { done <- true }()
-			store.CacheFile(file, content, []models.UsageEntry{})
+			_ = store.CacheFile(file, content, []models.UsageEntry{})
 		}(files[i])
 	}
 	
@@ -413,8 +413,8 @@ func BenchmarkStore_CacheFile(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		file := filepath.Join(tmpDir, fmt.Sprintf("bench%d.jsonl", i))
-		os.WriteFile(file, content, 0644)
-		store.CacheFile(file, content, entries)
+		_ = os.WriteFile(file, content, 0644)
+		_ = store.CacheFile(file, content, entries)
 	}
 }
 
@@ -430,8 +430,8 @@ func BenchmarkStore_GetFile(b *testing.B) {
 	files := make([]string, 100)
 	for i := 0; i < 100; i++ {
 		files[i] = filepath.Join(tmpDir, fmt.Sprintf("bench%d.jsonl", i))
-		os.WriteFile(files[i], content, 0644)
-		store.CacheFile(files[i], content, entries)
+		_ = os.WriteFile(files[i], content, 0644)
+		_ = store.CacheFile(files[i], content, entries)
 	}
 	
 	b.ResetTimer()

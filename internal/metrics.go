@@ -83,7 +83,7 @@ func (m *Metrics) handleMetrics(w http.ResponseWriter, r *http.Request) {
 func (m *Metrics) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	_ = json.NewEncoder(w).Encode(map[string]string{
 		"status": "healthy",
 		"time":   time.Now().Format(time.RFC3339),
 	})

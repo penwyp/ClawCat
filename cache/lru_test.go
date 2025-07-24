@@ -107,9 +107,9 @@ func TestLRUCache_LRUEviction(t *testing.T) {
 	cache := NewLRUCache(100) // Small capacity
 	
 	// Fill cache to capacity
-	cache.SetWithSize("key1", "value1", 30)
-	cache.SetWithSize("key2", "value2", 30)
-	cache.SetWithSize("key3", "value3", 30)
+	_ = cache.SetWithSize("key1", "value1", 30)
+	_ = cache.SetWithSize("key2", "value2", 30)
+	_ = cache.SetWithSize("key3", "value3", 30)
 	assert.Equal(t, 3, cache.Size())
 	
 	// Access key1 to make it most recently used
