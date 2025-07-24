@@ -12,18 +12,18 @@ type UsageEntry struct {
 	OutputTokens        int       `json:"output_tokens"`
 	CacheCreationTokens int       `json:"cache_creation_tokens"`
 	CacheReadTokens     int       `json:"cache_read_tokens"`
-	TotalTokens         int       `json:"total_tokens"`     // Calculated field
-	CostUSD             float64   `json:"cost_usd"`         // Calculated field
+	TotalTokens         int       `json:"total_tokens"` // Calculated field
+	CostUSD             float64   `json:"cost_usd"`     // Calculated field
 }
 
 // SessionBlock represents a 5-hour session window with aggregated statistics
 type SessionBlock struct {
-	StartTime    time.Time            `json:"start_time"`
-	EndTime      time.Time            `json:"end_time"`
-	IsGap        bool                 `json:"is_gap"`
-	TotalCost    float64              `json:"total_cost"`
-	TotalTokens  int                  `json:"total_tokens"`
-	ModelStats   map[string]ModelStat `json:"model_stats"`
+	StartTime   time.Time            `json:"start_time"`
+	EndTime     time.Time            `json:"end_time"`
+	IsGap       bool                 `json:"is_gap"`
+	TotalCost   float64              `json:"total_cost"`
+	TotalTokens int                  `json:"total_tokens"`
+	ModelStats  map[string]ModelStat `json:"model_stats"`
 }
 
 // ModelStat contains aggregated statistics for a specific model
@@ -47,7 +47,7 @@ func (u *UsageEntry) CalculateCost(pricing ModelPricing) float64 {
 	outputCost := float64(u.OutputTokens) / 1_000_000 * pricing.Output
 	cacheCreationCost := float64(u.CacheCreationTokens) / 1_000_000 * pricing.CacheCreation
 	cacheReadCost := float64(u.CacheReadTokens) / 1_000_000 * pricing.CacheRead
-	
+
 	return inputCost + outputCost + cacheCreationCost + cacheReadCost
 }
 
@@ -56,7 +56,7 @@ func (s *SessionBlock) AddEntry(entry UsageEntry) {
 	if s.ModelStats == nil {
 		s.ModelStats = make(map[string]ModelStat)
 	}
-	
+
 	stat := s.ModelStats[entry.Model]
 	stat.InputTokens += entry.InputTokens
 	stat.OutputTokens += entry.OutputTokens
@@ -64,7 +64,7 @@ func (s *SessionBlock) AddEntry(entry UsageEntry) {
 	stat.CacheReadTokens += entry.CacheReadTokens
 	stat.TotalTokens += entry.TotalTokens
 	stat.Cost += entry.CostUSD
-	
+
 	s.ModelStats[entry.Model] = stat
 	s.CalculateTotals()
 }
@@ -73,10 +73,9 @@ func (s *SessionBlock) AddEntry(entry UsageEntry) {
 func (s *SessionBlock) CalculateTotals() {
 	s.TotalCost = 0
 	s.TotalTokens = 0
-	
+
 	for _, stat := range s.ModelStats {
 		s.TotalCost += stat.Cost
 		s.TotalTokens += stat.TotalTokens
 	}
 }
-

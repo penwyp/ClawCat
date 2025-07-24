@@ -71,7 +71,7 @@ func TestUsageEntry_Validate(t *testing.T) {
 				Timestamp:    time.Now(),
 				Model:        ModelSonnet,
 				InputTokens:  100,
-				OutputTokens:  -50,
+				OutputTokens: -50,
 			},
 			wantErr: true,
 			errMsg:  "output tokens cannot be negative",
@@ -160,7 +160,7 @@ func TestUsageEntry_Validate(t *testing.T) {
 
 func TestSessionBlock_Validate(t *testing.T) {
 	now := time.Now()
-	
+
 	tests := []struct {
 		name    string
 		session SessionBlock
@@ -251,7 +251,7 @@ func TestSessionBlock_Validate(t *testing.T) {
 				ModelStats: map[string]ModelStat{
 					ModelSonnet: {
 						InputTokens:  300,
-						OutputTokens:  200,
+						OutputTokens: 200,
 						TotalTokens:  500,
 						Cost:         0.05,
 					},
@@ -268,10 +268,10 @@ func TestSessionBlock_Validate(t *testing.T) {
 				TotalTokens: 500,
 				ModelStats: map[string]ModelStat{
 					ModelSonnet: {
-						InputTokens: 300,
+						InputTokens:  300,
 						OutputTokens: 200,
-						TotalTokens: 500,
-						Cost:        0.05,
+						TotalTokens:  500,
+						Cost:         0.05,
 					},
 				},
 			},
@@ -287,10 +287,10 @@ func TestSessionBlock_Validate(t *testing.T) {
 				TotalTokens: 1000, // Should be 500
 				ModelStats: map[string]ModelStat{
 					ModelSonnet: {
-						InputTokens: 300,
+						InputTokens:  300,
 						OutputTokens: 200,
-						TotalTokens: 500,
-						Cost:        0.05,
+						TotalTokens:  500,
+						Cost:         0.05,
 					},
 				},
 			},
@@ -410,7 +410,7 @@ func TestValidationError(t *testing.T) {
 		Field:   "TestField",
 		Message: "test message",
 	}
-	
+
 	assert.Equal(t, "validation error on field 'TestField': test message", err.Error())
 }
 
@@ -419,6 +419,6 @@ func TestPricingError(t *testing.T) {
 		Model:   "test-model",
 		Message: "pricing not found",
 	}
-	
+
 	assert.Equal(t, "pricing error for model 'test-model': pricing not found", err.Error())
 }

@@ -18,22 +18,22 @@ type Plan struct {
 // modelPricingMap stores pricing for all Claude models
 var modelPricingMap = map[string]ModelPricing{
 	ModelOpus: {
-		Input:         15.00,  // $15 per million tokens
-		Output:        75.00,  // $75 per million tokens
-		CacheCreation: 18.75,  // $18.75 per million tokens
-		CacheRead:     1.875,  // $1.875 per million tokens
+		Input:         15.00, // $15 per million tokens
+		Output:        75.00, // $75 per million tokens
+		CacheCreation: 18.75, // $18.75 per million tokens
+		CacheRead:     1.875, // $1.875 per million tokens
 	},
 	ModelSonnet: {
-		Input:         3.00,   // $3 per million tokens
-		Output:        15.00,  // $15 per million tokens
-		CacheCreation: 3.75,   // $3.75 per million tokens
-		CacheRead:     0.30,   // $0.30 per million tokens
+		Input:         3.00,  // $3 per million tokens
+		Output:        15.00, // $15 per million tokens
+		CacheCreation: 3.75,  // $3.75 per million tokens
+		CacheRead:     0.30,  // $0.30 per million tokens
 	},
 	ModelHaiku: {
-		Input:         0.80,   // $0.80 per million tokens
-		Output:        4.00,   // $4 per million tokens
-		CacheCreation: 1.00,   // $1 per million tokens
-		CacheRead:     0.08,   // $0.08 per million tokens
+		Input:         0.80, // $0.80 per million tokens
+		Output:        4.00, // $4 per million tokens
+		CacheCreation: 1.00, // $1 per million tokens
+		CacheRead:     0.08, // $0.08 per million tokens
 	},
 }
 

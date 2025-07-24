@@ -38,9 +38,9 @@ const (
 
 // File paths and patterns
 const (
-	DefaultLogFileName    = "claude_code_usage.jsonl"
-	LogFileSearchPattern  = "*claude_code_usage*.jsonl"
-	ConfigFileName        = ".clawcat.yml"
+	DefaultLogFileName   = "claude_code_usage.jsonl"
+	LogFileSearchPattern = "*claude_code_usage*.jsonl"
+	ConfigFileName       = ".clawcat.yml"
 )
 
 // Time formats

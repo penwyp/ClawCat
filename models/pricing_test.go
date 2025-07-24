@@ -125,7 +125,7 @@ func TestGetAllPlans(t *testing.T) {
 
 	// Verify it's a copy by modifying the returned map
 	plans[PlanPro] = Plan{Name: "Modified"}
-	
+
 	// Original should be unchanged
 	originalPlan := GetPlan(PlanPro)
 	assert.Equal(t, "Claude Pro", originalPlan.Name)
@@ -142,7 +142,7 @@ func TestGetAllPricings(t *testing.T) {
 
 	// Verify it's a copy by modifying the returned map
 	pricings[ModelSonnet] = ModelPricing{Input: 999.99}
-	
+
 	// Original should be unchanged
 	originalPricing := GetPricing(ModelSonnet)
 	assert.Equal(t, 3.00, originalPricing.Input)
@@ -151,11 +151,11 @@ func TestGetAllPricings(t *testing.T) {
 func TestPricingConsistency(t *testing.T) {
 	// Verify that output is more expensive than input for all models
 	pricings := GetAllPricings()
-	
+
 	for model, pricing := range pricings {
-		assert.Greater(t, pricing.Output, pricing.Input, 
+		assert.Greater(t, pricing.Output, pricing.Input,
 			"Output should be more expensive than input for model %s", model)
-		
+
 		// Cache creation should be more expensive than cache read
 		assert.Greater(t, pricing.CacheCreation, pricing.CacheRead,
 			"Cache creation should be more expensive than cache read for model %s", model)
@@ -164,16 +164,16 @@ func TestPricingConsistency(t *testing.T) {
 
 func TestPlanConsistency(t *testing.T) {
 	plans := GetAllPlans()
-	
+
 	for planID, plan := range plans {
 		// All current plans have unlimited tokens
 		assert.Equal(t, -1, plan.TokenLimit,
 			"Plan %s should have unlimited tokens", planID)
-		
+
 		// Cost limit should be positive
 		assert.Greater(t, plan.CostLimit, 0.0,
 			"Plan %s should have positive cost limit", planID)
-		
+
 		// Name should not be empty
 		assert.NotEmpty(t, plan.Name,
 			"Plan %s should have a name", planID)
