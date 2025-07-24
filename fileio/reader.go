@@ -111,7 +111,7 @@ func convertToUsageEntry(msg *RawMessage) (models.UsageEntry, error) {
 		return models.UsageEntry{}, fmt.Errorf("missing model information")
 	}
 
-	totalTokens := msg.Usage.InputTokens + msg.Usage.OutputTokens + 
+	totalTokens := msg.Usage.InputTokens + msg.Usage.OutputTokens +
 		msg.Usage.CacheCreationTokens + msg.Usage.CacheReadTokens
 
 	entry := models.UsageEntry{
