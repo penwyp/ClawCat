@@ -13,6 +13,9 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 - [x] Implemented models package with all core data structures
 - [x] Added comprehensive tests for models package (100% coverage)
 - [x] Verified Makefile exists with comprehensive build automation
+- [x] Implemented fileio/reader.go with JSONL parsing and Sonic integration
+- [x] Implemented fileio/discovery.go for cross-platform path discovery
+- [x] Added comprehensive tests for fileio module (22 tests, all passing)
 
 ## Module Status
 
@@ -21,7 +24,7 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 | Module | Status | Progress | Notes |
 |--------|--------|----------|-------|
 | models | Completed | 100% | Core data structures, validation, pricing - all tests passing |
-| fileio | Not Started | 0% | JSONL parsing, file watching |
+| fileio | Partially Completed | 60% | JSONL parsing ✓, path discovery ✓, file watching (pending) |
 | calculations | Not Started | 0% | Cost, stats, predictions |
 | sessions | Not Started | 0% | Session management |
 | ui | Not Started | 0% | Bubble Tea TUI |
@@ -43,7 +46,7 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 | Module | Unit Tests | Integration Tests | Coverage |
 |--------|------------|-------------------|----------|
 | models | 30+ | 0 | 100% |
-| fileio | 0 | 0 | 0% |
+| fileio | 22 | 0 | ~90% |
 | calculations | 0 | 0 | 0% |
 | sessions | 0 | 0 | 0% |
 | ui | 0 | 0 | 0% |
@@ -79,9 +82,10 @@ This document tracks the development progress of ClawCat - Claude Code Usage Mon
 2. ~~Create project structure~~ ✓
 3. ~~Implement models package~~ ✓
 4. ~~Set up testing framework~~ ✓
-5. Implement basic fileio module (reader.go, discovery.go)
+5. ~~Implement basic fileio module (reader.go, discovery.go)~~ ✓
 6. Implement core calculations module (cost.go, stats.go)
-7. Create sample test data
+7. Complete fileio module (watcher.go)
+8. Create sample test data
 
 ## Blockers
 - None
