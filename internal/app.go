@@ -47,7 +47,7 @@ func NewApplication(cfg *config.Config) (*Application, error) {
 		config: cfg,
 		ctx:    ctx,
 		cancel: cancel,
-		logger: NewLogger(cfg.App.LogLevel),
+		logger: NewLogger(cfg.App.LogLevel, cfg.App.LogFile),
 	}
 	
 	if err := app.bootstrap(); err != nil {

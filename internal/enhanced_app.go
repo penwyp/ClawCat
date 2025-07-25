@@ -48,7 +48,7 @@ func NewEnhancedApplication(cfg *config.Config) (*EnhancedApplication, error) {
 		config:       cfg,
 		ctx:          ctx,
 		cancel:       cancel,
-		logger:       NewLogger(cfg.App.LogLevel),
+		logger:       NewLogger(cfg.App.LogLevel, cfg.App.LogFile),
 		errorHandler: errors.NewEnhancedErrorHandler(),
 	}
 	

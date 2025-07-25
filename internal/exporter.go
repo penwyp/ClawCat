@@ -51,7 +51,7 @@ func NewExporter(cfg *config.Config) (*Exporter, error) {
 	
 	return &Exporter{
 		config: cfg,
-		logger: NewLogger(cfg.App.LogLevel),
+		logger: NewLogger(cfg.App.LogLevel, cfg.App.LogFile),
 	}, nil
 }
 

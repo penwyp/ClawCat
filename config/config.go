@@ -145,6 +145,7 @@ func DefaultConfig() *Config {
 			Name:     "ClawCat",
 			Version:  Version,
 			LogLevel: "info",
+			LogFile:  "clawcat.log",
 			Timezone: "Local",
 		},
 		Data: DataConfig{

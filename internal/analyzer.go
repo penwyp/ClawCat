@@ -24,7 +24,7 @@ func NewAnalyzer(cfg *config.Config) (*Analyzer, error) {
 	
 	return &Analyzer{
 		config: cfg,
-		logger: NewLogger(cfg.App.LogLevel),
+		logger: NewLogger(cfg.App.LogLevel, cfg.App.LogFile),
 	}, nil
 }
 

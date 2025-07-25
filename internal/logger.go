@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -22,11 +23,23 @@ type Logger struct {
 	logger *log.Logger
 }
 
-// NewLogger creates a new logger with the specified level
-func NewLogger(levelStr string) *Logger {
+// NewLogger creates a new logger with the specified level and log file
+func NewLogger(levelStr string, logFile string) *Logger {
 	level := parseLogLevel(levelStr)
 	
-	logger := log.New(os.Stderr, "", log.LstdFlags|log.Lshortfile)
+	var file *os.File
+	var err error
+	
+	if logFile != "" {
+		file, err = os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to open log file %s: %v", logFile, err))
+		}
+	} else {
+		panic("Log file must be specified")
+	}
+	
+	logger := log.New(file, "", log.LstdFlags|log.Lshortfile)
 	
 	return &Logger{
 		level:  level,

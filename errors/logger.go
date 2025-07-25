@@ -205,10 +205,6 @@ func (el *ErrorLogger) initWriters() {
 		fileWriter := NewFileLogWriter(el.config.OutputPath)
 		el.writers = append(el.writers, fileWriter)
 	}
-
-	// 控制台写入器（开发环境）
-	consoleWriter := NewConsoleLogWriter()
-	el.writers = append(el.writers, consoleWriter)
 }
 
 // handleWriteError 处理写入错误
