@@ -50,7 +50,7 @@ func (sd *StreamingDisplay) RenderHeader() string {
 	timestamp := time.Now().Format("15:04:05")
 	
 	// Key metrics in compact format
-	tokens := formatNumber(int64(sd.metrics.CurrentTokens))
+	tokens := formatNumber(sd.metrics.CurrentTokens)
 	cost := fmt.Sprintf("$%.2f", sd.metrics.CurrentCost)
 	burnRate := fmt.Sprintf("%.0f/min", sd.metrics.TokensPerMinute)
 	progress := fmt.Sprintf("%.0f%%", sd.metrics.SessionProgress)
@@ -80,7 +80,7 @@ func (sd *StreamingDisplay) RenderInlineSummary() string {
 	// Compact inline format similar to docker stats
 	return fmt.Sprintf(
 		"📊 %s tok │ 💰 $%.2f │ ⚡ %.0f/min │ 🎯 %.0f%% │ %s",
-		formatNumber(int64(sd.metrics.CurrentTokens)),
+		formatNumber(sd.metrics.CurrentTokens),
 		sd.metrics.CurrentCost,
 		sd.metrics.TokensPerMinute,
 		sd.metrics.SessionProgress,
@@ -104,8 +104,8 @@ func (sd *StreamingDisplay) RenderDetailedReport() string {
 	// Core metrics
 	report.WriteString("📊 Usage Statistics:\n")
 	report.WriteString(fmt.Sprintf("  Tokens:     %s (projected: %s)\n", 
-		formatNumber(int64(sd.metrics.CurrentTokens)),
-		formatNumber(int64(sd.metrics.ProjectedTokens))))
+		formatNumber(sd.metrics.CurrentTokens),
+		formatNumber(sd.metrics.ProjectedTokens)))
 	report.WriteString(fmt.Sprintf("  Cost:       $%.2f (projected: $%.2f)\n", 
 		sd.metrics.CurrentCost, sd.metrics.ProjectedCost))
 	report.WriteString(fmt.Sprintf("  Progress:   %.1f%% complete\n", sd.metrics.SessionProgress))
@@ -130,7 +130,7 @@ func (sd *StreamingDisplay) RenderDetailedReport() string {
 		for _, model := range topModels {
 			report.WriteString(fmt.Sprintf("  %s: %.1f%% (%s tokens)\n", 
 				truncateString(model.Name, 15), model.Percentage, 
-				formatNumber(int64(model.TokenCount))))
+				formatNumber(model.TokenCount)))
 		}
 	}
 	
@@ -272,20 +272,4 @@ func (sd *StreamingDisplay) getTopModels(limit int) []ModelInfo {
 	return models
 }
 
-// Utility functions
-
-func formatNumber(n int64) string {
-	if n >= 1000000 {
-		return fmt.Sprintf("%.1fM", float64(n)/1000000)
-	} else if n >= 1000 {
-		return fmt.Sprintf("%.1fK", float64(n)/1000)
-	}
-	return fmt.Sprintf("%d", n)
-}
-
-func truncateString(s string, length int) string {
-	if len(s) <= length {
-		return s
-	}
-	return s[:length-3] + "..."
-}
+// End of StreamingDisplay implementation
