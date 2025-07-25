@@ -15,16 +15,16 @@ import (
 // AggregationView 聚合视图
 type AggregationView struct {
 	// 视图状态
-	viewType    calculations.AggregationView
-	dateRange   DateRange
-	data        []calculations.AggregatedData
-	loading     bool
-	err         error
+	viewType  calculations.AggregationView
+	dateRange DateRange
+	data      []calculations.AggregatedData
+	loading   bool
+	err       error
 
 	// UI 组件
-	table       *components.AggregationTable
-	chart       *components.UsageChart
-	summary     *SummaryCards
+	table   *components.AggregationTable
+	chart   *components.UsageChart
+	summary *SummaryCards
 
 	// 交互状态
 	selected    int
@@ -57,18 +57,18 @@ type SummaryCards struct {
 
 // AggregationKeyMap 聚合视图键绑定
 type AggregationKeyMap struct {
-	Up           key.Binding
-	Down         key.Binding
-	Left         key.Binding
-	Right        key.Binding
-	ToggleChart  key.Binding
-	ToggleView   key.Binding
-	NextPeriod   key.Binding
-	PrevPeriod   key.Binding
-	Export       key.Binding
-	Refresh      key.Binding
-	Help         key.Binding
-	Quit         key.Binding
+	Up          key.Binding
+	Down        key.Binding
+	Left        key.Binding
+	Right       key.Binding
+	ToggleChart key.Binding
+	ToggleView  key.Binding
+	NextPeriod  key.Binding
+	PrevPeriod  key.Binding
+	Export      key.Binding
+	Refresh     key.Binding
+	Help        key.Binding
+	Quit        key.Binding
 }
 
 // DefaultAggregationKeys 默认键绑定
@@ -308,24 +308,24 @@ func (av *AggregationView) renderContent() string {
 	if av.width > 120 {
 		// 宽屏：并排显示表格和图表
 		table := av.table.Render(av.width/2 - 2)
-		
+
 		var chart string
 		if av.showChart {
 			chart = av.chart.Render(av.width/2 - 2)
 		} else {
 			chart = av.styles.Faint().Render("Chart hidden (press 'c' to show)")
 		}
-		
+
 		return lipgloss.JoinHorizontal(lipgloss.Top, table, "  ", chart)
 	} else {
 		// 窄屏：垂直排列
 		table := av.table.Render(av.width - 4)
-		
+
 		if av.showChart {
 			chart := av.chart.Render(av.width - 4)
 			return lipgloss.JoinVertical(lipgloss.Left, table, chart)
 		}
-		
+
 		return table
 	}
 }
@@ -352,11 +352,11 @@ func (av *AggregationView) renderSummary() string {
 
 // renderSummaryCard 渲染摘要卡片
 func (av *AggregationView) renderSummaryCard(title, value string, style lipgloss.Style) string {
-	card := fmt.Sprintf("%s\n%s", 
+	card := fmt.Sprintf("%s\n%s",
 		style.Bold(true).Render(title),
 		style.Faint(true).Render(value),
 	)
-	
+
 	return av.styles.Card().
 		Width(av.width/4 - 2).
 		Render(card)
@@ -380,9 +380,9 @@ func (av *AggregationView) renderHelp() string {
 func (av *AggregationView) renderLoading() string {
 	spinner := "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏" // 简单的旋转动画
 	frame := int(time.Now().UnixNano()/100000000) % len(spinner)
-	
+
 	loading := fmt.Sprintf("%c Loading aggregation data...", rune(spinner[frame]))
-	
+
 	return av.styles.Info.
 		Width(av.width).
 		Height(av.height).
@@ -394,7 +394,7 @@ func (av *AggregationView) renderLoading() string {
 // renderError 渲染错误状态
 func (av *AggregationView) renderError() string {
 	errorMsg := fmt.Sprintf("❌ Error loading data: %s\n\nPress 'r' to retry", av.err.Error())
-	
+
 	return av.styles.Error.
 		Width(av.width).
 		Height(av.height).
@@ -505,7 +505,7 @@ func (av *AggregationView) previousPeriod() {
 func (av *AggregationView) refreshData() tea.Cmd {
 	av.loading = true
 	av.err = nil
-	
+
 	return func() tea.Msg {
 		// 这里应该调用实际的数据加载逻辑
 		// 暂时返回模拟数据
@@ -558,7 +558,7 @@ func generateMockAggregationData() []calculations.AggregatedData {
 
 	for i := 0; i < 7; i++ {
 		day := baseTime.AddDate(0, 0, i)
-		
+
 		aggregated := calculations.AggregatedData{
 			Period: calculations.TimePeriod{
 				Start: day,

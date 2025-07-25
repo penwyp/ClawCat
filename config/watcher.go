@@ -280,7 +280,7 @@ func (mw *MultiWatcher) Start() error {
 // Stop stops all watchers
 func (mw *MultiWatcher) Stop() error {
 	close(mw.stopCh)
-	
+
 	var lastErr error
 	for _, watcher := range mw.watchers {
 		if err := watcher.Stop(); err != nil {
@@ -314,7 +314,7 @@ func (mw *MultiWatcher) Current() *Config {
 func (mw *MultiWatcher) onConfigChange(*Config) {
 	// Get the merged current configuration
 	cfg := mw.Current()
-	
+
 	// Notify about the change
 	if mw.onChange != nil {
 		mw.onChange(cfg)

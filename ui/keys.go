@@ -12,49 +12,49 @@ type KeyMap struct {
 	Left  key.Binding
 	Right key.Binding
 	Enter key.Binding
-	
+
 	// View switching
 	Tab       key.Binding
 	Dashboard key.Binding
 	Sessions  key.Binding
 	Analytics key.Binding
 	Help      key.Binding
-	
+
 	// Actions
 	Refresh key.Binding
 	Export  key.Binding
 	Search  key.Binding
 	Filter  key.Binding
 	Sort    key.Binding
-	
+
 	// Table navigation
 	PageUp   key.Binding
 	PageDown key.Binding
 	Home     key.Binding
 	End      key.Binding
-	
+
 	// Application control
-	Quit    key.Binding
-	Back    key.Binding
-	Escape  key.Binding
-	
+	Quit   key.Binding
+	Back   key.Binding
+	Escape key.Binding
+
 	// View-specific keys
-	ZoomIn     key.Binding
-	ZoomOut    key.Binding
-	Reset      key.Binding
-	Details    key.Binding
-	
+	ZoomIn  key.Binding
+	ZoomOut key.Binding
+	Reset   key.Binding
+	Details key.Binding
+
 	// Grouping and filtering
-	GroupBy    key.Binding
-	TimeRange  key.Binding
-	
+	GroupBy   key.Binding
+	TimeRange key.Binding
+
 	// Export and save
-	Save       key.Binding
-	SaveAs     key.Binding
-	
+	Save   key.Binding
+	SaveAs key.Binding
+
 	// Debug and development
-	Debug      key.Binding
-	Reload     key.Binding
+	Debug  key.Binding
+	Reload key.Binding
 }
 
 // DefaultKeyMap returns the default key bindings
@@ -81,7 +81,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "select/activate"),
 		),
-		
+
 		// View switching
 		Tab: key.NewBinding(
 			key.WithKeys("tab"),
@@ -103,7 +103,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("?", "h"),
 			key.WithHelp("?/h", "help"),
 		),
-		
+
 		// Actions
 		Refresh: key.NewBinding(
 			key.WithKeys("r", "f5"),
@@ -125,7 +125,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("S"),
 			key.WithHelp("S", "sort"),
 		),
-		
+
 		// Table navigation
 		PageUp: key.NewBinding(
 			key.WithKeys("pgup", "b"),
@@ -143,7 +143,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("end", "G"),
 			key.WithHelp("end/G", "go to bottom"),
 		),
-		
+
 		// Application control
 		Quit: key.NewBinding(
 			key.WithKeys("q", "ctrl+c"),
@@ -157,7 +157,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("esc"),
 			key.WithHelp("esc", "escape/cancel"),
 		),
-		
+
 		// View-specific keys
 		ZoomIn: key.NewBinding(
 			key.WithKeys("+", "="),
@@ -175,7 +175,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("i"),
 			key.WithHelp("i", "details"),
 		),
-		
+
 		// Grouping and filtering
 		GroupBy: key.NewBinding(
 			key.WithKeys("g"),
@@ -185,7 +185,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("t"),
 			key.WithHelp("t", "time range"),
 		),
-		
+
 		// Export and save
 		Save: key.NewBinding(
 			key.WithKeys("ctrl+s"),
@@ -195,7 +195,7 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("ctrl+shift+s"),
 			key.WithHelp("ctrl+shift+s", "save as"),
 		),
-		
+
 		// Debug and development
 		Debug: key.NewBinding(
 			key.WithKeys("ctrl+d"),
@@ -267,56 +267,56 @@ func (k KeyMap) GetSystemHelp() []key.Binding {
 // DashboardKeyMap returns dashboard-specific key bindings
 func DashboardKeyMap() KeyMap {
 	km := DefaultKeyMap()
-	
+
 	// Override or add dashboard-specific bindings
 	km.Details = key.NewBinding(
 		key.WithKeys("enter", "i"),
 		key.WithHelp("enter/i", "view details"),
 	)
-	
+
 	return km
 }
 
 // SessionsKeyMap returns sessions view-specific key bindings
 func SessionsKeyMap() KeyMap {
 	km := DefaultKeyMap()
-	
+
 	// Override or add sessions-specific bindings
 	km.Details = key.NewBinding(
 		key.WithKeys("enter", "i"),
 		key.WithHelp("enter/i", "session details"),
 	)
-	
+
 	km.Export = key.NewBinding(
 		key.WithKeys("e", "x"),
 		key.WithHelp("e/x", "export session"),
 	)
-	
+
 	return km
 }
 
 // AnalyticsKeyMap returns analytics view-specific key bindings
 func AnalyticsKeyMap() KeyMap {
 	km := DefaultKeyMap()
-	
+
 	// Override or add analytics-specific bindings
 	km.TimeRange = key.NewBinding(
 		key.WithKeys("t", "T"),
 		key.WithHelp("t/T", "change time range"),
 	)
-	
+
 	km.GroupBy = key.NewBinding(
 		key.WithKeys("g", "G"),
 		key.WithHelp("g/G", "group by field"),
 	)
-	
+
 	return km
 }
 
 // HelpKeyMap returns help view-specific key bindings
 func HelpKeyMap() KeyMap {
 	km := DefaultKeyMap()
-	
+
 	// Help view mainly uses navigation keys
 	return km
 }
@@ -329,7 +329,7 @@ func (k KeyMap) IsQuit(keyMsg string) bool {
 
 // IsNavigation checks if a key press is a navigation command
 func (k KeyMap) IsNavigation(keyMsg string) bool {
-	navKeys := []string{"up", "down", "left", "right", "k", "j", "h", "l", 
+	navKeys := []string{"up", "down", "left", "right", "k", "j", "h", "l",
 		"pgup", "pgdown", "home", "end", "g", "G", "b", " "}
 	for _, navKey := range navKeys {
 		if keyMsg == navKey {

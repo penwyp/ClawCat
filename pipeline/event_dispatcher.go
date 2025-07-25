@@ -12,31 +12,31 @@ import (
 
 // EventDispatcher 事件分发器
 type EventDispatcher struct {
-	handlers        map[reflect.Type][]EventHandler
-	eventChannel    chan interface{}
-	errorChannel    chan error
-	config          DispatcherConfig
-	stats          *DispatcherStats
-	ctx            context.Context
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
-	mu             sync.RWMutex
-	isRunning      bool
-	handlerPool    sync.Pool
-	middleware     []MiddlewareFunc
+	handlers     map[reflect.Type][]EventHandler
+	eventChannel chan interface{}
+	errorChannel chan error
+	config       DispatcherConfig
+	stats        *DispatcherStats
+	ctx          context.Context
+	cancel       context.CancelFunc
+	wg           sync.WaitGroup
+	mu           sync.RWMutex
+	isRunning    bool
+	handlerPool  sync.Pool
+	middleware   []MiddlewareFunc
 }
 
 // DispatcherConfig 分发器配置
 type DispatcherConfig struct {
-	WorkerCount       int           `json:"worker_count"`
-	BufferSize        int           `json:"buffer_size"`
-	HandlerTimeout    time.Duration `json:"handler_timeout"`
-	EnableMiddleware  bool          `json:"enable_middleware"`
-	EnableRecovery    bool          `json:"enable_recovery"`
-	MaxRetries        int           `json:"max_retries"`
-	RetryDelay        time.Duration `json:"retry_delay"`
-	EnableMetrics     bool          `json:"enable_metrics"`
-	QueueWarningSize  int           `json:"queue_warning_size"`
+	WorkerCount      int           `json:"worker_count"`
+	BufferSize       int           `json:"buffer_size"`
+	HandlerTimeout   time.Duration `json:"handler_timeout"`
+	EnableMiddleware bool          `json:"enable_middleware"`
+	EnableRecovery   bool          `json:"enable_recovery"`
+	MaxRetries       int           `json:"max_retries"`
+	RetryDelay       time.Duration `json:"retry_delay"`
+	EnableMetrics    bool          `json:"enable_metrics"`
+	QueueWarningSize int           `json:"queue_warning_size"`
 }
 
 // DefaultDispatcherConfig 默认分发器配置
@@ -56,19 +56,19 @@ func DefaultDispatcherConfig() DispatcherConfig {
 
 // DispatcherStats 分发器统计
 type DispatcherStats struct {
-	TotalEvents       int64            `json:"total_events"`
-	ProcessedEvents   int64            `json:"processed_events"`
-	FailedEvents      int64            `json:"failed_events"`
-	RetryEvents       int64            `json:"retry_events"`
-	HandlerErrors     int64            `json:"handler_errors"`
-	PanicRecoveries   int64            `json:"panic_recoveries"`
-	AverageProcessTime time.Duration   `json:"average_process_time"`
-	TotalProcessTime  time.Duration    `json:"total_process_time"`
-	StartTime         time.Time        `json:"start_time"`
-	LastEventTime     time.Time        `json:"last_event_time"`
-	ActiveWorkers     int32            `json:"active_workers"`
-	QueueSize         int32            `json:"queue_size"`
-	HandlerStats      map[string]*int64 `json:"handler_stats"`
+	TotalEvents        int64             `json:"total_events"`
+	ProcessedEvents    int64             `json:"processed_events"`
+	FailedEvents       int64             `json:"failed_events"`
+	RetryEvents        int64             `json:"retry_events"`
+	HandlerErrors      int64             `json:"handler_errors"`
+	PanicRecoveries    int64             `json:"panic_recoveries"`
+	AverageProcessTime time.Duration     `json:"average_process_time"`
+	TotalProcessTime   time.Duration     `json:"total_process_time"`
+	StartTime          time.Time         `json:"start_time"`
+	LastEventTime      time.Time         `json:"last_event_time"`
+	ActiveWorkers      int32             `json:"active_workers"`
+	QueueSize          int32             `json:"queue_size"`
+	HandlerStats       map[string]*int64 `json:"handler_stats"`
 }
 
 // MiddlewareFunc 中间件函数
@@ -83,7 +83,7 @@ func NewEventDispatcher(config DispatcherConfig) *EventDispatcher {
 		eventChannel: make(chan interface{}, config.BufferSize),
 		errorChannel: make(chan error, 100),
 		config:       config,
-		stats:        &DispatcherStats{
+		stats: &DispatcherStats{
 			StartTime:    time.Now(),
 			HandlerStats: make(map[string]*int64),
 		},
@@ -105,7 +105,7 @@ func (ed *EventDispatcher) RegisterHandler(eventType reflect.Type, handler Event
 	defer ed.mu.Unlock()
 
 	ed.handlers[eventType] = append(ed.handlers[eventType], handler)
-	
+
 	// 初始化处理器统计
 	handlerName := ed.getHandlerName(handler)
 	if ed.config.EnableMetrics {
@@ -216,7 +216,7 @@ func (ed *EventDispatcher) Dispatch(event interface{}) error {
 	select {
 	case ed.eventChannel <- event:
 		ed.stats.LastEventTime = time.Now()
-		
+
 		// 检查队列大小警告
 		if ed.config.QueueWarningSize > 0 {
 			queueSize := atomic.LoadInt32(&ed.stats.QueueSize)
@@ -224,7 +224,7 @@ func (ed *EventDispatcher) Dispatch(event interface{}) error {
 				log.Printf("Warning: Event queue size is high (%d)", queueSize)
 			}
 		}
-		
+
 		return nil
 	case <-ed.ctx.Done():
 		return ed.ctx.Err()
@@ -262,9 +262,9 @@ func (ed *EventDispatcher) worker(workerID int) {
 
 			atomic.AddInt32(&ed.stats.ActiveWorkers, 1)
 			atomic.AddInt32(&ed.stats.QueueSize, -1)
-			
+
 			err := ed.handleEvent(event)
-			
+
 			atomic.AddInt32(&ed.stats.ActiveWorkers, -1)
 
 			if err != nil {
@@ -299,7 +299,7 @@ func (ed *EventDispatcher) handleEventWithRetry(ctx context.Context, event inter
 	for attempt := 0; attempt <= ed.config.MaxRetries; attempt++ {
 		if attempt > 0 {
 			atomic.AddInt64(&ed.stats.RetryEvents, 1)
-			
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -513,33 +513,33 @@ func (ed *EventDispatcher) GetQueueSize() int {
 func LoggingMiddleware(event interface{}, next func(interface{}) error) error {
 	start := time.Now()
 	eventType := reflect.TypeOf(event).String()
-	
+
 	log.Printf("Processing event: %s", eventType)
-	
+
 	err := next(event)
-	
+
 	duration := time.Since(start)
 	if err != nil {
 		log.Printf("Event %s failed after %v: %v", eventType, duration, err)
 	} else {
 		log.Printf("Event %s completed in %v", eventType, duration)
 	}
-	
+
 	return err
 }
 
 // MetricsMiddleware 指标中间件
 func MetricsMiddleware(event interface{}, next func(interface{}) error) error {
 	start := time.Now()
-	
+
 	err := next(event)
-	
+
 	duration := time.Since(start)
 	eventType := reflect.TypeOf(event).String()
-	
+
 	// 这里可以发送指标到监控系统
 	log.Printf("Metrics: %s processed in %v (success: %t)", eventType, duration, err == nil)
-	
+
 	return err
 }
 
@@ -566,7 +566,7 @@ func (cb *CircuitBreakerMiddleware) Middleware(event interface{}, next func(inte
 	}
 
 	err := next(event)
-	
+
 	cb.mu.Lock()
 	if err != nil {
 		cb.failures++

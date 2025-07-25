@@ -1,10 +1,11 @@
 package errors
 
 import (
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/penwyp/ClawCat/logging"
 )
 
 // ErrorMetrics 错误指标
@@ -26,20 +27,19 @@ type ErrorMetrics struct {
 	// 状态
 	CircuitBreakerState *Gauge
 	DegradedMode        *Gauge
-
 }
 
 // NewErrorMetrics 创建错误指标
 func NewErrorMetrics() *ErrorMetrics {
 	return &ErrorMetrics{
-		TotalErrors:      NewCounter(),
-		ErrorsByType:     make(map[ErrorType]*Counter),
-		ErrorsBySeverity: make(map[ErrorSeverity]*Counter),
-		RecoverySuccess:  NewCounter(),
-		RecoveryFailed:   NewCounter(),
-		ErrorRate:        NewRate(),
-		RecoveryRate:     NewRate(),
-		RecoveryLatency:  NewHistogram(),
+		TotalErrors:         NewCounter(),
+		ErrorsByType:        make(map[ErrorType]*Counter),
+		ErrorsBySeverity:    make(map[ErrorSeverity]*Counter),
+		RecoverySuccess:     NewCounter(),
+		RecoveryFailed:      NewCounter(),
+		ErrorRate:           NewRate(),
+		RecoveryRate:        NewRate(),
+		RecoveryLatency:     NewHistogram(),
 		CircuitBreakerState: NewGauge(),
 		DegradedMode:        NewGauge(),
 	}
@@ -125,7 +125,7 @@ func (r *Rate) Rate() float64 {
 // cleanup 清理过期事件
 func (r *Rate) cleanup(now time.Time) {
 	cutoff := now.Add(-r.window)
-	
+
 	// 移除过期事件
 	newEvents := make([]time.Time, 0, len(r.events))
 	for _, event := range r.events {
@@ -358,7 +358,9 @@ func (am *AlertManager) SendAlert(err *RecoverableError, context *ErrorContext) 
 		go func(ch AlertChannel) {
 			if err := ch.Send(alert); err != nil {
 				// 记录告警发送失败
-				log.Printf("Failed to send alert: %v", err)
+				if logging.GetGlobalLogger() != nil {
+					logging.GetGlobalLogger().Errorf("Failed to send alert: %v", err)
+				}
 			}
 		}(channel)
 	}

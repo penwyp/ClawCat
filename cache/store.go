@@ -20,13 +20,13 @@ type Store struct {
 
 // StoreConfig configures the cache store behavior
 type StoreConfig struct {
-	MaxFileSize      int64         `json:"max_file_size"`
-	MaxMemory        int64         `json:"max_memory"`
-	FileCacheTTL     time.Duration `json:"file_cache_ttl"`
-	CalcCacheTTL     time.Duration `json:"calc_cache_ttl"`
-	CompressionLevel int           `json:"compression_level"`
-	EnableMetrics    bool          `json:"enable_metrics"`
-	EnableCompression bool         `json:"enable_compression"`
+	MaxFileSize       int64         `json:"max_file_size"`
+	MaxMemory         int64         `json:"max_memory"`
+	FileCacheTTL      time.Duration `json:"file_cache_ttl"`
+	CalcCacheTTL      time.Duration `json:"calc_cache_ttl"`
+	CompressionLevel  int           `json:"compression_level"`
+	EnableMetrics     bool          `json:"enable_metrics"`
+	EnableCompression bool          `json:"enable_compression"`
 }
 
 // StoreStats provides overall cache store statistics
@@ -39,17 +39,17 @@ type StoreStats struct {
 
 // TotalStats provides aggregate statistics across all caches
 type TotalStats struct {
-	TotalHits     int64   `json:"total_hits"`
-	TotalMisses   int64   `json:"total_misses"`
-	TotalSize     int64   `json:"total_size"`
-	TotalMemory   int64   `json:"total_memory"`
+	TotalHits      int64   `json:"total_hits"`
+	TotalMisses    int64   `json:"total_misses"`
+	TotalSize      int64   `json:"total_size"`
+	TotalMemory    int64   `json:"total_memory"`
 	OverallHitRate float64 `json:"overall_hit_rate"`
 }
 
 // StoreMemoryStats provides memory usage statistics for the store
 type StoreMemoryStats struct {
-	Used      int64   `json:"used"`
-	Total     int64   `json:"total"`
+	Used       int64   `json:"used"`
+	Total      int64   `json:"total"`
 	Percentage float64 `json:"percentage"`
 }
 
@@ -75,18 +75,18 @@ func NewStore(config StoreConfig) *Store {
 	// Create caches
 	fileCache := NewFileCache(config.MaxFileSize)
 	lruCache := NewLRUCache(config.MaxMemory / 2) // Allocate half memory to general cache
-	
+
 	// Create memory manager
 	memManager := NewMemoryManager(config.MaxMemory)
 	_ = memManager.Register(lruCache)
-	
+
 	store := &Store{
 		fileCache:  fileCache,
 		lruCache:   lruCache,
 		memManager: memManager,
 		config:     config,
 	}
-	
+
 	return store
 }
 
@@ -94,12 +94,12 @@ func NewStore(config StoreConfig) *Store {
 func (s *Store) GetFile(path string) (*CachedFile, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	// Try to get from file cache first
 	if cached, exists := s.fileCache.GetFile(path); exists {
 		return cached, nil
 	}
-	
+
 	return nil, fmt.Errorf("file not found in cache: %s", path)
 }
 
@@ -107,7 +107,7 @@ func (s *Store) GetFile(path string) (*CachedFile, error) {
 func (s *Store) CacheFile(path string, content []byte, entries []models.UsageEntry) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	return s.fileCache.CacheFileContent(path, content, entries)
 }
 
@@ -115,12 +115,12 @@ func (s *Store) CacheFile(path string, content []byte, entries []models.UsageEnt
 func (s *Store) GetEntries(path string) ([]models.UsageEntry, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	entries, exists := s.fileCache.GetEntries(path)
 	if !exists {
 		return nil, fmt.Errorf("entries not found in cache: %s", path)
 	}
-	
+
 	return entries, nil
 }
 
@@ -128,12 +128,12 @@ func (s *Store) GetEntries(path string) ([]models.UsageEntry, error) {
 func (s *Store) GetCalculation(key string) (interface{}, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	value, exists := s.lruCache.Get(key)
 	if !exists {
 		return nil, fmt.Errorf("calculation not found in cache: %s", key)
 	}
-	
+
 	return value, nil
 }
 
@@ -141,7 +141,7 @@ func (s *Store) GetCalculation(key string) (interface{}, error) {
 func (s *Store) SetCalculation(key string, value interface{}) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	return s.lruCache.Set(key, value)
 }
 
@@ -149,18 +149,18 @@ func (s *Store) SetCalculation(key string, value interface{}) error {
 func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	key := "summary:" + absolutePath
 	value, exists := s.lruCache.Get(key)
 	if !exists {
 		return nil, fmt.Errorf("file summary not found in cache: %s", absolutePath)
 	}
-	
+
 	summary, ok := value.(*FileSummary)
 	if !ok {
 		return nil, fmt.Errorf("invalid cached summary type for: %s", absolutePath)
 	}
-	
+
 	return summary, nil
 }
 
@@ -168,12 +168,12 @@ func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
 func (s *Store) SetFileSummary(summary *FileSummary) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	key := "summary:" + summary.AbsolutePath
-	
+
 	// Calculate size estimate for the summary
 	size := s.estimateFileSummarySize(summary)
-	
+
 	// Store as persistent item (never expires, won't be evicted unless by LRU pressure)
 	return s.lruCache.SetWithOptions(key, summary, size, 0, true)
 }
@@ -182,7 +182,7 @@ func (s *Store) SetFileSummary(summary *FileSummary) error {
 func (s *Store) HasFileSummary(absolutePath string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	key := "summary:" + absolutePath
 	_, exists := s.lruCache.Get(key)
 	return exists
@@ -192,7 +192,7 @@ func (s *Store) HasFileSummary(absolutePath string) bool {
 func (s *Store) InvalidateFileSummary(absolutePath string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	key := "summary:" + absolutePath
 	return s.lruCache.Delete(key)
 }
@@ -201,7 +201,7 @@ func (s *Store) InvalidateFileSummary(absolutePath string) error {
 func (s *Store) Preload(paths []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	return s.fileCache.Preload(paths)
 }
 
@@ -209,12 +209,12 @@ func (s *Store) Preload(paths []string) error {
 func (s *Store) PreloadPattern(pattern string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return fmt.Errorf("failed to expand pattern %s: %w", pattern, err)
 	}
-	
+
 	return s.fileCache.Preload(matches)
 }
 
@@ -222,7 +222,7 @@ func (s *Store) PreloadPattern(pattern string) error {
 func (s *Store) InvalidateFile(path string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	return s.fileCache.InvalidateFile(path)
 }
 
@@ -230,7 +230,7 @@ func (s *Store) InvalidateFile(path string) error {
 func (s *Store) InvalidatePattern(pattern string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	return s.fileCache.InvalidatePattern(pattern)
 }
 
@@ -238,7 +238,7 @@ func (s *Store) InvalidatePattern(pattern string) error {
 func (s *Store) InvalidateCalculations() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	return s.lruCache.Clear()
 }
 
@@ -246,15 +246,15 @@ func (s *Store) InvalidateCalculations() error {
 func (s *Store) Clear() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if err := s.fileCache.Clear(); err != nil {
 		return err
 	}
-	
+
 	if err := s.lruCache.Clear(); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -262,22 +262,22 @@ func (s *Store) Clear() error {
 func (s *Store) Stats() StoreStats {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	fileCacheStats := s.fileCache.FileCacheStats()
 	lruCacheStats := s.lruCache.Stats()
 	memStats := s.memManager.Stats()
-	
+
 	// Calculate total stats
 	totalHits := fileCacheStats.Hits + lruCacheStats.Hits
 	totalMisses := fileCacheStats.Misses + lruCacheStats.Misses
 	totalSize := fileCacheStats.Size + lruCacheStats.Size
 	totalMemory := s.fileCache.MemoryUsage() + s.lruCache.MemoryUsage()
-	
+
 	var overallHitRate float64
 	if totalHits+totalMisses > 0 {
 		overallHitRate = float64(totalHits) / float64(totalHits+totalMisses)
 	}
-	
+
 	return StoreStats{
 		FileCache: fileCacheStats,
 		LRUCache:  lruCacheStats,
@@ -307,20 +307,20 @@ func (s *Store) Config() StoreConfig {
 func (s *Store) UpdateConfig(config StoreConfig) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	// Update cache sizes if changed
 	if config.MaxFileSize != s.config.MaxFileSize {
 		if err := s.fileCache.cache.Resize(config.MaxFileSize); err != nil {
 			return fmt.Errorf("failed to resize file cache: %w", err)
 		}
 	}
-	
+
 	if config.MaxMemory != s.config.MaxMemory {
 		if err := s.memManager.SetMaxMemory(config.MaxMemory); err != nil {
 			return fmt.Errorf("failed to update memory limit: %w", err)
 		}
 	}
-	
+
 	s.config = config
 	return nil
 }
@@ -329,12 +329,12 @@ func (s *Store) UpdateConfig(config StoreConfig) error {
 func (s *Store) Optimize() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	// Trigger memory rebalancing
 	if err := s.memManager.Rebalance(); err != nil {
 		return fmt.Errorf("failed to rebalance memory: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -342,14 +342,14 @@ func (s *Store) Optimize() error {
 func (s *Store) WarmCache(patterns []string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	for _, pattern := range patterns {
 		if err := s.fileCache.WarmCache(pattern); err != nil {
 			// Log error but continue with other patterns
 			continue
 		}
 	}
-	
+
 	return nil
 }
 
@@ -357,10 +357,10 @@ func (s *Store) WarmCache(patterns []string) error {
 func (s *Store) IsHealthy() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	stats := s.memManager.Stats()
 	memoryPercentage := float64(stats.CurrentUsage) / float64(stats.MaxMemory) * 100
-	
+
 	// Consider healthy if memory usage is below 90%
 	return memoryPercentage < 90.0
 }
@@ -368,20 +368,20 @@ func (s *Store) IsHealthy() bool {
 // estimateFileSummarySize estimates the memory size of a FileSummary
 func (s *Store) estimateFileSummarySize(summary *FileSummary) int64 {
 	size := int64(0)
-	
+
 	// String fields
 	size += int64(len(summary.Path))
 	size += int64(len(summary.AbsolutePath))
 	size += int64(len(summary.Checksum))
-	
+
 	// Model stats map
 	size += int64(len(summary.ModelStats)) * 200 // Rough estimate per model stat
-	
+
 	// Processed hashes map
 	size += int64(len(summary.ProcessedHashes)) * 50 // Rough estimate per hash
-	
+
 	// Fixed size fields and overhead
 	size += 200
-	
+
 	return size
 }

@@ -81,7 +81,7 @@ func (a *AnalyticsView) UpdateConfig(config Config) {
 func (a *AnalyticsView) renderHeader() string {
 	title := a.styles.Title.Render("Analytics")
 	subtitle := a.styles.Subtitle.Render(
-		fmt.Sprintf("Analyzing %d sessions and %d entries", 
+		fmt.Sprintf("Analyzing %d sessions and %d entries",
 			len(a.sessions), len(a.entries)),
 	)
 	return strings.Join([]string{title, subtitle}, "\n")
@@ -92,7 +92,7 @@ func (a *AnalyticsView) renderCharts() string {
 	// Simple text-based charts for now
 	modelDist := a.renderModelDistribution()
 	costTrend := a.renderCostTrend()
-	
+
 	return strings.Join([]string{
 		a.styles.Subtitle.Render("Model Distribution:"),
 		modelDist,
@@ -147,7 +147,7 @@ func (a *AnalyticsView) renderModelDistribution() string {
 	for model, count := range modelCounts {
 		percentage := float64(count) / float64(len(a.entries)) * 100
 		bar := a.renderSimpleBar(percentage, 20)
-		lines = append(lines, fmt.Sprintf("%-15s %s %.1f%%", 
+		lines = append(lines, fmt.Sprintf("%-15s %s %.1f%%",
 			model, bar, percentage))
 	}
 
@@ -175,7 +175,7 @@ func (a *AnalyticsView) renderCostTrend() string {
 			cost += entry.CostUSD
 		}
 		bar := a.renderSimpleBar(cost*10, 15) // Scale for visualization
-		lines = append(lines, fmt.Sprintf("%s %s $%.2f", 
+		lines = append(lines, fmt.Sprintf("%s %s $%.2f",
 			session.StartTime.Format("15:04"), bar, cost))
 	}
 
@@ -190,10 +190,10 @@ func (a *AnalyticsView) renderSimpleBar(value float64, maxWidth int) string {
 	if value > 100 {
 		value = 100
 	}
-	
+
 	filled := int(value * float64(maxWidth) / 100)
 	empty := maxWidth - filled
-	
+
 	bar := strings.Repeat("█", filled) + strings.Repeat("░", empty)
 	return a.styles.ChartBar.Render(bar)
 }

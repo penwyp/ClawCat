@@ -7,36 +7,36 @@ import (
 	"time"
 
 	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/ClawCat/models"
 )
 
 // MonitoringData represents the data structure passed to callbacks
 type MonitoringData struct {
-	Data        AnalysisResult `json:"data"`
-	TokenLimit  int           `json:"token_limit"`
-	Args        interface{}   `json:"args,omitempty"`
-	SessionID   string        `json:"session_id"`
-	SessionCount int          `json:"session_count"`
+	Data         AnalysisResult `json:"data"`
+	TokenLimit   int            `json:"token_limit"`
+	Args         interface{}    `json:"args,omitempty"`
+	SessionID    string         `json:"session_id"`
+	SessionCount int            `json:"session_count"`
 }
 
 // AnalysisResult represents the processed analysis data
 type AnalysisResult struct {
-	Blocks    []models.SessionBlock `json:"blocks"`
-	Metadata  AnalysisMetadata      `json:"metadata"`
+	Blocks   []models.SessionBlock `json:"blocks"`
+	Metadata AnalysisMetadata      `json:"metadata"`
 }
 
 // AnalysisMetadata contains metadata about the analysis
 type AnalysisMetadata struct {
-	GeneratedAt        time.Time `json:"generated_at"`
-	HoursAnalyzed      string    `json:"hours_analyzed"`
-	EntriesProcessed   int       `json:"entries_processed"`
-	BlocksCreated      int       `json:"blocks_created"`
-	LimitsDetected     int       `json:"limits_detected"`
-	LoadTimeSeconds    float64   `json:"load_time_seconds"`
-	TransformTimeSeconds float64 `json:"transform_time_seconds"`
-	CacheUsed          bool      `json:"cache_used"`
-	QuickStart         bool      `json:"quick_start"`
+	GeneratedAt          time.Time `json:"generated_at"`
+	HoursAnalyzed        string    `json:"hours_analyzed"`
+	EntriesProcessed     int       `json:"entries_processed"`
+	BlocksCreated        int       `json:"blocks_created"`
+	LimitsDetected       int       `json:"limits_detected"`
+	LoadTimeSeconds      float64   `json:"load_time_seconds"`
+	TransformTimeSeconds float64   `json:"transform_time_seconds"`
+	CacheUsed            bool      `json:"cache_used"`
+	QuickStart           bool      `json:"quick_start"`
 }
 
 // DataUpdateCallback represents a callback function for data updates
@@ -47,39 +47,39 @@ type SessionChangeCallback func(eventType, sessionID string, sessionData interfa
 
 // MonitoringOrchestrator orchestrates monitoring components following SRP
 type MonitoringOrchestrator struct {
-	updateInterval   time.Duration
-	dataPath         string
-	config           *config.Config
-	
+	updateInterval time.Duration
+	dataPath       string
+	config         *config.Config
+
 	// Internal components
-	dataManager      *DataManager
-	sessionMonitor   *SessionMonitor
-	
+	dataManager    *DataManager
+	sessionMonitor *SessionMonitor
+
 	// State management
-	monitoring       bool
-	monitorThread    *Goroutine
-	stopEvent        context.Context
-	stopCancel       context.CancelFunc
-	
+	monitoring    bool
+	monitorThread *Goroutine
+	stopEvent     context.Context
+	stopCancel    context.CancelFunc
+
 	// Callbacks
 	updateCallbacks  []DataUpdateCallback
 	sessionCallbacks []SessionChangeCallback
-	
+
 	// Data tracking
-	lastValidData    *MonitoringData
-	firstDataEvent   chan struct{}
-	
+	lastValidData  *MonitoringData
+	firstDataEvent chan struct{}
+
 	// Args from CLI
-	args             interface{}
-	
+	args interface{}
+
 	// Thread safety
-	mu               sync.RWMutex
+	mu sync.RWMutex
 }
 
 // NewMonitoringOrchestrator creates a new monitoring orchestrator
 func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cfg *config.Config) *MonitoringOrchestrator {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &MonitoringOrchestrator{
 		updateInterval:   updateInterval,
 		dataPath:         dataPath,
@@ -99,25 +99,25 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 func (mo *MonitoringOrchestrator) Start() error {
 	mo.mu.Lock()
 	defer mo.mu.Unlock()
-	
+
 	if mo.monitoring {
 		return fmt.Errorf("monitoring already running")
 	}
-	
+
 	mo.monitoring = true
-	
+
 	// Reset the stop context
 	mo.stopEvent, mo.stopCancel = context.WithCancel(context.Background())
-	
+
 	// Start monitoring goroutine
 	mo.monitorThread = &Goroutine{
 		name: "MonitoringThread",
 		fn:   mo.monitoringLoop,
 		ctx:  mo.stopEvent,
 	}
-	
+
 	go mo.monitorThread.Run()
-	
+
 	return nil
 }
 
@@ -125,14 +125,14 @@ func (mo *MonitoringOrchestrator) Start() error {
 func (mo *MonitoringOrchestrator) Stop() {
 	mo.mu.Lock()
 	defer mo.mu.Unlock()
-	
+
 	if !mo.monitoring {
 		return
 	}
-	
+
 	mo.monitoring = false
 	mo.stopCancel()
-	
+
 	// Wait for goroutine to finish with timeout
 	if mo.monitorThread != nil {
 		select {
@@ -143,7 +143,7 @@ func (mo *MonitoringOrchestrator) Stop() {
 		}
 		mo.monitorThread = nil
 	}
-	
+
 	// Clear first data event
 	select {
 	case <-mo.firstDataEvent:
@@ -191,10 +191,10 @@ func (mo *MonitoringOrchestrator) WaitForInitialData(timeout time.Duration) bool
 func (mo *MonitoringOrchestrator) monitoringLoop() {
 	// Initial fetch
 	mo.fetchAndProcessData(false)
-	
+
 	ticker := time.NewTicker(mo.updateInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-mo.stopEvent.Done():
@@ -208,26 +208,26 @@ func (mo *MonitoringOrchestrator) monitoringLoop() {
 // fetchAndProcessData fetches data and notifies callbacks
 func (mo *MonitoringOrchestrator) fetchAndProcessData(forceRefresh bool) (*MonitoringData, error) {
 	startTime := time.Now()
-	
+
 	// Fetch data using DataManager
 	data, err := mo.dataManager.GetData(forceRefresh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch data: %w", err)
 	}
-	
+
 	if data == nil {
 		return nil, fmt.Errorf("no data fetched")
 	}
-	
+
 	// Validate and update session tracking
 	isValid, errors := mo.sessionMonitor.Update(data)
 	if !isValid {
 		return nil, fmt.Errorf("data validation failed: %v", errors)
 	}
-	
+
 	// Calculate token limit
 	tokenLimit := mo.calculateTokenLimit(data)
-	
+
 	// Prepare monitoring data
 	monitoringData := &MonitoringData{
 		Data:         *data,
@@ -236,25 +236,25 @@ func (mo *MonitoringOrchestrator) fetchAndProcessData(forceRefresh bool) (*Monit
 		SessionID:    mo.sessionMonitor.GetCurrentSessionID(),
 		SessionCount: mo.sessionMonitor.GetSessionCount(),
 	}
-	
+
 	// Store last valid data
 	mo.mu.Lock()
 	mo.lastValidData = monitoringData
 	mo.mu.Unlock()
-	
+
 	// Signal that first data has been received
 	select {
 	case mo.firstDataEvent <- struct{}{}:
 	default:
 		// Channel already has data
 	}
-	
+
 	// Notify callbacks
 	mo.notifyCallbacks(*monitoringData)
-	
+
 	elapsed := time.Since(startTime)
 	logging.LogInfof("Data processing completed in %.3fs", elapsed.Seconds())
-	
+
 	return monitoringData, nil
 }
 
@@ -272,7 +272,7 @@ func (mo *MonitoringOrchestrator) notifyCallbacks(data MonitoringData) {
 	updateCallbacks := make([]DataUpdateCallback, len(mo.updateCallbacks))
 	copy(updateCallbacks, mo.updateCallbacks)
 	mo.mu.RUnlock()
-	
+
 	for _, callback := range updateCallbacks {
 		func() {
 			defer func() {

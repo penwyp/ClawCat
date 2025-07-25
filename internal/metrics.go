@@ -12,21 +12,21 @@ import (
 // Metrics contains application metrics
 type Metrics struct {
 	// Application metrics
-	StartTime       time.Time `json:"start_time"`
-	ProcessedFiles  int64     `json:"processed_files"`
-	ProcessedBytes  int64     `json:"processed_bytes"`
-	ActiveSessions  int       `json:"active_sessions"`
-	
+	StartTime      time.Time `json:"start_time"`
+	ProcessedFiles int64     `json:"processed_files"`
+	ProcessedBytes int64     `json:"processed_bytes"`
+	ActiveSessions int       `json:"active_sessions"`
+
 	// Performance metrics
-	CPUUsage        float64 `json:"cpu_usage"`
-	MemoryUsage     uint64  `json:"memory_usage"`
-	GoroutineCount  int     `json:"goroutine_count"`
-	
+	CPUUsage       float64 `json:"cpu_usage"`
+	MemoryUsage    uint64  `json:"memory_usage"`
+	GoroutineCount int     `json:"goroutine_count"`
+
 	// Business metrics
-	TotalTokens     int64   `json:"total_tokens"`
-	TotalCost       float64 `json:"total_cost"`
-	ErrorCount      int64   `json:"error_count"`
-	
+	TotalTokens int64   `json:"total_tokens"`
+	TotalCost   float64 `json:"total_cost"`
+	ErrorCount  int64   `json:"error_count"`
+
 	// Internal
 	server *http.Server
 	port   int
@@ -39,10 +39,10 @@ func NewMetrics(port int) *Metrics {
 		StartTime: time.Now(),
 		port:      port,
 	}
-	
+
 	// Start HTTP server for metrics endpoint
 	m.startServer()
-	
+
 	return m
 }
 
@@ -51,12 +51,12 @@ func (m *Metrics) startServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/metrics", m.handleMetrics)
 	mux.HandleFunc("/health", m.handleHealth)
-	
+
 	m.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", m.port),
 		Handler: mux,
 	}
-	
+
 	go func() {
 		if err := m.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			// Log error but don't crash the application
@@ -69,10 +69,10 @@ func (m *Metrics) startServer() {
 func (m *Metrics) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	// Update runtime metrics
 	m.updateRuntimeMetrics()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(m); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -93,7 +93,7 @@ func (m *Metrics) handleHealth(w http.ResponseWriter, r *http.Request) {
 func (m *Metrics) updateRuntimeMetrics() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	
+
 	m.MemoryUsage = memStats.Alloc
 	m.GoroutineCount = runtime.NumGoroutine()
 }

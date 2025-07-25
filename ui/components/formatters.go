@@ -17,7 +17,6 @@ func formatNumber(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-
 // formatCurrency 格式化货币
 func formatCurrency(amount float64) string {
 	if amount >= 1000 {

@@ -33,16 +33,16 @@ type StreamReader struct {
 
 // StreamConfig 流配置
 type StreamConfig struct {
-	BufferSize       int           `json:"buffer_size"`
-	ReadTimeout      time.Duration `json:"read_timeout"`
-	MaxLineSize      int           `json:"max_line_size"`
-	SkipEmptyLines   bool          `json:"skip_empty_lines"`
-	RetryInterval    time.Duration `json:"retry_interval"`
-	MaxRetries       int           `json:"max_retries"`
-	FollowMode       bool          `json:"follow_mode"`       // tail -f 模式
-	SeekToEnd        bool          `json:"seek_to_end"`       // 从文件末尾开始读取
-	ParseJSON        bool          `json:"parse_json"`        // 是否解析JSON
-	ValidateEntries  bool          `json:"validate_entries"`  // 是否验证条目
+	BufferSize      int           `json:"buffer_size"`
+	ReadTimeout     time.Duration `json:"read_timeout"`
+	MaxLineSize     int           `json:"max_line_size"`
+	SkipEmptyLines  bool          `json:"skip_empty_lines"`
+	RetryInterval   time.Duration `json:"retry_interval"`
+	MaxRetries      int           `json:"max_retries"`
+	FollowMode      bool          `json:"follow_mode"`      // tail -f 模式
+	SeekToEnd       bool          `json:"seek_to_end"`      // 从文件末尾开始读取
+	ParseJSON       bool          `json:"parse_json"`       // 是否解析JSON
+	ValidateEntries bool          `json:"validate_entries"` // 是否验证条目
 }
 
 // DefaultStreamConfig 默认流配置
@@ -207,7 +207,7 @@ func (sr *StreamReader) readLoop() {
 	}()
 
 	retryCount := 0
-	
+
 	for {
 		select {
 		case <-sr.ctx.Done():
@@ -221,7 +221,7 @@ func (sr *StreamReader) readLoop() {
 				}
 
 				log.Printf("Read error (retry %d/%d): %v", retryCount, sr.config.MaxRetries, err)
-				
+
 				// 等待重试
 				select {
 				case <-sr.ctx.Done():
@@ -281,7 +281,7 @@ func (sr *StreamReader) readOnce() error {
 			}
 
 			line := strings.TrimSpace(scanner.Text())
-			
+
 			// 跳过空行
 			if sr.config.SkipEmptyLines && line == "" {
 				continue
@@ -311,12 +311,12 @@ func (sr *StreamReader) readOnce() error {
 		if scanErr != nil {
 			return scanErr
 		}
-		
+
 		// 如果是follow模式，等待文件更新
 		if sr.config.FollowMode {
 			time.Sleep(100 * time.Millisecond)
 		}
-		
+
 		return nil
 	}
 }
@@ -419,7 +419,7 @@ func (sr *StreamReader) checkFileChanges() error {
 		if _, err := file.Seek(0, io.SeekStart); err != nil {
 			return fmt.Errorf("failed to seek to start: %w", err)
 		}
-		
+
 		sr.mu.Lock()
 		sr.position = 0
 		sr.scanner = bufio.NewScanner(file)
@@ -457,11 +457,11 @@ func (sr *StreamReader) GetStats() StreamStats {
 	defer sr.mu.RUnlock()
 
 	return StreamStats{
-		FilePath:     sr.filePath,
-		Position:     sr.position,
-		LastModTime:  sr.lastModTime,
-		IsRunning:    sr.isRunning,
-		DataChannelLen: len(sr.dataChannel),
+		FilePath:        sr.filePath,
+		Position:        sr.position,
+		LastModTime:     sr.lastModTime,
+		IsRunning:       sr.isRunning,
+		DataChannelLen:  len(sr.dataChannel),
 		ErrorChannelLen: len(sr.errorChannel),
 	}
 }
@@ -516,7 +516,7 @@ func (sr *StreamReader) ReadFrom(position int64, maxLines int) ([]ProcessedData,
 
 	for scanner.Scan() && lineCount < maxLines {
 		line := strings.TrimSpace(scanner.Text())
-		
+
 		if sr.config.SkipEmptyLines && line == "" {
 			continue
 		}
@@ -533,7 +533,7 @@ func (sr *StreamReader) ReadFrom(position int64, maxLines int) ([]ProcessedData,
 			Original: []byte(line),
 			Entry:    entry,
 			Metadata: map[string]interface{}{
-				"file_path": sr.filePath,
+				"file_path":   sr.filePath,
 				"line_number": lineCount + 1,
 			},
 		}

@@ -9,9 +9,9 @@ type ErrorType string
 
 const (
 	// 系统级错误
-	ErrorTypeSystem      ErrorType = "system"
-	ErrorTypePermission  ErrorType = "permission"
-	ErrorTypeResource    ErrorType = "resource"
+	ErrorTypeSystem     ErrorType = "system"
+	ErrorTypePermission ErrorType = "permission"
+	ErrorTypeResource   ErrorType = "resource"
 
 	// 数据错误
 	ErrorTypeDataFormat  ErrorType = "data_format"
@@ -19,13 +19,13 @@ const (
 	ErrorTypeDataMissing ErrorType = "data_missing"
 
 	// 网络错误
-	ErrorTypeNetwork     ErrorType = "network"
-	ErrorTypeTimeout     ErrorType = "timeout"
+	ErrorTypeNetwork ErrorType = "network"
+	ErrorTypeTimeout ErrorType = "timeout"
 
 	// 应用错误
-	ErrorTypeConfig      ErrorType = "config"
-	ErrorTypeLogic       ErrorType = "logic"
-	ErrorTypeUI          ErrorType = "ui"
+	ErrorTypeConfig ErrorType = "config"
+	ErrorTypeLogic  ErrorType = "logic"
+	ErrorTypeUI     ErrorType = "ui"
 )
 
 // ErrorSeverity 错误严重程度
@@ -40,15 +40,15 @@ const (
 
 // RecoverableError 可恢复错误
 type RecoverableError struct {
-	Type        ErrorType
-	Severity    ErrorSeverity
-	Message     string
-	Cause       error
-	Context     map[string]interface{}
-	Timestamp   time.Time
+	Type         ErrorType
+	Severity     ErrorSeverity
+	Message      string
+	Cause        error
+	Context      map[string]interface{}
+	Timestamp    time.Time
 	RecoveryHint string
-	CanRetry    bool
-	RetryAfter  time.Duration
+	CanRetry     bool
+	RetryAfter   time.Duration
 }
 
 func (e *RecoverableError) Error() string {
@@ -61,7 +61,6 @@ func (e *RecoverableError) Error() string {
 func (e *RecoverableError) Unwrap() error {
 	return e.Cause
 }
-
 
 // RecoveryStrategy 恢复策略接口
 type RecoveryStrategy interface {
@@ -86,7 +85,7 @@ func (e *PanicError) Error() string {
 type Priority int
 
 const (
-	PriorityLow    Priority = iota
+	PriorityLow Priority = iota
 	PriorityNormal
 	PriorityHigh
 	PriorityCritical
@@ -96,7 +95,7 @@ const (
 type HealthStatus int
 
 const (
-	HealthStatusHealthy   HealthStatus = iota
+	HealthStatusHealthy HealthStatus = iota
 	HealthStatusDegraded
 	HealthStatusUnhealthy
 )
@@ -119,7 +118,6 @@ const (
 	BackoffExponential BackoffStrategy = "exponential"
 	BackoffLinear      BackoffStrategy = "linear"
 )
-
 
 // OverallHealth 总体健康状态
 type OverallHealth struct {

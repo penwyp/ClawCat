@@ -5,16 +5,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/ClawCat/models"
 )
 
 // SessionChangeType represents the type of session change
 type SessionChangeType string
 
 const (
-	SessionStart SessionChangeType = "session_start"
-	SessionEnd   SessionChangeType = "session_end"
+	SessionStart  SessionChangeType = "session_start"
+	SessionEnd    SessionChangeType = "session_end"
 	SessionUpdate SessionChangeType = "session_update"
 )
 
@@ -38,20 +38,20 @@ func NewSessionMonitor() *SessionMonitor {
 func (sm *SessionMonitor) Update(data *AnalysisResult) (bool, []string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	var errors []string
-	
+
 	// Basic data validation
 	if data == nil {
 		errors = append(errors, "data is nil")
 		return false, errors
 	}
-	
+
 	if len(data.Blocks) == 0 {
 		errors = append(errors, "no blocks in data")
 		return false, errors
 	}
-	
+
 	// Find active sessions
 	var activeBlocks []string
 	for _, block := range data.Blocks {
@@ -59,7 +59,7 @@ func (sm *SessionMonitor) Update(data *AnalysisResult) (bool, []string) {
 			activeBlocks = append(activeBlocks, block.ID)
 		}
 	}
-	
+
 	// Update session tracking
 	_ = sm.currentSessionID // previousSessionID was unused
 	if len(activeBlocks) > 0 {
@@ -71,7 +71,7 @@ func (sm *SessionMonitor) Update(data *AnalysisResult) (bool, []string) {
 				// End previous session
 				sm.notifySessionChange(SessionEnd, sm.currentSessionID, nil)
 			}
-			
+
 			// Start new session
 			sm.currentSessionID = newSessionID
 			sm.sessionCount++
@@ -88,14 +88,14 @@ func (sm *SessionMonitor) Update(data *AnalysisResult) (bool, []string) {
 			sm.currentSessionID = ""
 		}
 	}
-	
+
 	sm.lastUpdateTime = time.Now()
-	
+
 	// Additional validation
 	if err := sm.validateBlockStructure(data.Blocks); err != nil {
 		errors = append(errors, err.Error())
 	}
-	
+
 	return len(errors) == 0, errors
 }
 
@@ -149,11 +149,11 @@ func (sm *SessionMonitor) validateBlockStructure(blocks []models.SessionBlock) e
 	// - Block ID uniqueness
 	// - Required fields presence
 	// - Data consistency
-	
+
 	if len(blocks) == 0 {
 		return fmt.Errorf("no blocks provided for validation")
 	}
-	
+
 	// For now, just return success
 	return nil
 }
@@ -162,11 +162,11 @@ func (sm *SessionMonitor) validateBlockStructure(blocks []models.SessionBlock) e
 func (sm *SessionMonitor) Reset() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	if sm.currentSessionID != "" {
 		sm.notifySessionChange(SessionEnd, sm.currentSessionID, nil)
 	}
-	
+
 	sm.currentSessionID = ""
 	sm.sessionCount = 0
 	sm.lastUpdateTime = time.Time{}
@@ -176,7 +176,7 @@ func (sm *SessionMonitor) Reset() {
 func (sm *SessionMonitor) GetStatistics() map[string]interface{} {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"current_session_id": sm.currentSessionID,
 		"session_count":      sm.sessionCount,

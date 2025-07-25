@@ -3,12 +3,12 @@ package ui
 import (
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/penwyp/ClawCat/calculations"
 	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/sessions"
 	"github.com/penwyp/ClawCat/ui/components"
-	"github.com/penwyp/ClawCat/calculations"
 )
 
 // ViewType represents different views in the application
@@ -25,33 +25,33 @@ const (
 // Model represents the application state
 type Model struct {
 	// Data
-	sessions       []*sessions.Session
-	entries        []models.UsageEntry
-	stats          Statistics
-	manager        *sessions.Manager
+	sessions        []*sessions.Session
+	entries         []models.UsageEntry
+	stats           Statistics
+	manager         *sessions.Manager
 	realtimeMetrics *calculations.RealtimeMetrics
-	
+
 	// UI State
-	view           ViewType
-	width          int
-	height         int
-	ready          bool
-	loading        bool
-	lastUpdate     time.Time
-	streamingMode  bool // New: enables non-fullscreen streaming mode
-	
+	view          ViewType
+	width         int
+	height        int
+	ready         bool
+	loading       bool
+	lastUpdate    time.Time
+	streamingMode bool // New: enables non-fullscreen streaming mode
+
 	// Components
-	dashboard      *DashboardView
-	sessionList    *SessionListView
-	analytics      *AnalyticsView
-	help           *HelpView
-	streamDisplay  *components.StreamingDisplay
-	
+	dashboard     *DashboardView
+	sessionList   *SessionListView
+	analytics     *AnalyticsView
+	help          *HelpView
+	streamDisplay *components.StreamingDisplay
+
 	// Utilities
-	keys           KeyMap
-	styles         Styles
-	spinner        spinner.Model
-	config         Config
+	keys    KeyMap
+	styles  Styles
+	spinner spinner.Model
+	config  Config
 }
 
 // Statistics holds current usage statistics
@@ -73,11 +73,11 @@ func NewModel(cfg Config) Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = NewStyles(DefaultTheme()).Normal
-	
+
 	m := Model{
 		config:        cfg,
 		view:          ViewDashboard,
-		ready:         false,
+		ready:         true, // Set ready to true initially to avoid stuck loading
 		loading:       true,
 		keys:          DefaultKeyMap(),
 		styles:        NewStyles(DefaultTheme()),
@@ -85,14 +85,14 @@ func NewModel(cfg Config) Model {
 		lastUpdate:    time.Now(),
 		streamingMode: !cfg.CompactMode, // Enable streaming mode unless in compact mode
 	}
-	
+
 	// Initialize views
 	m.dashboard = NewDashboardView()
 	m.sessionList = NewSessionListView()
 	m.analytics = NewAnalyticsView()
 	m.help = NewHelpView()
 	m.streamDisplay = components.NewStreamingDisplay()
-	
+
 	return m
 }
 
@@ -102,6 +102,10 @@ func (m Model) Init() tea.Cmd {
 		m.spinner.Tick,
 		tickCmd(),
 		tea.WindowSize(),
+		// Add a timeout to ensure we don't stay in loading state forever
+		tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+			return ForceReadyMsg{}
+		}),
 	)
 }
 
@@ -114,7 +118,7 @@ func (m *Model) SetDataSource(manager *sessions.Manager) {
 func (m *Model) UpdateSessions(sessions []*sessions.Session) {
 	m.sessions = sessions
 	m.updateStatistics()
-	
+
 	// Update individual views
 	if m.dashboard != nil {
 		m.dashboard.UpdateStats(m.stats)
@@ -125,7 +129,7 @@ func (m *Model) UpdateSessions(sessions []*sessions.Session) {
 	if m.analytics != nil {
 		m.analytics.UpdateData(sessions, m.entries)
 	}
-	
+
 	m.lastUpdate = time.Now()
 	m.loading = false
 }
@@ -134,26 +138,26 @@ func (m *Model) UpdateSessions(sessions []*sessions.Session) {
 func (m *Model) UpdateEntries(entries []models.UsageEntry) {
 	m.entries = entries
 	m.updateStatistics()
-	
+
 	// Update analytics view
 	if m.analytics != nil {
 		m.analytics.UpdateData(m.sessions, entries)
 	}
-	
+
 	m.lastUpdate = time.Now()
 }
 
 // UpdateRealtimeMetrics updates the realtime metrics
 func (m *Model) UpdateRealtimeMetrics(metrics *calculations.RealtimeMetrics) {
 	m.realtimeMetrics = metrics
-	
+
 	// Update streaming display
 	if m.streamDisplay != nil {
 		m.streamDisplay.SetMetrics(metrics)
 		m.streamDisplay.SetSessions(m.sessions)
 		m.streamDisplay.SetWidth(m.width)
 	}
-	
+
 	m.lastUpdate = time.Now()
 }
 
@@ -167,38 +171,38 @@ func (m *Model) updateStatistics() {
 	stats := Statistics{
 		SessionCount: len(m.sessions),
 	}
-	
+
 	// Count active sessions and calculate totals
 	var totalTokens int64
 	var totalCost float64
 	modelCounts := make(map[string]int)
-	
+
 	for _, session := range m.sessions {
 		if session.IsActive {
 			stats.ActiveSessions++
 		}
-		
+
 		// Sum up session metrics
 		for _, entry := range session.Entries {
 			totalTokens += int64(entry.TotalTokens)
 			totalCost += entry.CostUSD
 			modelCounts[entry.Model]++
 		}
-		
+
 		// Track most recent session
 		if stats.LastSession == nil || session.StartTime.After(stats.LastSession.StartTime) {
 			stats.LastSession = session
 		}
 	}
-	
+
 	stats.TotalTokens = totalTokens
 	stats.TotalCost = totalCost
-	
+
 	// Calculate average cost
 	if stats.SessionCount > 0 {
 		stats.AverageCost = totalCost / float64(stats.SessionCount)
 	}
-	
+
 	// Find most used model
 	maxCount := 0
 	for model, count := range modelCounts {
@@ -207,7 +211,7 @@ func (m *Model) updateStatistics() {
 			stats.TopModel = model
 		}
 	}
-	
+
 	// Calculate burn rate (tokens per hour)
 	if len(m.sessions) > 1 {
 		oldestTime := m.sessions[0].StartTime
@@ -215,24 +219,24 @@ func (m *Model) updateStatistics() {
 		if newestTime.IsZero() {
 			newestTime = time.Now()
 		}
-		
+
 		hours := newestTime.Sub(oldestTime).Hours()
 		if hours > 0 {
 			stats.CurrentBurnRate = float64(totalTokens) / hours
 		}
 	}
-	
+
 	// Time to reset (assuming monthly billing cycle)
 	now := time.Now()
 	nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location())
 	stats.TimeToReset = nextMonth.Sub(now)
-	
+
 	// Plan usage (mock calculation - would need actual plan limits)
 	stats.PlanUsage = (totalCost / 100.0) * 100 // Assume $100 plan
 	if stats.PlanUsage > 100 {
 		stats.PlanUsage = 100
 	}
-	
+
 	m.stats = stats
 }
 
@@ -297,7 +301,7 @@ func (m *Model) SetLoading(loading bool) {
 func (m *Model) Resize(width, height int) {
 	m.width = width
 	m.height = height
-	
+
 	// Update all views with new dimensions
 	if m.dashboard != nil {
 		m.dashboard.Resize(width, height)

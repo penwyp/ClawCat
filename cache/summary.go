@@ -6,18 +6,18 @@ import (
 
 // FileSummary represents a cached summary of a parsed usage file
 type FileSummary struct {
-	Path           string                 `json:"path"`
-	AbsolutePath   string                 `json:"absolute_path"`
-	ModTime        time.Time              `json:"mod_time"`
-	FileSize       int64                  `json:"file_size"`
-	EntryCount     int                    `json:"entry_count"`
-	TotalCost      float64                `json:"total_cost"`
-	TotalTokens    int                    `json:"total_tokens"`
-	DateRange      DateRange              `json:"date_range"`
-	ModelStats     map[string]ModelStat   `json:"model_stats"`
-	ProcessedAt    time.Time              `json:"processed_at"`
-	Checksum       string                 `json:"checksum"`
-	ProcessedHashes map[string]bool       `json:"processed_hashes"` // For deduplication
+	Path            string               `json:"path"`
+	AbsolutePath    string               `json:"absolute_path"`
+	ModTime         time.Time            `json:"mod_time"`
+	FileSize        int64                `json:"file_size"`
+	EntryCount      int                  `json:"entry_count"`
+	TotalCost       float64              `json:"total_cost"`
+	TotalTokens     int                  `json:"total_tokens"`
+	DateRange       DateRange            `json:"date_range"`
+	ModelStats      map[string]ModelStat `json:"model_stats"`
+	ProcessedAt     time.Time            `json:"processed_at"`
+	Checksum        string               `json:"checksum"`
+	ProcessedHashes map[string]bool      `json:"processed_hashes"` // For deduplication
 }
 
 // DateRange represents the time range of entries in a file
@@ -28,13 +28,13 @@ type DateRange struct {
 
 // ModelStat contains statistics for a specific model
 type ModelStat struct {
-	Model        string  `json:"model"`
-	EntryCount   int     `json:"entry_count"`
-	TotalCost    float64 `json:"total_cost"`
-	InputTokens  int     `json:"input_tokens"`
-	OutputTokens int     `json:"output_tokens"`
-	CacheCreationTokens int `json:"cache_creation_tokens"`
-	CacheReadTokens     int `json:"cache_read_tokens"`
+	Model               string  `json:"model"`
+	EntryCount          int     `json:"entry_count"`
+	TotalCost           float64 `json:"total_cost"`
+	InputTokens         int     `json:"input_tokens"`
+	OutputTokens        int     `json:"output_tokens"`
+	CacheCreationTokens int     `json:"cache_creation_tokens"`
+	CacheReadTokens     int     `json:"cache_read_tokens"`
 }
 
 // IsExpired checks if the summary is expired based on file modification time
@@ -48,7 +48,7 @@ func (fs *FileSummary) ShouldUseCache(currentModTime time.Time, cacheThreshold t
 	if fs.IsExpired(currentModTime) {
 		return false
 	}
-	
+
 	// If file hasn't been modified for longer than threshold, use cache
 	timeSinceModification := time.Since(currentModTime)
 	return timeSinceModification >= cacheThreshold

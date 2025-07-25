@@ -32,15 +32,15 @@ type DataProcessor struct {
 
 // ProcessorConfig 处理器配置
 type ProcessorConfig struct {
-	WorkerCount      int           `json:"worker_count"`
-	BufferSize       int           `json:"buffer_size"`
-	ProcessTimeout   time.Duration `json:"process_timeout"`
-	RetryAttempts    int           `json:"retry_attempts"`
-	RetryDelay       time.Duration `json:"retry_delay"`
-	ValidateInput    bool          `json:"validate_input"`
-	EnrichData       bool          `json:"enrich_data"`
-	FailOnError      bool          `json:"fail_on_error"`
-	CollectMetrics   bool          `json:"collect_metrics"`
+	WorkerCount    int           `json:"worker_count"`
+	BufferSize     int           `json:"buffer_size"`
+	ProcessTimeout time.Duration `json:"process_timeout"`
+	RetryAttempts  int           `json:"retry_attempts"`
+	RetryDelay     time.Duration `json:"retry_delay"`
+	ValidateInput  bool          `json:"validate_input"`
+	EnrichData     bool          `json:"enrich_data"`
+	FailOnError    bool          `json:"fail_on_error"`
+	CollectMetrics bool          `json:"collect_metrics"`
 }
 
 // DefaultProcessorConfig 默认处理器配置
@@ -60,16 +60,16 @@ func DefaultProcessorConfig() ProcessorConfig {
 
 // ProcessorStats 处理器统计
 type ProcessorStats struct {
-	ProcessedCount    int64         `json:"processed_count"`
-	ErrorCount        int64         `json:"error_count"`
-	RetryCount        int64         `json:"retry_count"`
-	ValidationErrors  int64         `json:"validation_errors"`
-	TransformErrors   int64         `json:"transform_errors"`
-	TotalProcessTime  time.Duration `json:"total_process_time"`
+	ProcessedCount     int64         `json:"processed_count"`
+	ErrorCount         int64         `json:"error_count"`
+	RetryCount         int64         `json:"retry_count"`
+	ValidationErrors   int64         `json:"validation_errors"`
+	TransformErrors    int64         `json:"transform_errors"`
+	TotalProcessTime   time.Duration `json:"total_process_time"`
 	AverageProcessTime time.Duration `json:"average_process_time"`
-	StartTime         time.Time     `json:"start_time"`
-	LastProcessTime   time.Time     `json:"last_process_time"`
-	ActiveWorkers     int32         `json:"active_workers"`
+	StartTime          time.Time     `json:"start_time"`
+	LastProcessTime    time.Time     `json:"last_process_time"`
+	ActiveWorkers      int32         `json:"active_workers"`
 }
 
 // NewDataProcessor 创建数据处理器
@@ -197,7 +197,7 @@ func (dp *DataProcessor) worker(workerID int) {
 
 			if err != nil {
 				atomic.AddInt64(&dp.stats.ErrorCount, 1)
-				
+
 				if dp.config.FailOnError {
 					dp.sendError(fmt.Errorf("worker %d: %w", workerID, err))
 					continue
@@ -242,7 +242,7 @@ func (dp *DataProcessor) processWithRetry(ctx context.Context, data *ProcessedDa
 	for attempt := 0; attempt <= dp.config.RetryAttempts; attempt++ {
 		if attempt > 0 {
 			atomic.AddInt64(&dp.stats.RetryCount, 1)
-			
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -432,7 +432,7 @@ func (dp *DataProcessor) ProcessBatch(batch []ProcessedData) ([]ProcessedData, e
 
 	for i, data := range batch {
 		dataCopy := data // 避免循环变量问题
-		
+
 		if err := dp.processData(&dataCopy); err != nil {
 			errors = append(errors, fmt.Errorf("item %d: %w", i, err))
 			if dp.config.FailOnError {
@@ -477,8 +477,8 @@ type MetadataEnricher struct{}
 func (me *MetadataEnricher) Enrich(entry *models.UsageEntry) map[string]interface{} {
 	return map[string]interface{}{
 		"processing_timestamp": time.Now(),
-		"token_density":       float64(entry.TotalTokens) / math.Max(1, 100.0),
-		"cost_per_token":      entry.CostUSD / math.Max(0.001, float64(entry.TotalTokens)),
+		"token_density":        float64(entry.TotalTokens) / math.Max(1, 100.0),
+		"cost_per_token":       entry.CostUSD / math.Max(0.001, float64(entry.TotalTokens)),
 	}
 }
 

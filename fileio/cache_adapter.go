@@ -20,16 +20,16 @@ func (sa *StoreAdapter) GetFileSummary(absolutePath string) (*FileSummary, error
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert cache.FileSummary to fileio.FileSummary
 	summary := &FileSummary{
-		Path:            cacheSummary.Path,
-		AbsolutePath:    cacheSummary.AbsolutePath,
-		ModTime:         cacheSummary.ModTime,
-		FileSize:        cacheSummary.FileSize,
-		EntryCount:      cacheSummary.EntryCount,
-		TotalCost:       cacheSummary.TotalCost,
-		TotalTokens:     cacheSummary.TotalTokens,
+		Path:         cacheSummary.Path,
+		AbsolutePath: cacheSummary.AbsolutePath,
+		ModTime:      cacheSummary.ModTime,
+		FileSize:     cacheSummary.FileSize,
+		EntryCount:   cacheSummary.EntryCount,
+		TotalCost:    cacheSummary.TotalCost,
+		TotalTokens:  cacheSummary.TotalTokens,
 		DateRange: DateRange{
 			Start: cacheSummary.DateRange.Start,
 			End:   cacheSummary.DateRange.End,
@@ -39,7 +39,7 @@ func (sa *StoreAdapter) GetFileSummary(absolutePath string) (*FileSummary, error
 		ProcessedHashes: cacheSummary.ProcessedHashes,
 		ModelStats:      make(map[string]ModelStat),
 	}
-	
+
 	// Convert model stats
 	for model, cacheStat := range cacheSummary.ModelStats {
 		summary.ModelStats[model] = ModelStat{
@@ -52,7 +52,7 @@ func (sa *StoreAdapter) GetFileSummary(absolutePath string) (*FileSummary, error
 			CacheReadTokens:     cacheStat.CacheReadTokens,
 		}
 	}
-	
+
 	return summary, nil
 }
 
@@ -76,7 +76,7 @@ func (sa *StoreAdapter) SetFileSummary(summary *FileSummary) error {
 		ProcessedHashes: summary.ProcessedHashes,
 		ModelStats:      make(map[string]cache.ModelStat),
 	}
-	
+
 	// Convert model stats
 	for model, stat := range summary.ModelStats {
 		cacheSummary.ModelStats[model] = cache.ModelStat{
@@ -89,7 +89,7 @@ func (sa *StoreAdapter) SetFileSummary(summary *FileSummary) error {
 			CacheReadTokens:     stat.CacheReadTokens,
 		}
 	}
-	
+
 	return sa.store.SetFileSummary(cacheSummary)
 }
 

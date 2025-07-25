@@ -3,8 +3,8 @@ package ui
 import (
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // HelpView represents the help view
@@ -83,13 +83,13 @@ func (h *HelpView) renderHeader() string {
 // renderNavigationHelp renders navigation help
 func (h *HelpView) renderNavigationHelp() string {
 	title := h.styles.HelpSection().Render("Navigation")
-	
+
 	bindings := []key.Binding{
 		h.keys.Up, h.keys.Down, h.keys.Left, h.keys.Right,
 		h.keys.Enter, h.keys.PageUp, h.keys.PageDown,
 		h.keys.Home, h.keys.End,
 	}
-	
+
 	help := h.renderKeyBindings(bindings)
 	return strings.Join([]string{title, help}, "\n")
 }
@@ -97,12 +97,12 @@ func (h *HelpView) renderNavigationHelp() string {
 // renderViewsHelp renders view switching help
 func (h *HelpView) renderViewsHelp() string {
 	title := h.styles.HelpSection().Render("Views")
-	
+
 	bindings := []key.Binding{
 		h.keys.Tab, h.keys.Dashboard, h.keys.Sessions,
 		h.keys.Analytics, h.keys.Help,
 	}
-	
+
 	help := h.renderKeyBindings(bindings)
 	return strings.Join([]string{title, help}, "\n")
 }
@@ -110,12 +110,12 @@ func (h *HelpView) renderViewsHelp() string {
 // renderActionsHelp renders action help
 func (h *HelpView) renderActionsHelp() string {
 	title := h.styles.HelpSection().Render("Actions")
-	
+
 	bindings := []key.Binding{
 		h.keys.Refresh, h.keys.Search, h.keys.Filter,
 		h.keys.Sort, h.keys.Export, h.keys.Save,
 	}
-	
+
 	help := h.renderKeyBindings(bindings)
 	return strings.Join([]string{title, help}, "\n")
 }
@@ -123,11 +123,11 @@ func (h *HelpView) renderActionsHelp() string {
 // renderSystemHelp renders system control help
 func (h *HelpView) renderSystemHelp() string {
 	title := h.styles.HelpSection().Render("System")
-	
+
 	bindings := []key.Binding{
 		h.keys.Quit, h.keys.Back, h.keys.Escape,
 	}
-	
+
 	help := h.renderKeyBindings(bindings)
 	return strings.Join([]string{title, help}, "\n")
 }
@@ -135,13 +135,13 @@ func (h *HelpView) renderSystemHelp() string {
 // renderKeyBindings renders a list of key bindings
 func (h *HelpView) renderKeyBindings(bindings []key.Binding) string {
 	var lines []string
-	
+
 	for _, binding := range bindings {
 		keyStr := h.styles.HelpKey().Render(binding.Help().Key)
 		descStr := h.styles.HelpDescription().Render(binding.Help().Desc)
 		line := keyStr + "  " + descStr
 		lines = append(lines, line)
 	}
-	
+
 	return strings.Join(lines, "\n")
 }

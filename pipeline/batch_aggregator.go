@@ -12,30 +12,30 @@ import (
 
 // BatchAggregator 批量聚合器
 type BatchAggregator struct {
-	inputChannel    chan ProcessedData
-	outputChannel   chan BatchUpdateEvent
-	errorChannel    chan error
-	batches         map[Priority]*PriorityBatch
-	config          BatchConfig
-	stats          *BatchStats
-	ctx            context.Context
-	cancel         context.CancelFunc
-	mu             sync.RWMutex
-	isRunning      bool
-	wg             sync.WaitGroup
+	inputChannel  chan ProcessedData
+	outputChannel chan BatchUpdateEvent
+	errorChannel  chan error
+	batches       map[Priority]*PriorityBatch
+	config        BatchConfig
+	stats         *BatchStats
+	ctx           context.Context
+	cancel        context.CancelFunc
+	mu            sync.RWMutex
+	isRunning     bool
+	wg            sync.WaitGroup
 }
 
 // BatchConfig 批量配置
 type BatchConfig struct {
-	MaxBatchSize    int           `json:"max_batch_size"`
-	MaxWaitTime     time.Duration `json:"max_wait_time"`
-	FlushInterval   time.Duration `json:"flush_interval"`
-	PriorityEnabled bool          `json:"priority_enabled"`
-	BufferSize      int           `json:"buffer_size"`
-	HighPriorityMax int           `json:"high_priority_max"`
-	NormalPriorityMax int         `json:"normal_priority_max"`
-	LowPriorityMax  int           `json:"low_priority_max"`
-	ForceFlushSize  int           `json:"force_flush_size"`
+	MaxBatchSize      int           `json:"max_batch_size"`
+	MaxWaitTime       time.Duration `json:"max_wait_time"`
+	FlushInterval     time.Duration `json:"flush_interval"`
+	PriorityEnabled   bool          `json:"priority_enabled"`
+	BufferSize        int           `json:"buffer_size"`
+	HighPriorityMax   int           `json:"high_priority_max"`
+	NormalPriorityMax int           `json:"normal_priority_max"`
+	LowPriorityMax    int           `json:"low_priority_max"`
+	ForceFlushSize    int           `json:"force_flush_size"`
 }
 
 // DefaultBatchConfig 默认批量配置
@@ -55,12 +55,12 @@ func DefaultBatchConfig() BatchConfig {
 
 // PriorityBatch 优先级批次
 type PriorityBatch struct {
-	Priority    Priority        `json:"priority"`
-	Items       []ProcessedData `json:"items"`
-	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
-	MaxSize     int             `json:"max_size"`
-	IsReady     bool            `json:"is_ready"`
+	Priority  Priority        `json:"priority"`
+	Items     []ProcessedData `json:"items"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	MaxSize   int             `json:"max_size"`
+	IsReady   bool            `json:"is_ready"`
 }
 
 // BatchStats 批量统计
@@ -264,7 +264,7 @@ func (ba *BatchAggregator) addToBatch(data ProcessedData) error {
 
 	// 确定优先级
 	priority := ba.determinePriority(data)
-	
+
 	batch, exists := ba.batches[priority]
 	if !exists {
 		return fmt.Errorf("batch for priority %d not found", priority)
@@ -396,7 +396,7 @@ func (ba *BatchAggregator) flushBatch(priority Priority) error {
 // flushAllBatches 刷新所有批次
 func (ba *BatchAggregator) flushAllBatches() {
 	priorities := ba.getSortedPriorities()
-	
+
 	for _, priority := range priorities {
 		if err := ba.flushBatch(priority); err != nil {
 			ba.sendError(fmt.Errorf("failed to flush batch %d: %w", priority, err))
@@ -528,7 +528,7 @@ func (ba *BatchAggregator) ForceFlush() error {
 
 	ba.flushAllBatches()
 	atomic.AddInt64(&ba.stats.PriorityFlushes, 1)
-	
+
 	log.Println("Force flushed all batches")
 	return nil
 }
@@ -544,7 +544,7 @@ func (ba *BatchAggregator) SetMaxBatchSize(priority Priority, maxSize int) error
 	}
 
 	batch.MaxSize = maxSize
-	
+
 	// 如果当前批次大小超过新的最大值，立即刷新
 	if len(batch.Items) >= maxSize {
 		return ba.flushBatch(priority)

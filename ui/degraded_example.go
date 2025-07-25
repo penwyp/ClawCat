@@ -13,11 +13,11 @@ import (
 func ExampleUsage() {
 	// 1. 创建错误处理器
 	errorConfig := errors.RecoveryConfig{
-		MaxRetries:       3,
-		RetryBackoff:     errors.BackoffExponential,
+		MaxRetries:         3,
+		RetryBackoff:       errors.BackoffExponential,
 		EnableAutoRecovery: true,
-		RecoveryTimeout:  30 * time.Second,
-		ErrorThreshold:   5,
+		RecoveryTimeout:    30 * time.Second,
+		ErrorThreshold:     5,
 		CircuitBreakerConfig: errors.CircuitBreakerConfig{
 			MaxFailures:      5,
 			Timeout:          10 * time.Second,

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -11,11 +10,11 @@ import (
 )
 
 var (
-	cfgFile   string
-	logLevel  string
-	noColor   bool
-	debug     bool
-	verbose   bool
+	cfgFile  string
+	logLevel string
+	noColor  bool
+	debug    bool
+	verbose  bool
 )
 
 var rootCmd = &cobra.Command{
@@ -62,16 +61,17 @@ func init() {
 
 	// Bind flags to viper
 	if err := viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
-		log.Printf("Failed to bind log-level flag: %v", err)
+		// During initialization, print to stderr
+		fmt.Fprintf(os.Stderr, "Failed to bind log-level flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("ui.no_color", rootCmd.PersistentFlags().Lookup("no-color")); err != nil {
-		log.Printf("Failed to bind no-color flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind no-color flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("debug.enabled", rootCmd.PersistentFlags().Lookup("debug")); err != nil {
-		log.Printf("Failed to bind debug flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind debug flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("log.verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
-		log.Printf("Failed to bind verbose flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind verbose flag: %v\n", err)
 	}
 }
 

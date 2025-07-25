@@ -9,16 +9,16 @@ import (
 // shutdown performs graceful shutdown of all application components
 func (a *Application) shutdown() error {
 	a.logger.Info("Initiating graceful shutdown...")
-	
+
 	// Create shutdown context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	// Update running state
 	a.mu.Lock()
 	a.running = false
 	a.mu.Unlock()
-	
+
 	// Stop components in reverse order of initialization
 	shutdownSteps := []struct {
 		name string
@@ -30,7 +30,7 @@ func (a *Application) shutdown() error {
 		{"Session Manager", a.stopSessionManager},
 		{"Cache", a.stopCache},
 	}
-	
+
 	var errs []error
 	for _, step := range shutdownSteps {
 		a.logger.Infof("Stopping %s...", step.name)
@@ -41,7 +41,7 @@ func (a *Application) shutdown() error {
 			a.logger.Infof("%s stopped successfully", step.name)
 		}
 	}
-	
+
 	// Wait for context timeout or completion
 	select {
 	case <-ctx.Done():
@@ -51,12 +51,12 @@ func (a *Application) shutdown() error {
 	default:
 		a.logger.Info("All components stopped within timeout")
 	}
-	
+
 	// Aggregate errors
 	if len(errs) > 0 {
 		return fmt.Errorf("shutdown errors: %v", errs)
 	}
-	
+
 	a.logger.Info("Graceful shutdown completed")
 	return nil
 }
@@ -66,7 +66,7 @@ func (a *Application) stopMetrics(ctx context.Context) error {
 	if a.metrics == nil {
 		return nil
 	}
-	
+
 	return a.metrics.Stop()
 }
 
@@ -75,7 +75,7 @@ func (a *Application) stopUI(ctx context.Context) error {
 	if a.ui == nil {
 		return nil
 	}
-	
+
 	// Stop the UI
 	return a.ui.Stop()
 }
@@ -85,7 +85,7 @@ func (a *Application) stopFileWatcher(ctx context.Context) error {
 	if a.fileWatcher == nil {
 		return nil
 	}
-	
+
 	return a.fileWatcher.Stop()
 }
 
@@ -94,7 +94,7 @@ func (a *Application) stopSessionManager(ctx context.Context) error {
 	if a.manager == nil {
 		return nil
 	}
-	
+
 	// Session manager doesn't need explicit stopping
 	return nil
 }
@@ -104,8 +104,7 @@ func (a *Application) stopCache(ctx context.Context) error {
 	if a.cache == nil {
 		return nil
 	}
-	
+
 	// Cache doesn't need explicit stopping
 	return nil
 }
-

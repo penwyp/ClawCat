@@ -11,24 +11,25 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/internal"
 	"github.com/penwyp/ClawCat/models"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
-	analyzeOutput   string
-	analyzeFrom     string
-	analyzeTo       string
-	analyzeByModel  bool
-	analyzeByDay    bool
-	analyzeByHour   bool
-	analyzeFormat   string
-	analyzeSortBy   string
-	analyzeLimit    int
-	analyzeGroupBy  string
+	analyzeOutput    string
+	analyzeFrom      string
+	analyzeTo        string
+	analyzeByModel   bool
+	analyzeByDay     bool
+	analyzeByHour    bool
+	analyzeFormat    string
+	analyzeSortBy    string
+	analyzeLimit     int
+	analyzeGroupBy   string
+	analyzeBreakdown bool
 )
 
 var analyzeCmd = &cobra.Command{
@@ -57,6 +58,11 @@ Examples:
 		// Apply analyze-specific overrides
 		if err := applyAnalyzeFlags(cfg, args); err != nil {
 			return fmt.Errorf("failed to apply command flags: %w", err)
+		}
+		
+		// Apply debug flag if set
+		if debug || viper.GetBool("debug.enabled") {
+			cfg.Debug.Enabled = true
 		}
 
 		// Create analyzer
@@ -100,6 +106,9 @@ func init() {
 	// Sorting and limiting flags
 	analyzeCmd.Flags().StringVar(&analyzeSortBy, "sort-by", "timestamp", "sort by field (timestamp, cost, tokens, model)")
 	analyzeCmd.Flags().IntVar(&analyzeLimit, "limit", 0, "limit number of results (0 = no limit)")
+	
+	// Breakdown flag
+	analyzeCmd.Flags().BoolVarP(&analyzeBreakdown, "breakdown", "b", false, "Show per-model cost breakdown")
 
 	// Bind to viper
 	_ = viper.BindPFlag("analyze.output", analyzeCmd.Flags().Lookup("output"))
@@ -137,7 +146,7 @@ func applyAnalyzeFlags(cfg *config.Config, args []string) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("invalid output format: %s (valid options: %s)", 
+		return fmt.Errorf("invalid output format: %s (valid options: %s)",
 			analyzeOutput, strings.Join(validOutputs, ", "))
 	}
 
@@ -156,13 +165,13 @@ func applyAnalyzeFlags(cfg *config.Config, args []string) error {
 		found := false
 		for _, sort := range validSorts {
 			if strings.EqualFold(analyzeSortBy, sort) {
-				analyzeSortBy = strings.ToLower(analyzeSortBy)  
+				analyzeSortBy = strings.ToLower(analyzeSortBy)
 				found = true
 				break
 			}
 		}
 		if !found {
-			return fmt.Errorf("invalid sort field: %s (valid options: %s)", 
+			return fmt.Errorf("invalid sort field: %s (valid options: %s)",
 				analyzeSortBy, strings.Join(validSorts, ", "))
 		}
 	}
@@ -176,7 +185,7 @@ func applyFilters(results []models.AnalysisResult) []models.AnalysisResult {
 	}
 
 	var filtered []models.AnalysisResult
-	
+
 	var fromTime, toTime time.Time
 	var err error
 
@@ -189,7 +198,7 @@ func applyFilters(results []models.AnalysisResult) []models.AnalysisResult {
 		}
 	}
 
-	// Parse to time  
+	// Parse to time
 	if analyzeTo != "" {
 		toTime, err = parseTimeString(analyzeTo)
 		if err != nil {
@@ -213,13 +222,14 @@ func applyFilters(results []models.AnalysisResult) []models.AnalysisResult {
 }
 
 func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
+	// Default to group by day if no grouping specified
 	if analyzeGroupBy == "" {
-		return results
+		analyzeGroupBy = "day"
 	}
 
 	// Group results by specified field
 	groups := make(map[string][]models.AnalysisResult)
-	
+
 	for _, result := range results {
 		var key string
 		switch analyzeGroupBy {
@@ -234,7 +244,7 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 		default:
 			key = "all"
 		}
-		
+
 		groups[key] = append(groups[key], result)
 	}
 
@@ -247,10 +257,10 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 
 		// Create aggregated result
 		agg := models.AnalysisResult{
-			GroupKey:    groupKey,
-			Model:       groupResults[0].Model,
-			Timestamp:   groupResults[0].Timestamp,
-			SessionID:   groupResults[0].SessionID,
+			GroupKey:  groupKey,
+			Model:     groupResults[0].Model,
+			Timestamp: groupResults[0].Timestamp,
+			SessionID: groupResults[0].SessionID,
 		}
 
 		// Aggregate values
@@ -321,7 +331,7 @@ func outputAnalysisResults(results []models.AnalysisResult) error {
 
 func outputTable(results []models.AnalysisResult) error {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	
+
 	// Header
 	if analyzeGroupBy != "" {
 		fmt.Fprintln(w, "Group\tModel\tEntries\tInput Tokens\tOutput Tokens\tCache Creation\tCache Read\tTotal Tokens\tCost (USD)")
@@ -371,7 +381,7 @@ func outputCSV(results []models.AnalysisResult) error {
 
 	// Header
 	if analyzeGroupBy != "" {
-		_ = writer.Write([]string{"Group", "Model", "Entries", "Input Tokens", "Output Tokens", 
+		_ = writer.Write([]string{"Group", "Model", "Entries", "Input Tokens", "Output Tokens",
 			"Cache Creation", "Cache Read", "Total Tokens", "Cost USD"})
 	} else {
 		_ = writer.Write([]string{"Timestamp", "Model", "Session", "Input Tokens", "Output Tokens",
@@ -421,7 +431,15 @@ func outputSummary(results []models.AnalysisResult) error {
 	var totalInputTokens, totalOutputTokens, totalCacheCreation, totalCacheRead, totalTokens int
 	var totalCost float64
 	modelCounts := make(map[string]int)
-	
+	modelStats := make(map[string]struct {
+		InputTokens         int
+		OutputTokens        int
+		CacheCreationTokens int
+		CacheReadTokens     int
+		TotalTokens         int
+		Cost                float64
+	})
+
 	for _, result := range results {
 		if analyzeGroupBy != "" {
 			totalEntries += result.Count
@@ -435,13 +453,23 @@ func outputSummary(results []models.AnalysisResult) error {
 		totalTokens += result.TotalTokens
 		totalCost += result.CostUSD
 		modelCounts[result.Model]++
+		
+		// Aggregate model stats for breakdown
+		stat := modelStats[result.Model]
+		stat.InputTokens += result.InputTokens
+		stat.OutputTokens += result.OutputTokens
+		stat.CacheCreationTokens += result.CacheCreationTokens
+		stat.CacheReadTokens += result.CacheReadTokens
+		stat.TotalTokens += result.TotalTokens
+		stat.Cost += result.CostUSD
+		modelStats[result.Model] = stat
 	}
 
 	// Output summary
 	fmt.Printf("Analysis Summary\n")
 	fmt.Printf("================\n\n")
 	fmt.Printf("Total Entries: %d\n", totalEntries)
-	fmt.Printf("Date Range: %s to %s\n", 
+	fmt.Printf("Date Range: %s to %s\n",
 		results[0].Timestamp.Format("2006-01-02 15:04:05"),
 		results[len(results)-1].Timestamp.Format("2006-01-02 15:04:05"))
 	fmt.Printf("\nToken Usage:\n")
@@ -451,10 +479,48 @@ func outputSummary(results []models.AnalysisResult) error {
 	fmt.Printf("  Cache Read: %d\n", totalCacheRead)
 	fmt.Printf("  Total Tokens: %d\n", totalTokens)
 	fmt.Printf("\nCost: $%.4f\n\n", totalCost)
-	
+
 	fmt.Printf("Models Used:\n")
 	for model, count := range modelCounts {
 		fmt.Printf("  %s: %d entries\n", model, count)
+	}
+	
+	// Show per-model breakdown if requested
+	if analyzeBreakdown {
+		fmt.Printf("\nPer-Model Cost Breakdown:\n")
+		fmt.Printf("========================\n")
+		
+		// Sort models by cost (descending)
+		type modelBreakdown struct {
+			name  string
+			stats struct {
+				InputTokens         int
+				OutputTokens        int
+				CacheCreationTokens int
+				CacheReadTokens     int
+				TotalTokens         int
+				Cost                float64
+			}
+		}
+		
+		var breakdowns []modelBreakdown
+		for model, stats := range modelStats {
+			breakdowns = append(breakdowns, modelBreakdown{name: model, stats: stats})
+		}
+		
+		sort.Slice(breakdowns, func(i, j int) bool {
+			return breakdowns[i].stats.Cost > breakdowns[j].stats.Cost
+		})
+		
+		for _, b := range breakdowns {
+			fmt.Printf("\n%s:\n", b.name)
+			fmt.Printf("  Input Tokens: %d\n", b.stats.InputTokens)
+			fmt.Printf("  Output Tokens: %d\n", b.stats.OutputTokens)
+			fmt.Printf("  Cache Creation: %d\n", b.stats.CacheCreationTokens)
+			fmt.Printf("  Cache Read: %d\n", b.stats.CacheReadTokens)
+			fmt.Printf("  Total Tokens: %d\n", b.stats.TotalTokens)
+			fmt.Printf("  Cost: $%.4f (%.1f%%)\n", b.stats.Cost, (b.stats.Cost/totalCost)*100)
+		}
 	}
 
 	return nil

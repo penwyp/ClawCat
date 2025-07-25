@@ -3,19 +3,21 @@ package errors
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/penwyp/ClawCat/logging"
 )
 
 // ErrorLogger 错误日志记录器
 type ErrorLogger struct {
-	config      LogConfig
-	writers     []LogWriter
-	buffer      *LogBuffer
-	encoder     LogEncoder
-	mu          sync.Mutex
+	config  LogConfig
+	writers []LogWriter
+	buffer  *LogBuffer
+	encoder LogEncoder
+	logger  logging.LoggerInterface
+	mu      sync.Mutex
 }
 
 // LogConfig 日志配置
@@ -51,28 +53,28 @@ const (
 
 // ErrorLogEntry 错误日志条目
 type ErrorLogEntry struct {
-	Timestamp   time.Time              `json:"timestamp"`
-	Level       string                 `json:"level"`
-	Type        ErrorType              `json:"type"`
-	Message     string                 `json:"message"`
-	Component   string                 `json:"component"`
-	Operation   string                 `json:"operation"`
-	TraceID     string                 `json:"trace_id"`
-	UserID      string                 `json:"user_id,omitempty"`
-	SessionID   string                 `json:"session_id,omitempty"`
-	Error       string                 `json:"error"`
-	Stack       string                 `json:"stack,omitempty"`
-	Context     map[string]interface{} `json:"context,omitempty"`
-	Recovery    *RecoveryInfo          `json:"recovery,omitempty"`
+	Timestamp time.Time              `json:"timestamp"`
+	Level     string                 `json:"level"`
+	Type      ErrorType              `json:"type"`
+	Message   string                 `json:"message"`
+	Component string                 `json:"component"`
+	Operation string                 `json:"operation"`
+	TraceID   string                 `json:"trace_id"`
+	UserID    string                 `json:"user_id,omitempty"`
+	SessionID string                 `json:"session_id,omitempty"`
+	Error     string                 `json:"error"`
+	Stack     string                 `json:"stack,omitempty"`
+	Context   map[string]interface{} `json:"context,omitempty"`
+	Recovery  *RecoveryInfo          `json:"recovery,omitempty"`
 }
 
 // RecoveryInfo 恢复信息
 type RecoveryInfo struct {
-	Attempted   bool          `json:"attempted"`
-	Successful  bool          `json:"successful"`
-	Strategy    string        `json:"strategy"`
-	Duration    time.Duration `json:"duration"`
-	RetryCount  int           `json:"retry_count"`
+	Attempted  bool          `json:"attempted"`
+	Successful bool          `json:"successful"`
+	Strategy   string        `json:"strategy"`
+	Duration   time.Duration `json:"duration"`
+	RetryCount int           `json:"retry_count"`
 }
 
 // LogWriter 日志写入器接口
@@ -102,10 +104,20 @@ func NewErrorLogger(config LogConfig) *ErrorLogger {
 		config.Format = LogFormatJSON
 	}
 
+	// Get the global logger or create a new one
+	var baseLogger logging.LoggerInterface
+	if logging.GetGlobalLogger() != nil {
+		baseLogger = logging.GetGlobalLogger()
+	} else {
+		// Create a default logger if global logger not initialized
+		baseLogger = logging.NewLogger("error", config.OutputPath)
+	}
+
 	logger := &ErrorLogger{
 		config:  config,
 		buffer:  NewLogBuffer(1000),
 		encoder: NewJSONEncoder(),
+		logger:  baseLogger.With(logging.Field{Key: "component", Value: "error_handler"}),
 	}
 
 	// 初始化写入器
@@ -209,9 +221,9 @@ func (el *ErrorLogger) initWriters() {
 
 // handleWriteError 处理写入错误
 func (el *ErrorLogger) handleWriteError(err error, entries []*ErrorLogEntry) {
-	// 最后的备用方案：写入标准错误
+	// 最后的备用方案：使用统一logger记录
 	for _, entry := range entries {
-		log.Printf("ERROR LOG WRITE FAILED: %v, entry: %+v", err, entry)
+		el.logger.Errorf("ERROR LOG WRITE FAILED: %v, entry: %+v", err, entry)
 	}
 }
 
@@ -312,17 +324,20 @@ func (je *JSONEncoder) Encode(entry *ErrorLogEntry) ([]byte, error) {
 
 // FileLogWriter 文件日志写入器
 type FileLogWriter struct {
-	file     *os.File
-	path     string
-	encoder  LogEncoder
-	mu       sync.Mutex
+	file    *os.File
+	path    string
+	encoder LogEncoder
+	mu      sync.Mutex
 }
 
 // NewFileLogWriter 创建文件日志写入器
 func NewFileLogWriter(path string) *FileLogWriter {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		log.Printf("Failed to open log file %s: %v", path, err)
+		// Use global logger if available, otherwise silently fail
+		if logging.GetGlobalLogger() != nil {
+			logging.GetGlobalLogger().Errorf("Failed to open log file %s: %v", path, err)
+		}
 		return nil
 	}
 
@@ -409,4 +424,3 @@ func (clw *ConsoleLogWriter) WriteBatch(entries []*ErrorLogEntry) error {
 	}
 	return nil
 }
-

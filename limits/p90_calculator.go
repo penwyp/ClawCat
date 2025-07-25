@@ -150,7 +150,7 @@ func (lm *LimitManager) CalculateP90Limit() (float64, error) {
 	defer lm.mu.RUnlock()
 
 	if len(lm.history) < lm.p90Calculator.minSamples {
-		return 0, fmt.Errorf("insufficient historical data: need at least %d data points, have %d", 
+		return 0, fmt.Errorf("insufficient historical data: need at least %d data points, have %d",
 			lm.p90Calculator.minSamples, len(lm.history))
 	}
 
@@ -196,7 +196,7 @@ func (lm *LimitManager) GetRecommendedLimit() (float64, string, error) {
 	}
 
 	distribution := lm.p90Calculator.AnalyzeDistribution(costs)
-	
+
 	// 基于不同百分位提供不同的推荐
 	recommendations := []struct {
 		value  float64
@@ -211,7 +211,7 @@ func (lm *LimitManager) GetRecommendedLimit() (float64, string, error) {
 	// 选择最接近当前计划的推荐
 	currentLimit := lm.plan.CostLimit
 	bestRec := recommendations[0] // 默认保守推荐
-	
+
 	if currentLimit > 0 {
 		minDiff := math.Abs(recommendations[0].value*recommendations[0].buffer - currentLimit)
 		for _, rec := range recommendations {
@@ -230,7 +230,7 @@ func (lm *LimitManager) GetRecommendedLimit() (float64, string, error) {
 // ValidateHistoricalData 验证历史数据质量
 func (p *P90Calculator) ValidateHistoricalData(values []float64) (bool, []string) {
 	issues := []string{}
-	
+
 	if len(values) < p.minSamples {
 		issues = append(issues, fmt.Sprintf("Insufficient data points: %d (minimum %d required)", len(values), p.minSamples))
 		return false, issues
@@ -239,7 +239,7 @@ func (p *P90Calculator) ValidateHistoricalData(values []float64) (bool, []string
 	// 检查数据变异性
 	if len(values) > 0 {
 		distribution := p.AnalyzeDistribution(values)
-		
+
 		// 检查是否有过多的零值
 		zeros := 0
 		for _, v := range values {
@@ -247,7 +247,7 @@ func (p *P90Calculator) ValidateHistoricalData(values []float64) (bool, []string
 				zeros++
 			}
 		}
-		
+
 		if float64(zeros)/float64(len(values)) > 0.5 {
 			issues = append(issues, "More than 50% of data points are zero")
 		}
@@ -262,13 +262,13 @@ func (p *P90Calculator) ValidateHistoricalData(values []float64) (bool, []string
 		q3 := distribution.P75
 		iqr := q3 - q1
 		outlierCount := 0
-		
+
 		for _, v := range values {
 			if v < q1-3*iqr || v > q3+3*iqr {
 				outlierCount++
 			}
 		}
-		
+
 		if float64(outlierCount)/float64(len(values)) > 0.1 {
 			issues = append(issues, "High number of extreme outliers detected")
 		}

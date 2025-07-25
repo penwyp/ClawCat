@@ -15,24 +15,24 @@ import (
 
 // EnhancedFileWatcher 增强文件监控器
 type EnhancedFileWatcher struct {
-	watcher       *fsnotify.Watcher
-	fileStates    map[string]*FileState
-	eventChannel  chan FileEvent
-	config        WatcherConfig
-	mu            sync.RWMutex
-	isRunning     bool
-	debounceTimer map[string]*time.Timer
-	patterns      []string
+	watcher        *fsnotify.Watcher
+	fileStates     map[string]*FileState
+	eventChannel   chan FileEvent
+	config         WatcherConfig
+	mu             sync.RWMutex
+	isRunning      bool
+	debounceTimer  map[string]*time.Timer
+	patterns       []string
 	ignorePatterns []string
 }
 
 // WatcherConfig 监控器配置
 type WatcherConfig struct {
 	DebounceInterval time.Duration `json:"debounce_interval"`
-	ChecksumEnabled  bool         `json:"checksum_enabled"`
-	MaxFileSize      int64        `json:"max_file_size"`
+	ChecksumEnabled  bool          `json:"checksum_enabled"`
+	MaxFileSize      int64         `json:"max_file_size"`
 	PollInterval     time.Duration `json:"poll_interval"`
-	BufferSize       int          `json:"buffer_size"`
+	BufferSize       int           `json:"buffer_size"`
 }
 
 // DefaultWatcherConfig 默认监控器配置
@@ -120,7 +120,7 @@ func (efw *EnhancedFileWatcher) RemovePath(path string) error {
 	}
 
 	delete(efw.fileStates, path)
-	
+
 	// 清理防抖定时器
 	if timer, exists := efw.debounceTimer[path]; exists {
 		timer.Stop()
@@ -163,7 +163,7 @@ func (efw *EnhancedFileWatcher) Stop() error {
 	}
 
 	efw.isRunning = false
-	
+
 	// 停止所有防抖定时器
 	for _, timer := range efw.debounceTimer {
 		timer.Stop()
@@ -261,7 +261,7 @@ func (efw *EnhancedFileWatcher) processFileEvent(event fsnotify.Event) {
 	} else if oldState != nil && newState != nil {
 		eventType = EventModify
 		changes = efw.detectChanges(oldState, newState)
-		
+
 		// 如果没有实际变化，忽略事件
 		if len(changes) == 0 {
 			return
@@ -392,7 +392,7 @@ func (efw *EnhancedFileWatcher) detectChanges(oldState, newState *FileState) []C
 	}
 
 	// 内容变化（通过校验和）
-	if efw.config.ChecksumEnabled && 
+	if efw.config.ChecksumEnabled &&
 		oldState.Checksum != "" && newState.Checksum != "" &&
 		oldState.Checksum != newState.Checksum {
 		changes = append(changes, Change{

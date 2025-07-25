@@ -11,11 +11,11 @@ import (
 
 // DashboardView represents the main dashboard view
 type DashboardView struct {
-	stats   Statistics
-	width   int
-	height  int
-	config  Config
-	styles  Styles
+	stats  Statistics
+	width  int
+	height int
+	config Config
+	styles Styles
 }
 
 // NewDashboardView creates a new dashboard view
@@ -84,7 +84,7 @@ func (d *DashboardView) renderHeader() string {
 	subtitle := d.styles.Subtitle.Render(
 		fmt.Sprintf("Last updated: %s", time.Now().Format("15:04:05")),
 	)
-	
+
 	return strings.Join([]string{title, subtitle}, "\n")
 }
 
@@ -131,7 +131,7 @@ func (d *DashboardView) renderMetrics() string {
 func (d *DashboardView) renderCharts() string {
 	// Usage progress bar
 	usageBar := d.renderUsageProgress()
-	
+
 	// Time to reset
 	resetInfo := d.renderResetInfo()
 
@@ -146,7 +146,7 @@ func (d *DashboardView) renderFooter() string {
 		d.stats.TopModel,
 		d.stats.AverageCost,
 	)
-	
+
 	return d.styles.Footer.Render(status)
 }
 
@@ -154,9 +154,9 @@ func (d *DashboardView) renderFooter() string {
 func (d *DashboardView) renderMetricCard(title, value string, style lipgloss.Style) string {
 	cardTitle := d.styles.DashboardLabel().Render(title)
 	cardValue := style.Render(value)
-	
+
 	content := strings.Join([]string{cardTitle, cardValue}, "\n")
-	
+
 	return d.styles.DashboardCard().Render(content)
 }
 
@@ -168,15 +168,15 @@ func (d *DashboardView) arrangeInRow(elements []string) string {
 // renderUsageProgress renders the usage progress bar
 func (d *DashboardView) renderUsageProgress() string {
 	title := d.styles.Subtitle.Render("Plan Usage")
-	
+
 	progressWidth := d.width - 20
 	if progressWidth < 20 {
 		progressWidth = 20
 	}
-	
+
 	progress := d.styles.ProgressStyle(d.stats.PlanUsage, progressWidth)
 	percentage := fmt.Sprintf("%.1f%%", d.stats.PlanUsage)
-	
+
 	return strings.Join([]string{
 		title,
 		progress,
@@ -187,12 +187,12 @@ func (d *DashboardView) renderUsageProgress() string {
 // renderResetInfo renders time to reset information
 func (d *DashboardView) renderResetInfo() string {
 	title := d.styles.Subtitle.Render("Time to Reset")
-	
+
 	days := int(d.stats.TimeToReset.Hours() / 24)
 	hours := int(d.stats.TimeToReset.Hours()) % 24
-	
+
 	timeText := fmt.Sprintf("%dd %dh", days, hours)
-	
+
 	return strings.Join([]string{
 		title,
 		d.styles.Normal.Render(timeText),

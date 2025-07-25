@@ -31,17 +31,17 @@ func (s State) String() string {
 
 // CircuitBreaker implements the circuit breaker pattern for fault tolerance
 type CircuitBreaker struct {
-	state              State
-	failures           int
-	successes          int
+	state               State
+	failures            int
+	successes           int
 	consecutiveFailures int
-	lastFailureTime   time.Time
-	lastStateChange   time.Time
-	maxFailures       int
-	timeout           time.Duration
-	successThreshold  int
-	mu                sync.RWMutex
-	
+	lastFailureTime     time.Time
+	lastStateChange     time.Time
+	maxFailures         int
+	timeout             time.Duration
+	successThreshold    int
+	mu                  sync.RWMutex
+
 	// Callbacks
 	onStateChange func(from, to State)
 	onOpen        func()
@@ -67,7 +67,7 @@ func NewCircuitBreaker(config CircuitBreakerConfig) *CircuitBreaker {
 	if config.SuccessThreshold <= 0 {
 		config.SuccessThreshold = 3
 	}
-	
+
 	return &CircuitBreaker{
 		state:            StateClosed,
 		maxFailures:      config.MaxFailures,
@@ -81,7 +81,7 @@ func NewCircuitBreaker(config CircuitBreakerConfig) *CircuitBreaker {
 func (cb *CircuitBreaker) CanCall() bool {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
-	
+
 	switch cb.state {
 	case StateClosed:
 		return true
@@ -110,10 +110,10 @@ func (cb *CircuitBreaker) CanCall() bool {
 func (cb *CircuitBreaker) RecordSuccess() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	cb.successes++
 	cb.consecutiveFailures = 0
-	
+
 	switch cb.state {
 	case StateHalfOpen:
 		if cb.successes >= cb.successThreshold {
@@ -129,11 +129,11 @@ func (cb *CircuitBreaker) RecordSuccess() {
 func (cb *CircuitBreaker) RecordFailure() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	cb.failures++
 	cb.consecutiveFailures++
 	cb.lastFailureTime = time.Now()
-	
+
 	switch cb.state {
 	case StateClosed:
 		if cb.consecutiveFailures >= cb.maxFailures {
@@ -156,7 +156,7 @@ func (cb *CircuitBreaker) GetState() State {
 func (cb *CircuitBreaker) GetStats() CircuitBreakerStats {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
-	
+
 	return CircuitBreakerStats{
 		State:               cb.state,
 		Failures:            cb.failures,
@@ -181,7 +181,7 @@ type CircuitBreakerStats struct {
 func (cb *CircuitBreaker) Reset() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	oldState := cb.state
 	cb.state = StateClosed
 	cb.failures = 0
@@ -189,7 +189,7 @@ func (cb *CircuitBreaker) Reset() {
 	cb.consecutiveFailures = 0
 	cb.lastFailureTime = time.Time{}
 	cb.lastStateChange = time.Now()
-	
+
 	if oldState != StateClosed {
 		cb.triggerStateChangeCallback(oldState, StateClosed)
 	}
@@ -228,19 +228,19 @@ func (cb *CircuitBreaker) transitionTo(newState State) {
 	if cb.state == newState {
 		return
 	}
-	
+
 	oldState := cb.state
 	cb.state = newState
 	cb.lastStateChange = time.Now()
-	
+
 	// Reset success counter when transitioning to half-open
 	if newState == StateHalfOpen {
 		cb.successes = 0
 	}
-	
+
 	// Trigger callbacks asynchronously to avoid blocking
 	go cb.triggerStateChangeCallback(oldState, newState)
-	
+
 	switch newState {
 	case StateOpen:
 		go cb.triggerCallback(cb.onOpen)
@@ -263,14 +263,14 @@ func (cb *CircuitBreaker) triggerCallback(callback func()) {
 	if callback == nil {
 		return
 	}
-	
+
 	defer func() {
 		if r := recover(); r != nil {
 			// Log the panic but don't let it crash the application
 			// In a real implementation, you'd use a proper logger here
 		}
 	}()
-	
+
 	callback()
 }
 
@@ -279,13 +279,13 @@ func (cb *CircuitBreaker) Execute(fn func() error) error {
 	if !cb.CanCall() {
 		return ErrCircuitBreakerOpen
 	}
-	
+
 	err := fn()
 	if err != nil {
 		cb.RecordFailure()
 		return err
 	}
-	
+
 	cb.RecordSuccess()
 	return nil
 }
@@ -297,7 +297,7 @@ var ErrCircuitBreakerOpen = fmt.Errorf("circuit breaker is open")
 func (cb *CircuitBreaker) IsHealthy() bool {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
-	
+
 	return cb.state != StateOpen
 }
 
@@ -305,12 +305,12 @@ func (cb *CircuitBreaker) IsHealthy() bool {
 func (cb *CircuitBreaker) GetFailureRate() float64 {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
-	
+
 	total := cb.failures + cb.successes
 	if total == 0 {
 		return 0.0
 	}
-	
+
 	return float64(cb.failures) / float64(total) * 100.0
 }
 
@@ -318,15 +318,15 @@ func (cb *CircuitBreaker) GetFailureRate() float64 {
 func (cb *CircuitBreaker) TimeUntilRetry() time.Duration {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
-	
+
 	if cb.state != StateOpen {
 		return 0
 	}
-	
+
 	elapsed := time.Since(cb.lastFailureTime)
 	if elapsed >= cb.timeout {
 		return 0
 	}
-	
+
 	return cb.timeout - elapsed
 }

@@ -17,22 +17,22 @@ const (
 
 // SubscriptionPlan 订阅计划
 type SubscriptionPlan struct {
-	Name            string            `json:"name"`
-	Type            PlanType          `json:"type"`
-	CostLimit       float64           `json:"cost_limit"`
-	TokenLimit      int64             `json:"token_limit"`
-	CustomLimit     bool              `json:"custom_limit"`
-	Features        []string          `json:"features"`
-	WarningLevels   []WarningLevel    `json:"warning_levels"`
-	ResetCycle      ResetCycle        `json:"reset_cycle"`
+	Name          string         `json:"name"`
+	Type          PlanType       `json:"type"`
+	CostLimit     float64        `json:"cost_limit"`
+	TokenLimit    int64          `json:"token_limit"`
+	CustomLimit   bool           `json:"custom_limit"`
+	Features      []string       `json:"features"`
+	WarningLevels []WarningLevel `json:"warning_levels"`
+	ResetCycle    ResetCycle     `json:"reset_cycle"`
 }
 
 // WarningLevel 警告级别
 type WarningLevel struct {
-	Threshold   float64 `json:"threshold"`   // 百分比阈值
-	Message     string  `json:"message"`
-	Severity    Severity `json:"severity"`
-	Actions     []Action `json:"actions"`
+	Threshold float64  `json:"threshold"` // 百分比阈值
+	Message   string   `json:"message"`
+	Severity  Severity `json:"severity"`
+	Actions   []Action `json:"actions"`
 }
 
 // Severity 严重程度
@@ -55,11 +55,11 @@ type Action struct {
 type ActionType string
 
 const (
-	ActionNotify    ActionType = "notify"
-	ActionLog       ActionType = "log"
-	ActionThrottle  ActionType = "throttle"
-	ActionBlock     ActionType = "block"
-	ActionWebhook   ActionType = "webhook"
+	ActionNotify   ActionType = "notify"
+	ActionLog      ActionType = "log"
+	ActionThrottle ActionType = "throttle"
+	ActionBlock    ActionType = "block"
+	ActionWebhook  ActionType = "webhook"
 )
 
 // ResetCycle 重置周期
@@ -110,13 +110,12 @@ type Distribution struct {
 	StdDev float64 `json:"std_dev"`
 }
 
-
 // UsagePatterns 使用模式
 type UsagePatterns struct {
-	PeakHours   []int     `json:"peak_hours"`
-	PeakDays    []string  `json:"peak_days"`
-	Trend       TrendType `json:"trend"`
-	Anomalies   []Anomaly `json:"anomalies"`
+	PeakHours []int     `json:"peak_hours"`
+	PeakDays  []string  `json:"peak_days"`
+	Trend     TrendType `json:"trend"`
+	Anomalies []Anomaly `json:"anomalies"`
 }
 
 // TrendType 趋势类型

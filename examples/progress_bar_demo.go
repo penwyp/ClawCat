@@ -16,32 +16,32 @@ func demonstrateProgressBars() {
 
 	// 1. 基础进度条演示
 	fmt.Println("\n1. Basic Progress Bar:")
-	
+
 	tokenBar := components.NewProgressBar("Token Usage", 7500, 10000)
 	tokenBar.SetWidth(40)
-	
+
 	// 设置动态颜色
 	colorScheme := components.DefaultColorScheme
 	tokenBar.SetColor(colorScheme.GetProgressColor(tokenBar.Percentage))
-	
+
 	fmt.Println(tokenBar.Render())
 	fmt.Printf("Status: %s, Over limit: %v\n", tokenBar.GetStatus(), tokenBar.IsOverLimit())
 
 	// 2. 进度条区域演示
 	fmt.Println("\n2. Progress Section:")
-	
+
 	// 创建模拟的实时指标
 	metrics := &calculations.RealtimeMetrics{
-		SessionStart:     time.Now().Add(-2 * time.Hour),
-		CurrentTokens:    85000,
-		CurrentCost:      15.50,
-		SessionProgress:  40.0,
-		TokensPerMinute:  125.0,
-		CostPerMinute:    0.12,
-		BurnRate:         125.0,
-		ProjectedTokens:  210000,
-		ProjectedCost:    35.50,
-		ConfidenceLevel:  85.0,
+		SessionStart:    time.Now().Add(-2 * time.Hour),
+		CurrentTokens:   85000,
+		CurrentCost:     15.50,
+		SessionProgress: 40.0,
+		TokensPerMinute: 125.0,
+		CostPerMinute:   0.12,
+		BurnRate:        125.0,
+		ProjectedTokens: 210000,
+		ProjectedCost:   35.50,
+		ConfidenceLevel: 85.0,
 		ModelDistribution: map[string]calculations.ModelMetrics{
 			"claude-3-opus": {
 				TokenCount: 60000,
@@ -73,7 +73,7 @@ func demonstrateProgressBars() {
 
 	// 3. 色彩演示
 	fmt.Println("\n3. Color Scheme Demo:")
-	
+
 	testPercentages := []float64{25, 55, 80, 95}
 	for _, pct := range testPercentages {
 		bar := components.NewProgressBar(fmt.Sprintf("Test %.0f%%", pct), pct, 100)

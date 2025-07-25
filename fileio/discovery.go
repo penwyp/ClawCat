@@ -1,6 +1,8 @@
 package fileio
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -211,11 +213,14 @@ func hasConversationFiles(path string) bool {
 		// Count files that look like conversation files
 		if strings.HasSuffix(name, ".jsonl") ||
 			(strings.Contains(name, "-") && len(name) > 20) {
-			conversationCount++
+			// Check if file actually contains usage data
+			if hasUsageData(filepath.Join(path, name)) {
+				conversationCount++
+			}
 		}
 	}
 
-	// Require at least one conversation file
+	// Require at least one conversation file with usage data
 	return conversationCount > 0
 }
 
@@ -269,27 +274,27 @@ func getPathStats(path string) (DiscoveredPath, error) {
 // DiscoverFiles discovers JSONL files in a given path
 func DiscoverFiles(path string) ([]string, error) {
 	var files []string
-	
+
 	// Check if path exists
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, fmt.Errorf("path does not exist: %w", err)
 	}
-	
+
 	if info.IsDir() {
 		// Search for JSONL files in directory
 		err := filepath.Walk(path, func(walkPath string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			
+
 			if !info.IsDir() && strings.HasSuffix(strings.ToLower(walkPath), ".jsonl") {
 				files = append(files, walkPath)
 			}
-			
+
 			return nil
 		})
-		
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to walk directory: %w", err)
 		}
@@ -299,7 +304,7 @@ func DiscoverFiles(path string) ([]string, error) {
 			files = append(files, path)
 		}
 	}
-	
+
 	return files, nil
 }
 
@@ -321,4 +326,85 @@ func DiscoverDataPaths() ([]string, error) {
 	}
 
 	return paths, nil
+}
+
+// hasUsageData checks if a JSONL file contains entries with usage data.
+// It scans the first 50 lines to detect both direct API format and Claude Code session format.
+func hasUsageData(filePath string) bool {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineCount := 0
+
+	// Check first 50 lines for usage data to avoid scanning entire large files
+	for scanner.Scan() && lineCount < 50 {
+		line := scanner.Text()
+		lineCount++
+
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		var data map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &data); err != nil {
+			continue
+		}
+
+		// Check for usage data in different formats
+		if hasUsageInEntry(data) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// hasUsageInEntry checks if a single JSON entry contains usage data
+func hasUsageInEntry(data map[string]interface{}) bool {
+	// Check for direct usage field
+	if usage, ok := data["usage"]; ok {
+		if usageMap, ok := usage.(map[string]interface{}); ok {
+			if hasTokens(usageMap) {
+				return true
+			}
+		}
+	}
+
+	// Check for Claude Code format (message.usage)
+	if message, ok := data["message"]; ok {
+		if messageMap, ok := message.(map[string]interface{}); ok {
+			if usage, ok := messageMap["usage"]; ok {
+				if usageMap, ok := usage.(map[string]interface{}); ok {
+					if hasTokens(usageMap) {
+						return true
+					}
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// hasTokens checks if usage map contains token information
+func hasTokens(usage map[string]interface{}) bool {
+	tokenFields := []string{
+		"input_tokens", "output_tokens",
+		"cache_creation_input_tokens", "cache_read_input_tokens",
+		"cache_creation_tokens", "cache_read_tokens",
+	}
+
+	for _, field := range tokenFields {
+		if val, ok := usage[field]; ok {
+			if tokens, ok := val.(float64); ok && tokens > 0 {
+				return true
+			}
+		}
+	}
+
+	return false
 }

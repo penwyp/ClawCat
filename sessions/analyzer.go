@@ -22,7 +22,7 @@ func NewSessionAnalyzer(sessionDurationHours int) *SessionAnalyzer {
 	if sessionDurationHours <= 0 {
 		sessionDurationHours = 5 // Default to 5 hours
 	}
-	
+
 	return &SessionAnalyzer{
 		sessionDurationHours: sessionDurationHours,
 		sessionDuration:      time.Duration(sessionDurationHours) * time.Hour,
@@ -116,7 +116,7 @@ func (sa *SessionAnalyzer) roundToHour(timestamp time.Time) time.Time {
 func (sa *SessionAnalyzer) createNewBlock(entry models.UsageEntry) *models.SessionBlock {
 	startTime := sa.roundToHour(entry.Timestamp)
 	endTime := startTime.Add(sa.sessionDuration)
-	
+
 	block := &models.SessionBlock{
 		StartTime:         startTime,
 		EndTime:           endTime,
@@ -129,13 +129,13 @@ func (sa *SessionAnalyzer) createNewBlock(entry models.UsageEntry) *models.Sessi
 		SentMessagesCount: 0,
 		CostUSD:           0.0,
 		LimitMessages:     []models.LimitMessage{},
-		
+
 		// Legacy fields for backward compatibility
 		ModelStats:  make(map[string]models.ModelStat),
 		TotalCost:   0.0,
 		TotalTokens: 0,
 	}
-	
+
 	block.GenerateID()
 	return block
 }
@@ -193,7 +193,7 @@ func (sa *SessionAnalyzer) addEntryToBlock(block *models.SessionBlock, entry mod
 	if _, exists := block.ModelStats[model]; !exists {
 		block.ModelStats[model] = models.ModelStat{}
 	}
-	
+
 	legacyStats := block.ModelStats[model]
 	legacyStats.InputTokens += entry.InputTokens
 	legacyStats.OutputTokens += entry.OutputTokens
@@ -213,7 +213,7 @@ func (sa *SessionAnalyzer) finalizeBlock(block *models.SessionBlock) {
 
 	// Update sent messages count
 	block.SentMessagesCount = len(block.Entries)
-	
+
 	// Update legacy totals
 	block.TotalCost = block.CostUSD
 	block.TotalTokens = block.TokenCounts.TotalTokens()
@@ -240,13 +240,13 @@ func (sa *SessionAnalyzer) checkForGap(lastBlock *models.SessionBlock, nextEntry
 			PerModelStats:     make(map[string]map[string]any),
 			SentMessagesCount: 0,
 			LimitMessages:     []models.LimitMessage{},
-			
+
 			// Legacy fields
 			ModelStats:  make(map[string]models.ModelStat),
 			TotalCost:   0.0,
 			TotalTokens: 0,
 		}
-		
+
 		gapBlock.ID = fmt.Sprintf("gap-%s", lastBlock.ActualEndTime.Format(time.RFC3339))
 		return gapBlock
 	}

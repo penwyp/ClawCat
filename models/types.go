@@ -28,7 +28,7 @@ type UsageEntry struct {
 	CostUSD             float64   `json:"cost_usd"`     // Calculated field
 	MessageID           string    `json:"message_id"`
 	RequestID           string    `json:"request_id"`
-	SessionID           string    `json:"session_id"`   // Claude Code session ID
+	SessionID           string    `json:"session_id"` // Claude Code session ID
 }
 
 // TokenCounts aggregates token counts with computed totals
@@ -66,23 +66,23 @@ type LimitMessage struct {
 
 // SessionBlock represents a 5-hour session window with aggregated statistics
 type SessionBlock struct {
-	ID               string                     `json:"id"`
-	StartTime        time.Time                  `json:"start_time"`
-	EndTime          time.Time                  `json:"end_time"`
-	Entries          []UsageEntry               `json:"entries"`
-	TokenCounts      TokenCounts                `json:"token_counts"`
-	IsActive         bool                       `json:"is_active"`
-	IsGap            bool                       `json:"is_gap"`
-	BurnRate         *BurnRate                  `json:"burn_rate,omitempty"`
-	ActualEndTime    *time.Time                 `json:"actual_end_time,omitempty"`
-	PerModelStats    map[string]map[string]any  `json:"per_model_stats"`
-	Models           []string                   `json:"models"`
+	ID                string                    `json:"id"`
+	StartTime         time.Time                 `json:"start_time"`
+	EndTime           time.Time                 `json:"end_time"`
+	Entries           []UsageEntry              `json:"entries"`
+	TokenCounts       TokenCounts               `json:"token_counts"`
+	IsActive          bool                      `json:"is_active"`
+	IsGap             bool                      `json:"is_gap"`
+	BurnRate          *BurnRate                 `json:"burn_rate,omitempty"`
+	ActualEndTime     *time.Time                `json:"actual_end_time,omitempty"`
+	PerModelStats     map[string]map[string]any `json:"per_model_stats"`
+	Models            []string                  `json:"models"`
 	SentMessagesCount int                       `json:"sent_messages_count"`
-	CostUSD          float64                    `json:"cost_usd"`
-	LimitMessages    []LimitMessage             `json:"limit_messages"`
-	ProjectionData   *UsageProjection           `json:"projection_data,omitempty"`
-	BurnRateSnapshot *BurnRate                  `json:"burn_rate_snapshot,omitempty"`
-	
+	CostUSD           float64                   `json:"cost_usd"`
+	LimitMessages     []LimitMessage            `json:"limit_messages"`
+	ProjectionData    *UsageProjection          `json:"projection_data,omitempty"`
+	BurnRateSnapshot  *BurnRate                 `json:"burn_rate_snapshot,omitempty"`
+
 	// Legacy fields for backward compatibility
 	TotalCost   float64              `json:"total_cost"`
 	TotalTokens int                  `json:"total_tokens"`
@@ -113,7 +113,6 @@ func (u *UsageEntry) CalculateCost(pricing ModelPricing) float64 {
 
 	return inputCost + outputCost + cacheCreationCost + cacheReadCost
 }
-
 
 // NormalizeModel normalizes the model name for the entry
 func (u *UsageEntry) NormalizeModel() {
@@ -147,14 +146,14 @@ func (s *SessionBlock) CalculateTotals() {
 		s.TotalCost += stat.Cost
 		s.TotalTokens += stat.TotalTokens
 	}
-	
+
 	// Update new fields for consistency
 	s.CostUSD = s.TotalCost
 	s.TokenCounts.InputTokens = 0
 	s.TokenCounts.OutputTokens = 0
 	s.TokenCounts.CacheCreationTokens = 0
 	s.TokenCounts.CacheReadTokens = 0
-	
+
 	for _, stat := range s.ModelStats {
 		s.TokenCounts.InputTokens += stat.InputTokens
 		s.TokenCounts.OutputTokens += stat.OutputTokens
@@ -181,7 +180,7 @@ func (s *SessionBlock) DurationMinutes() float64 {
 	} else {
 		endTime = s.EndTime
 	}
-	
+
 	duration := endTime.Sub(s.StartTime).Minutes()
 	if duration < 1.0 {
 		return 1.0
@@ -252,24 +251,24 @@ type AnalysisResult struct {
 	CacheReadTokens     int       `json:"cache_read_tokens"`
 	TotalTokens         int       `json:"total_tokens"`
 	CostUSD             float64   `json:"cost_usd"`
-	Count               int       `json:"count"` // For grouped results
+	Count               int       `json:"count"`               // For grouped results
 	GroupKey            string    `json:"group_key,omitempty"` // For grouped results
 }
 
 // SummaryStats represents summary statistics for analysis results
 type SummaryStats struct {
-	StartTime           time.Time          `json:"start_time"`
-	EndTime             time.Time          `json:"end_time"`
-	TotalEntries        int                `json:"total_entries"`
-	TotalTokens         int                `json:"total_tokens"`
-	TotalCost           float64            `json:"total_cost"`
-	InputTokens         int                `json:"input_tokens"`
-	OutputTokens        int                `json:"output_tokens"`
-	CacheCreationTokens int                `json:"cache_creation_tokens"`
-	CacheReadTokens     int                `json:"cache_read_tokens"`
-	MaxCost             float64            `json:"max_cost"`
-	MaxTokens           int                `json:"max_tokens"`
-	AvgCost             float64            `json:"avg_cost"`
-	AvgTokens           float64            `json:"avg_tokens"`
-	ModelCounts         map[string]int     `json:"model_counts"`
+	StartTime           time.Time      `json:"start_time"`
+	EndTime             time.Time      `json:"end_time"`
+	TotalEntries        int            `json:"total_entries"`
+	TotalTokens         int            `json:"total_tokens"`
+	TotalCost           float64        `json:"total_cost"`
+	InputTokens         int            `json:"input_tokens"`
+	OutputTokens        int            `json:"output_tokens"`
+	CacheCreationTokens int            `json:"cache_creation_tokens"`
+	CacheReadTokens     int            `json:"cache_read_tokens"`
+	MaxCost             float64        `json:"max_cost"`
+	MaxTokens           int            `json:"max_tokens"`
+	AvgCost             float64        `json:"avg_cost"`
+	AvgTokens           float64        `json:"avg_tokens"`
+	ModelCounts         map[string]int `json:"model_counts"`
 }

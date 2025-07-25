@@ -2,18 +2,20 @@ package internal
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"time"
 
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/fileio"
+	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
 )
 
 // Analyzer provides data analysis functionality
 type Analyzer struct {
 	config *config.Config
-	logger *Logger
+	logger logging.LoggerInterface
 }
 
 // NewAnalyzer creates a new analyzer instance
@@ -21,10 +23,13 @@ func NewAnalyzer(cfg *config.Config) (*Analyzer, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("configuration is required")
 	}
+
+	// Use debug console logging if debug mode is enabled
+	debugToConsole := cfg.Debug.Enabled
 	
 	return &Analyzer{
 		config: cfg,
-		logger: NewLogger(cfg.App.LogLevel, cfg.App.LogFile),
+		logger: logging.NewLoggerWithDebug(cfg.App.LogLevel, cfg.App.LogFile, debugToConsole),
 	}, nil
 }
 
@@ -33,27 +38,61 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 	if len(paths) == 0 {
 		paths = a.config.Data.Paths
 	}
-	
-	a.logger.Infof("Starting analysis of %d paths", len(paths))
-	
+
+	// If still no paths, use default path
+	if len(paths) == 0 {
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			defaultPath := fmt.Sprintf("%s/.claude/projects", homeDir)
+			if _, err := os.Stat(defaultPath); err == nil {
+				paths = []string{defaultPath}
+				a.logger.Infof("Using default data path: %s", defaultPath)
+			}
+		}
+	}
+
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("no data paths found - please specify paths as arguments (e.g., clawcat analyze ~/claude-logs) or ensure ~/.claude/projects exists")
+	}
+
+	a.logger.Infof("Starting analysis of %d paths: %v", len(paths), paths)
+
 	var allResults []models.AnalysisResult
-	
+	var analyzedPaths []string
+	var errorPaths []string
+
 	for _, path := range paths {
+		a.logger.Infof("Analyzing path: %s", path)
 		results, err := a.analyzePath(path)
 		if err != nil {
 			a.logger.Errorf("Failed to analyze path %s: %v", path, err)
+			errorPaths = append(errorPaths, path)
 			continue
 		}
-		
+
+		if len(results) > 0 {
+			analyzedPaths = append(analyzedPaths, path)
+			a.logger.Infof("Found %d usage entries in path: %s", len(results), path)
+		} else {
+			a.logger.Warnf("No usage data found in path: %s", path)
+		}
+
 		allResults = append(allResults, results...)
 	}
-	
+
 	// Sort results by timestamp
 	sort.Slice(allResults, func(i, j int) bool {
 		return allResults[i].Timestamp.Before(allResults[j].Timestamp)
 	})
-	
-	a.logger.Infof("Analysis completed: %d results", len(allResults))
+
+	if len(allResults) == 0 {
+		if len(errorPaths) > 0 {
+			return nil, fmt.Errorf("no usage data found - %d paths had errors: %v", len(errorPaths), errorPaths)
+		}
+		return nil, fmt.Errorf("no usage data found in any of the specified paths: %v\n\nExpected data format:\n- JSONL files with usage data\n- Files should contain either 'type: message' with usage field, or 'type: assistant' with message.usage field\n- Check that the paths contain Claude conversation or API usage logs", paths)
+	}
+
+	a.logger.Infof("Analysis completed: %d results from %d paths", len(allResults), len(analyzedPaths))
 	return allResults, nil
 }
 
@@ -64,19 +103,19 @@ func (a *Analyzer) analyzePath(path string) ([]models.AnalysisResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover files: %w", err)
 	}
-	
+
 	var allResults []models.AnalysisResult
-	
+
 	for _, file := range files {
 		results, err := a.analyzeFile(file)
 		if err != nil {
 			a.logger.Errorf("Failed to analyze file %s: %v", file, err)
 			continue
 		}
-		
+
 		allResults = append(allResults, results...)
 	}
-	
+
 	return allResults, nil
 }
 
@@ -87,10 +126,10 @@ func (a *Analyzer) analyzeFile(filePath string) ([]models.AnalysisResult, error)
 		return nil, fmt.Errorf("failed to create reader: %w", err)
 	}
 	defer reader.Close()
-	
+
 	var results []models.AnalysisResult
 	entryCh, errCh := reader.ReadEntries()
-	
+
 	for {
 		select {
 		case entry, ok := <-entryCh:
@@ -98,7 +137,7 @@ func (a *Analyzer) analyzeFile(filePath string) ([]models.AnalysisResult, error)
 				// Channel closed, we're done
 				return results, nil
 			}
-			
+
 			// Calculate cost and total tokens if not already calculated
 			if entry.CostUSD == 0 {
 				pricing := models.GetPricing(entry.Model)
@@ -107,7 +146,7 @@ func (a *Analyzer) analyzeFile(filePath string) ([]models.AnalysisResult, error)
 			if entry.TotalTokens == 0 {
 				entry.TotalTokens = entry.CalculateTotalTokens()
 			}
-			
+
 			// Convert to analysis result
 			result := models.AnalysisResult{
 				Timestamp:           entry.Timestamp,
@@ -121,9 +160,9 @@ func (a *Analyzer) analyzeFile(filePath string) ([]models.AnalysisResult, error)
 				CostUSD:             entry.CostUSD,
 				Count:               1,
 			}
-			
+
 			results = append(results, result)
-			
+
 		case err := <-errCh:
 			if err != nil {
 				return results, fmt.Errorf("error reading entries: %w", err)
@@ -144,13 +183,13 @@ func (a *Analyzer) GetSummaryStats(results []models.AnalysisResult) models.Summa
 	if len(results) == 0 {
 		return models.SummaryStats{}
 	}
-	
+
 	stats := models.SummaryStats{
-		StartTime: results[0].Timestamp,
-		EndTime:   results[len(results)-1].Timestamp,
+		StartTime:   results[0].Timestamp,
+		EndTime:     results[len(results)-1].Timestamp,
 		ModelCounts: make(map[string]int),
 	}
-	
+
 	for _, result := range results {
 		stats.TotalEntries++
 		stats.TotalTokens += result.TotalTokens
@@ -159,9 +198,9 @@ func (a *Analyzer) GetSummaryStats(results []models.AnalysisResult) models.Summa
 		stats.OutputTokens += result.OutputTokens
 		stats.CacheCreationTokens += result.CacheCreationTokens
 		stats.CacheReadTokens += result.CacheReadTokens
-		
+
 		stats.ModelCounts[result.Model]++
-		
+
 		if result.CostUSD > stats.MaxCost {
 			stats.MaxCost = result.CostUSD
 		}
@@ -169,12 +208,12 @@ func (a *Analyzer) GetSummaryStats(results []models.AnalysisResult) models.Summa
 			stats.MaxTokens = result.TotalTokens
 		}
 	}
-	
+
 	// Calculate averages
 	if stats.TotalEntries > 0 {
 		stats.AvgCost = stats.TotalCost / float64(stats.TotalEntries)
 		stats.AvgTokens = float64(stats.TotalTokens) / float64(stats.TotalEntries)
 	}
-	
+
 	return stats
 }

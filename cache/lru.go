@@ -39,13 +39,13 @@ func NewLRUCache(capacity int64) *LRUCache {
 		items:    make(map[string]*lruItem),
 		priority: 1,
 	}
-	
+
 	// Initialize sentinel nodes
 	c.head = &lruItem{}
 	c.tail = &lruItem{}
 	c.head.next = c.tail
 	c.tail.prev = c.head
-	
+
 	c.stats.MaxSize = capacity
 	return c
 }
@@ -54,14 +54,14 @@ func NewLRUCache(capacity int64) *LRUCache {
 func (c *LRUCache) Get(key string) (interface{}, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	item, exists := c.items[key]
 	if !exists {
 		c.stats.Misses++
 		c.stats.UpdateHitRate()
 		return nil, false
 	}
-	
+
 	// Check if item has expired (but not persistent items)
 	if !item.persistent && item.ttl > 0 && time.Since(item.createTime) > item.ttl {
 		c.removeItem(item)
@@ -69,11 +69,11 @@ func (c *LRUCache) Get(key string) (interface{}, bool) {
 		c.stats.UpdateHitRate()
 		return nil, false
 	}
-	
+
 	// Move to front (most recently used)
 	c.moveToFront(item)
 	item.accessTime = time.Now()
-	
+
 	c.stats.Hits++
 	c.stats.UpdateHitRate()
 	return item.value, true
@@ -95,9 +95,9 @@ func (c *LRUCache) SetWithSize(key string, value interface{}, size int64) error 
 func (c *LRUCache) SetWithOptions(key string, value interface{}, size int64, ttl time.Duration, persistent bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	now := time.Now()
-	
+
 	// Check if item already exists
 	if item, exists := c.items[key]; exists {
 		// Update existing item
@@ -110,19 +110,19 @@ func (c *LRUCache) SetWithOptions(key string, value interface{}, size int64, ttl
 		c.moveToFront(item)
 		return nil
 	}
-	
+
 	// Check capacity
 	if size > c.capacity {
 		return fmt.Errorf("item size %d exceeds cache capacity %d", size, c.capacity)
 	}
-	
+
 	// Evict items if necessary
 	for c.size+size > c.capacity && len(c.items) > 0 {
 		if err := c.evictOldest(); err != nil {
 			return fmt.Errorf("failed to evict item: %w", err)
 		}
 	}
-	
+
 	// Create new item
 	item := &lruItem{
 		key:        key,
@@ -133,12 +133,12 @@ func (c *LRUCache) SetWithOptions(key string, value interface{}, size int64, ttl
 		ttl:        ttl,
 		persistent: persistent,
 	}
-	
+
 	c.items[key] = item
 	c.addToFront(item)
 	c.size += size
 	c.stats.Size = int64(len(c.items))
-	
+
 	return nil
 }
 
@@ -146,12 +146,12 @@ func (c *LRUCache) SetWithOptions(key string, value interface{}, size int64, ttl
 func (c *LRUCache) Delete(key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	item, exists := c.items[key]
 	if !exists {
 		return nil
 	}
-	
+
 	c.removeItem(item)
 	return nil
 }
@@ -160,19 +160,19 @@ func (c *LRUCache) Delete(key string) error {
 func (c *LRUCache) Clear() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	for key, item := range c.items {
 		if c.onEvicted != nil {
 			c.onEvicted(key, item.value)
 		}
 	}
-	
+
 	c.items = make(map[string]*lruItem)
 	c.head.next = c.tail
 	c.tail.prev = c.head
 	c.size = 0
 	c.stats.Size = 0
-	
+
 	return nil
 }
 
@@ -187,7 +187,7 @@ func (c *LRUCache) Size() int {
 func (c *LRUCache) Stats() CacheStats {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	stats := c.stats
 	stats.Size = int64(len(c.items))
 	return stats
@@ -216,7 +216,7 @@ func (c *LRUCache) CanEvict() bool {
 func (c *LRUCache) EvictOldest(count int) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	for i := 0; i < count && len(c.items) > 0; i++ {
 		if err := c.evictOldest(); err != nil {
 			// If we can't evict any more, just break instead of erroring
@@ -237,17 +237,17 @@ func (c *LRUCache) MemoryUsage() int64 {
 func (c *LRUCache) Resize(newCapacity int64) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.capacity = newCapacity
 	c.stats.MaxSize = newCapacity
-	
+
 	// Evict items if over capacity
 	for c.size > c.capacity && len(c.items) > 0 {
 		if err := c.evictOldest(); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -282,7 +282,7 @@ func (c *LRUCache) removeItem(item *lruItem) {
 	c.removeFromList(item)
 	c.size -= item.size
 	c.stats.Size = int64(len(c.items))
-	
+
 	if c.onEvicted != nil {
 		c.onEvicted(item.key, item.value)
 	}
@@ -292,7 +292,7 @@ func (c *LRUCache) evictOldest() error {
 	if len(c.items) == 0 {
 		return fmt.Errorf("cache is empty")
 	}
-	
+
 	// Find the oldest non-persistent item
 	current := c.tail.prev
 	for current != c.head {
@@ -303,7 +303,7 @@ func (c *LRUCache) evictOldest() error {
 		}
 		current = current.prev
 	}
-	
+
 	return fmt.Errorf("no evictable items found")
 }
 

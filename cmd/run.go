@@ -2,25 +2,24 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/internal"
 	"github.com/penwyp/ClawCat/logging"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
-	runPaths        []string
-	runPlan         string
-	runRefresh      time.Duration
-	runTheme        string
-	runWatch        bool
-	runBackground   bool
+	runPaths      []string
+	runPlan       string
+	runRefresh    time.Duration
+	runTheme      string
+	runWatch      bool
+	runBackground bool
 )
 
 var runCmd = &cobra.Command{
@@ -40,7 +39,7 @@ Examples:
   clawcat run --paths ~/claude-logs             # Monitor specific directory
   clawcat run --refresh 5s --theme light        # Custom refresh rate and theme
   clawcat run --watch --background              # Watch files in background`,
-	
+
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load and validate configuration
 		cfg, err := loadConfiguration()
@@ -54,9 +53,9 @@ Examples:
 		}
 
 		// Configuration is validated by the validator in the config package
-		
-		// Initialize global logger
-		logging.InitGlobalLogger(cfg.App.LogLevel, cfg.App.LogFile)
+
+		// Initialize global logger with debug mode support
+		logging.InitGlobalLoggerWithDebug(cfg.App.LogLevel, cfg.App.LogFile, debug)
 
 		// Create and run enhanced application
 		app, err := internal.NewEnhancedApplication(cfg)
@@ -84,22 +83,22 @@ func init() {
 
 	// Bind flags to viper for configuration
 	if err := viper.BindPFlag("app.data_paths", runCmd.Flags().Lookup("paths")); err != nil {
-		log.Printf("Failed to bind paths flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind paths flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("app.subscription_plan", runCmd.Flags().Lookup("plan")); err != nil {
-		log.Printf("Failed to bind plan flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind plan flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("app.refresh_interval", runCmd.Flags().Lookup("refresh")); err != nil {
-		log.Printf("Failed to bind refresh flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind refresh flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("ui.theme", runCmd.Flags().Lookup("theme")); err != nil {
-		log.Printf("Failed to bind theme flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind theme flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("fileio.watch_enabled", runCmd.Flags().Lookup("watch")); err != nil {
-		log.Printf("Failed to bind watch flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind watch flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("app.background_mode", runCmd.Flags().Lookup("background")); err != nil {
-		log.Printf("Failed to bind background flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind background flag: %v\n", err)
 	}
 
 	// Add to root command
@@ -164,7 +163,7 @@ func applyRunFlags(cfg *config.Config) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("invalid subscription plan: %s (valid options: %s)", 
+			return fmt.Errorf("invalid subscription plan: %s (valid options: %s)",
 				runPlan, strings.Join(validPlans, ", "))
 		}
 	}
@@ -192,7 +191,7 @@ func applyRunFlags(cfg *config.Config) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("invalid theme: %s (valid options: %s)", 
+			return fmt.Errorf("invalid theme: %s (valid options: %s)",
 				runTheme, strings.Join(validThemes, ", "))
 		}
 	}

@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/penwyp/ClawCat/cmd"
-	"log"
+	"fmt"
 	"os"
+
+	"github.com/penwyp/ClawCat/cmd"
 )
 
 // Build information set by linker
@@ -15,7 +16,8 @@ var (
 
 func main() {
 	if err := cmd.Execute(); err != nil {
-		log.Printf("Error: %v", err)
+		// Print to stderr directly for fatal errors at startup
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }

@@ -2,15 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/penwyp/ClawCat/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/penwyp/ClawCat/internal"
 )
 
 var (
@@ -23,7 +22,6 @@ var (
 	exportOverwrite bool
 	exportTemplate  string
 )
-
 
 var exportCmd = &cobra.Command{
 	Use:   "export [flags] <output-file>",
@@ -91,7 +89,7 @@ Examples:
 
 		// Perform export
 		if verbose {
-			fmt.Fprintf(os.Stderr, "Exporting data to %s (format: %s, range: %s)...\n", 
+			fmt.Fprintf(os.Stderr, "Exporting data to %s (format: %s, range: %s)...\n",
 				outputFile, options.Format, options.TimeRange)
 		}
 
@@ -134,10 +132,10 @@ func init() {
 
 	// Bind to viper
 	if err := viper.BindPFlag("export.default_format", exportCmd.Flags().Lookup("format")); err != nil {
-		log.Printf("Failed to bind format flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind format flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("export.compress", exportCmd.Flags().Lookup("compress")); err != nil {
-		log.Printf("Failed to bind compress flag: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to bind compress flag: %v\n", err)
 	}
 
 	rootCmd.AddCommand(exportCmd)
@@ -181,7 +179,7 @@ func validateExportOptions(options *internal.ExportOptions) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("invalid format: %s (valid options: %s)", 
+		return fmt.Errorf("invalid format: %s (valid options: %s)",
 			options.Format, strings.Join(validFormats, ", "))
 	}
 
@@ -196,7 +194,7 @@ func validateExportOptions(options *internal.ExportOptions) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("invalid time range: %s (valid options: %s)", 
+		return fmt.Errorf("invalid time range: %s (valid options: %s)",
 			options.TimeRange, strings.Join(validRanges, ", "))
 	}
 
@@ -230,7 +228,7 @@ func validateExportOptions(options *internal.ExportOptions) error {
 		case ".json":
 			options.Format = "json"
 		case ".xlsx":
-			options.Format = "xlsx"  
+			options.Format = "xlsx"
 		case ".parquet":
 			options.Format = "parquet"
 		}
@@ -252,11 +250,11 @@ func validateExportOptions(options *internal.ExportOptions) error {
 
 // ExportResult contains the results of an export operation
 type ExportResult struct {
-	OutputFile   string
-	Format       string
-	RecordCount  int
-	FileSize     int64
-	Compressed   bool
-	Duration     time.Duration
-	Error        error
+	OutputFile  string
+	Format      string
+	RecordCount int
+	FileSize    int64
+	Compressed  bool
+	Duration    time.Duration
+	Error       error
 }

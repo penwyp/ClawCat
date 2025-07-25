@@ -25,7 +25,7 @@ type LimitManager struct {
 // NewLimitManager 创建限额管理器
 func NewLimitManager(cfg *config.Config) (*LimitManager, error) {
 	planType := PlanType(cfg.Subscription.Plan)
-	
+
 	// 处理自定义计划
 	if planType == PlanCustom {
 		customLimit := cfg.Subscription.CustomCostLimit
@@ -43,16 +43,16 @@ func NewLimitManager(cfg *config.Config) (*LimitManager, error) {
 				StartTime: time.Now(),
 			},
 		}
-		
+
 		// 加载历史使用数据
 		if err := lm.loadHistoricalUsage(); err != nil {
 			// 非致命错误，记录日志但继续
 			fmt.Printf("Warning: Failed to load historical usage: %v\n", err)
 		}
-		
+
 		return lm, nil
 	}
-	
+
 	// 处理标准计划
 	plan, ok := GetPlanByType(planType)
 	if !ok {
@@ -82,7 +82,7 @@ func NewLimitManager(cfg *config.Config) (*LimitManager, error) {
 // CheckUsage 检查使用情况
 func (lm *LimitManager) CheckUsage(entry models.UsageEntry) (*LimitStatus, error) {
 	lm.mu.Lock()
-	
+
 	// 更新使用量
 	lm.usage.Tokens += int64(entry.TotalTokens)
 	lm.usage.Cost += entry.CostUSD
@@ -113,7 +113,7 @@ func (lm *LimitManager) CheckUsage(entry models.UsageEntry) (*LimitStatus, error
 	}
 
 	status.WarningLevel = currentWarningLevel
-	
+
 	// 在释放锁之前检查是否应该触发警告
 	shouldTrigger := false
 	if currentWarningLevel != nil {
@@ -137,7 +137,7 @@ func (lm *LimitManager) CheckUsage(entry models.UsageEntry) (*LimitStatus, error
 			shouldTrigger = time.Since(lastTriggered) > cooldown
 		}
 	}
-	
+
 	lm.mu.Unlock()
 
 	// 触发警告动作（在锁外执行）
@@ -289,7 +289,6 @@ func (lm *LimitManager) GetRecommendations() []string {
 	return recommendations
 }
 
-
 // triggerWarningActions 触发警告动作
 func (lm *LimitManager) triggerWarningActions(level WarningLevel, status *LimitStatus) {
 	lm.mu.Lock()
@@ -367,7 +366,7 @@ func (lm *LimitManager) hasHighBurnRate() bool {
 	}
 
 	currentRate := lm.usage.Cost / elapsed.Hours()
-	
+
 	// 如果每小时消耗超过计划限额的10%，认为是高燃烧率
 	threshold := lm.plan.CostLimit * 0.1
 	return currentRate > threshold

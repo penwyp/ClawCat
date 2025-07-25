@@ -398,7 +398,6 @@ func TestCostCalculator_PrecisionAndRounding(t *testing.T) {
 	assert.Contains(t, costStr, "0.000018")
 }
 
-
 // Helper function needed for the test above
 
 func BenchmarkCostCalculator_Calculate(b *testing.B) {

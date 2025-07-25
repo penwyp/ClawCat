@@ -29,7 +29,7 @@ func TestCacheStats_UpdateHitRate(t *testing.T) {
 				Hits:   tt.hits,
 				Misses: tt.misses,
 			}
-			
+
 			stats.UpdateHitRate()
 			assert.Equal(t, tt.expected, stats.HitRate)
 		})
@@ -38,7 +38,7 @@ func TestCacheStats_UpdateHitRate(t *testing.T) {
 
 func TestEntry_IsExpired(t *testing.T) {
 	now := time.Now()
-	
+
 	tests := []struct {
 		name     string
 		entry    Entry
@@ -88,34 +88,34 @@ func TestEntry_IsExpired(t *testing.T) {
 func TestCacheInterface(t *testing.T) {
 	// Test that LRUCache implements Cache interface
 	cache := NewLRUCache(1024)
-	
+
 	var _ Cache = cache
-	
+
 	// Test basic operations
 	assert.Equal(t, 0, cache.Size())
-	
+
 	// Test set and get
 	err := cache.Set("key1", "value1")
 	require.NoError(t, err)
-	
+
 	value, exists := cache.Get("key1")
 	assert.True(t, exists)
 	assert.Equal(t, "value1", value)
-	
+
 	// Test delete
 	err = cache.Delete("key1")
 	require.NoError(t, err)
-	
+
 	_, exists = cache.Get("key1")
 	assert.False(t, exists)
-	
+
 	// Test clear
 	err = cache.Set("key2", "value2")
 	require.NoError(t, err)
 	err = cache.Set("key3", "value3")
 	require.NoError(t, err)
 	assert.Equal(t, 2, cache.Size())
-	
+
 	err = cache.Clear()
 	require.NoError(t, err)
 	assert.Equal(t, 0, cache.Size())
@@ -124,32 +124,32 @@ func TestCacheInterface(t *testing.T) {
 func TestManagedCacheInterface(t *testing.T) {
 	// Test that LRUCache implements ManagedCache interface
 	cache := NewLRUCache(1024)
-	
+
 	var _ ManagedCache = cache
-	
+
 	// Test managed cache operations
 	assert.Equal(t, 1, cache.Priority())
-	
+
 	cache.SetPriority(5)
 	assert.Equal(t, 5, cache.Priority())
-	
+
 	assert.False(t, cache.CanEvict()) // Empty cache
-	
+
 	err := cache.Set("key1", "value1")
 	require.NoError(t, err)
 	assert.True(t, cache.CanEvict())
-	
+
 	err = cache.EvictOldest(1)
 	require.NoError(t, err)
 	assert.Equal(t, 0, cache.Size())
-	
+
 	assert.Equal(t, int64(0), cache.MemoryUsage())
 }
 
 // Benchmark cache operations
 func BenchmarkCacheSet(b *testing.B) {
 	cache := NewLRUCache(1024 * 1024) // 1MB
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("key%d", i)
@@ -159,13 +159,13 @@ func BenchmarkCacheSet(b *testing.B) {
 
 func BenchmarkCacheGet(b *testing.B) {
 	cache := NewLRUCache(1024 * 1024) // 1MB
-	
+
 	// Pre-populate cache
 	for i := 0; i < 1000; i++ {
 		key := fmt.Sprintf("key%d", i)
 		_ = cache.Set(key, "some test value")
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("key%d", i%1000)
@@ -175,7 +175,7 @@ func BenchmarkCacheGet(b *testing.B) {
 
 func BenchmarkCacheSetGet(b *testing.B) {
 	cache := NewLRUCache(1024 * 1024) // 1MB
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("key%d", i)

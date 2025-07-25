@@ -82,10 +82,10 @@ const (
 
 // ProcessedData 处理后的数据
 type ProcessedData struct {
-	Original       []byte            `json:"original"`
-	Entry          models.UsageEntry `json:"entry"`
+	Original       []byte                 `json:"original"`
+	Entry          models.UsageEntry      `json:"entry"`
 	Metadata       map[string]interface{} `json:"metadata"`
-	ProcessingTime time.Duration     `json:"processing_time"`
+	ProcessingTime time.Duration          `json:"processing_time"`
 }
 
 // BatchUpdateEvent 批量更新事件
@@ -103,10 +103,10 @@ type UIRefreshEvent struct {
 
 // PipelineState 管道状态
 type PipelineState struct {
-	Running        bool              `json:"running"`
-	LastUpdate     time.Time         `json:"last_update"`
-	ProcessedCount int64             `json:"processed_count"`
-	ErrorCount     int64             `json:"error_count"`
+	Running        bool                 `json:"running"`
+	LastUpdate     time.Time            `json:"last_update"`
+	ProcessedCount int64                `json:"processed_count"`
+	ErrorCount     int64                `json:"error_count"`
 	CurrentFiles   map[string]FileState `json:"current_files"`
 }
 

@@ -309,14 +309,14 @@ func TestGetRecommendations(t *testing.T) {
 
 	// Test recommendations at different usage levels
 	testCases := []struct {
-		usage           float64
+		usage            float64
 		expectedContains string
 	}{
-		{usage: 10.0, expectedContains: ""},         // Under 50%, no specific recommendations
-		{usage: 50.0, expectedContains: "on track"}, // 50-75%
-		{usage: 75.0, expectedContains: "Monitor"},  // 75-90%
+		{usage: 10.0, expectedContains: ""},          // Under 50%, no specific recommendations
+		{usage: 50.0, expectedContains: "on track"},  // 50-75%
+		{usage: 75.0, expectedContains: "Monitor"},   // 75-90%
 		{usage: 90.0, expectedContains: "upgrading"}, // 90-95%
-		{usage: 95.0, expectedContains: "Critical"}, // >95%
+		{usage: 95.0, expectedContains: "Critical"},  // >95%
 	}
 
 	for _, tc := range testCases {

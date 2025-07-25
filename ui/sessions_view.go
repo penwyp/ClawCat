@@ -129,7 +129,7 @@ func (s *SessionListView) renderTable() string {
 		for _, entry := range session.Entries {
 			cost += entry.CostUSD
 		}
-		
+
 		data := []string{
 			session.ID[:8], // Show first 8 chars of ID
 			session.StartTime.Format("15:04:05"),
@@ -175,7 +175,7 @@ func (s *SessionListView) renderFooter() string {
 func (s *SessionListView) renderTableRow(data []string, isHeader bool) string {
 	// Define column widths
 	widths := []int{10, 12, 10, 8, 10, 8}
-	
+
 	var cells []string
 	for i, cell := range data {
 		width := widths[i]
@@ -184,16 +184,16 @@ func (s *SessionListView) renderTableRow(data []string, isHeader bool) string {
 		} else {
 			cell = fmt.Sprintf("%-*s", width, cell)
 		}
-		
+
 		if isHeader {
 			cell = s.styles.TableHeader.Render(cell)
 		} else {
 			cell = s.styles.TableRow.Render(cell)
 		}
-		
+
 		cells = append(cells, cell)
 	}
-	
+
 	return strings.Join(cells, " | ")
 }
 
@@ -202,10 +202,10 @@ func (s *SessionListView) formatDuration(duration time.Duration) string {
 	if duration == 0 {
 		return "Active"
 	}
-	
+
 	hours := int(duration.Hours())
 	minutes := int(duration.Minutes()) % 60
-	
+
 	if hours > 0 {
 		return fmt.Sprintf("%dh%dm", hours, minutes)
 	}

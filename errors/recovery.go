@@ -6,12 +6,12 @@ import (
 
 // RecoveryManager 恢复管理器
 type RecoveryManager struct {
-	strategies      map[ErrorType][]RecoveryStrategy
-	circuitBreaker  *CircuitBreaker
-	retryPolicy     *RetryPolicy
-	errorCollector  *ErrorCollector
-	config          RecoveryConfig
-	mu              sync.RWMutex
+	strategies     map[ErrorType][]RecoveryStrategy
+	circuitBreaker *CircuitBreaker
+	retryPolicy    *RetryPolicy
+	errorCollector *ErrorCollector
+	config         RecoveryConfig
+	mu             sync.RWMutex
 }
 
 // FallbackHandler 降级处理器
@@ -57,8 +57,6 @@ func (rm *RecoveryManager) RecoverFromPanic(panicErr *PanicError) error {
 	// 实现 panic 恢复逻辑
 	return nil
 }
-
-
 
 // ErrorCollector 错误收集器
 type ErrorCollector struct {

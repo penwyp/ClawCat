@@ -74,21 +74,21 @@ var PlanDefinitions = map[PlanType]SubscriptionPlan{
 	},
 
 	PlanMax5: {
-		Name:       "Max-5",
-		Type:       PlanMax5,
-		CostLimit:  35.00,
-		TokenLimit: 2000000,
-		Features:   []string{"5-hour sessions", "All models", "Priority support", "Advanced analytics"},
+		Name:          "Max-5",
+		Type:          PlanMax5,
+		CostLimit:     35.00,
+		TokenLimit:    2000000,
+		Features:      []string{"5-hour sessions", "All models", "Priority support", "Advanced analytics"},
 		WarningLevels: createDefaultWarningLevels(35.00),
 		ResetCycle:    ResetCycleMonthly,
 	},
 
 	PlanMax20: {
-		Name:       "Max-20",
-		Type:       PlanMax20,
-		CostLimit:  140.00,
-		TokenLimit: 8000000,
-		Features:   []string{"5-hour sessions", "All models", "Priority support", "Advanced analytics", "Team features"},
+		Name:          "Max-20",
+		Type:          PlanMax20,
+		CostLimit:     140.00,
+		TokenLimit:    8000000,
+		Features:      []string{"5-hour sessions", "All models", "Priority support", "Advanced analytics", "Team features"},
 		WarningLevels: createDefaultWarningLevels(140.00),
 		ResetCycle:    ResetCycleMonthly,
 	},
@@ -200,11 +200,11 @@ func GetAvailablePlans() []SubscriptionPlan {
 func CreateCustomPlan(costLimit float64) SubscriptionPlan {
 	plan := PlanDefinitions[PlanCustom]
 	plan.CostLimit = costLimit
-	
+
 	// 基于成本限制估算 token 限制（假设平均每个 token 成本）
 	avgTokenCost := 0.000015 // 大概估算
 	plan.TokenLimit = int64(costLimit / avgTokenCost)
-	
+
 	return plan
 }
 
@@ -232,14 +232,14 @@ func ComparePlans(plan1, plan2 PlanType) int {
 		PlanMax20:  3,
 		PlanCustom: 4,
 	}
-	
+
 	val1, exists1 := order[plan1]
 	val2, exists2 := order[plan2]
-	
+
 	if !exists1 || !exists2 {
 		return 0
 	}
-	
+
 	if val1 < val2 {
 		return -1
 	} else if val1 > val2 {

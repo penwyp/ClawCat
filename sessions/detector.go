@@ -17,32 +17,32 @@ type Detector struct {
 
 // DetectionResult contains the results of session boundary detection
 type DetectionResult struct {
-	Sessions      []SessionBoundary `json:"sessions"`
-	Gaps          []GapPeriod       `json:"gaps"`
-	Overlaps      []OverlapPeriod   `json:"overlaps"`
-	Warnings      []string          `json:"warnings"`
+	Sessions []SessionBoundary `json:"sessions"`
+	Gaps     []GapPeriod       `json:"gaps"`
+	Overlaps []OverlapPeriod   `json:"overlaps"`
+	Warnings []string          `json:"warnings"`
 }
 
 // SessionBoundary represents a detected session with confidence level
 type SessionBoundary struct {
-	StartTime    time.Time `json:"start_time"`
-	EndTime      time.Time `json:"end_time"`
-	Confidence   float64   `json:"confidence"`    // 0.0 to 1.0
-	Source       string    `json:"source"`       // "detected", "explicit", "inferred"
+	StartTime  time.Time `json:"start_time"`
+	EndTime    time.Time `json:"end_time"`
+	Confidence float64   `json:"confidence"` // 0.0 to 1.0
+	Source     string    `json:"source"`     // "detected", "explicit", "inferred"
 }
 
 // GapPeriod represents a period of inactivity between sessions
 type GapPeriod struct {
-	StartTime    time.Time     `json:"start_time"`
-	EndTime      time.Time     `json:"end_time"`
-	Duration     time.Duration `json:"duration"`
+	StartTime time.Time     `json:"start_time"`
+	EndTime   time.Time     `json:"end_time"`
+	Duration  time.Duration `json:"duration"`
 }
 
 // OverlapPeriod represents overlapping sessions that need resolution
 type OverlapPeriod struct {
-	StartTime    time.Time `json:"start_time"`
-	EndTime      time.Time `json:"end_time"`
-	SessionIDs   []string  `json:"session_ids"`
+	StartTime  time.Time `json:"start_time"`
+	EndTime    time.Time `json:"end_time"`
+	SessionIDs []string  `json:"session_ids"`
 }
 
 // NewDetector creates a new session detector with default parameters
@@ -127,9 +127,9 @@ func (d *Detector) detectSessionBoundaries(entries []models.UsageEntry) []Sessio
 		timeSinceLastEntry := entry.Timestamp.Sub(lastEntryTime)
 
 		// Check if this entry indicates a new session
-		if timeSinceLastEntry >= d.gapThreshold || 
-		   entry.Timestamp.Sub(currentSessionStart) >= d.sessionDuration {
-			
+		if timeSinceLastEntry >= d.gapThreshold ||
+			entry.Timestamp.Sub(currentSessionStart) >= d.sessionDuration {
+
 			// End current session
 			sessionEnd := lastEntryTime
 			if currentSessionStart.Add(d.sessionDuration).Before(sessionEnd) {
@@ -180,13 +180,13 @@ func (d *Detector) FindGaps(sessions []SessionBoundary) []GapPeriod {
 	})
 
 	gaps := []GapPeriod{}
-	
+
 	for i := 0; i < len(sortedSessions)-1; i++ {
 		currentEnd := sortedSessions[i].EndTime
 		nextStart := sortedSessions[i+1].StartTime
-		
+
 		gapDuration := nextStart.Sub(currentEnd)
-		
+
 		// Only consider significant gaps
 		if gapDuration >= d.gapThreshold {
 			gaps = append(gaps, GapPeriod{
@@ -246,23 +246,23 @@ func (d *Detector) ResolveOverlaps(sessions []SessionBoundary) []SessionBoundary
 // findOverlaps identifies overlapping periods in the original sessions
 func (d *Detector) findOverlaps(sessions []SessionBoundary) []OverlapPeriod {
 	overlaps := []OverlapPeriod{}
-	
+
 	for i := 0; i < len(sessions); i++ {
 		for j := i + 1; j < len(sessions); j++ {
 			s1, s2 := sessions[i], sessions[j]
-			
+
 			// Check if sessions overlap
 			if s1.StartTime.Before(s2.EndTime) && s2.StartTime.Before(s1.EndTime) {
 				overlapStart := s1.StartTime
 				if s2.StartTime.After(overlapStart) {
 					overlapStart = s2.StartTime
 				}
-				
+
 				overlapEnd := s1.EndTime
 				if s2.EndTime.Before(overlapEnd) {
 					overlapEnd = s2.EndTime
 				}
-				
+
 				overlaps = append(overlaps, OverlapPeriod{
 					StartTime:  overlapStart,
 					EndTime:    overlapEnd,
@@ -271,7 +271,7 @@ func (d *Detector) findOverlaps(sessions []SessionBoundary) []OverlapPeriod {
 			}
 		}
 	}
-	
+
 	return overlaps
 }
 
@@ -287,7 +287,7 @@ func (d *Detector) calculateConfidence(entries []models.UsageEntry, lastIndex in
 	// Adjust based on session duration adherence
 	sessionDuration := sessionEnd.Sub(sessionStart)
 	durationRatio := float64(sessionDuration) / float64(d.sessionDuration)
-	
+
 	if durationRatio >= 0.9 && durationRatio <= 1.1 {
 		confidence += 0.2 // Bonus for sessions close to expected duration
 	} else if durationRatio < 0.5 || durationRatio > 1.5 {
@@ -326,7 +326,7 @@ func (d *Detector) generateWarnings(entries []models.UsageEntry, sessions []Sess
 	for _, session := range sessions {
 		duration := session.EndTime.Sub(session.StartTime)
 		if duration < time.Hour {
-			warnings = append(warnings, 
+			warnings = append(warnings,
 				fmt.Sprintf("Very short session detected: duration %v", duration))
 		}
 	}
@@ -336,7 +336,7 @@ func (d *Detector) generateWarnings(entries []models.UsageEntry, sessions []Sess
 		for i := 0; i < len(sessions)-1; i++ {
 			gap := sessions[i+1].StartTime.Sub(sessions[i].EndTime)
 			if gap > 24*time.Hour {
-				warnings = append(warnings, 
+				warnings = append(warnings,
 					fmt.Sprintf("Very long gap detected: %v between sessions", gap))
 			}
 		}
@@ -345,7 +345,7 @@ func (d *Detector) generateWarnings(entries []models.UsageEntry, sessions []Sess
 	// Check for low confidence sessions
 	for _, session := range sessions {
 		if session.Confidence < 0.5 {
-			warnings = append(warnings, 
+			warnings = append(warnings,
 				fmt.Sprintf("Low confidence session detected: confidence %.2f", session.Confidence))
 		}
 	}

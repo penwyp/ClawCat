@@ -5,32 +5,32 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/fileio"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/sessions"
-	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
+	"github.com/penwyp/ClawCat/fileio"
+	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/ClawCat/sessions"
 )
 
 // DataManager manages data fetching and caching for monitoring
 type DataManager struct {
-	cacheTTL               time.Duration
-	hoursBack              int
-	dataPath               string
-	
+	cacheTTL  time.Duration
+	hoursBack int
+	dataPath  string
+
 	// Cache management
-	cache                  *AnalysisResult
-	cacheTimestamp         time.Time
-	mu                     sync.RWMutex
-	
+	cache          *AnalysisResult
+	cacheTimestamp time.Time
+	mu             sync.RWMutex
+
 	// Error tracking
-	lastError              error
-	lastSuccessfulFetch    time.Time
-	
+	lastError           error
+	lastSuccessfulFetch time.Time
+
 	// Summary cache store
-	cacheStore             *cache.Store
-	summaryCacheConfig     config.SummaryCacheConfig
+	cacheStore         *cache.Store
+	summaryCacheConfig config.SummaryCacheConfig
 }
 
 // NewDataManager creates a new data manager with cache and fetch settings
@@ -50,7 +50,7 @@ func NewDataManagerWithConfig(cacheTTL time.Duration, hoursBack int, dataPath st
 		dataPath:           dataPath,
 		summaryCacheConfig: cfg.Data.SummaryCache,
 	}
-	
+
 	// Initialize cache store if summary caching is enabled
 	if cfg.Data.SummaryCache.Enabled {
 		storeConfig := cache.StoreConfig{
@@ -59,10 +59,10 @@ func NewDataManagerWithConfig(cacheTTL time.Duration, hoursBack int, dataPath st
 			EnableCompression: false, // Disable compression for summaries for simplicity
 		}
 		dm.cacheStore = cache.NewStore(storeConfig)
-		logging.LogInfof("Summary cache enabled with threshold: %v, max size: %d bytes", 
+		logging.LogInfof("Summary cache enabled with threshold: %v, max size: %d bytes",
 			cfg.Data.SummaryCache.Threshold, cfg.Data.SummaryCache.MaxSize)
 	}
-	
+
 	return dm
 }
 
@@ -83,20 +83,20 @@ func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 	maxRetries := 3
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		logging.LogDebugf("Fetching fresh usage data (attempt %d/%d)", attempt+1, maxRetries)
-		
+
 		data, err := dm.analyzeUsage()
 		if err != nil {
 			dm.mu.Lock()
 			dm.lastError = err
 			dm.mu.Unlock()
-			
+
 			if attempt < maxRetries-1 {
 				// Exponential backoff
 				backoff := time.Duration(100*(1<<attempt)) * time.Millisecond
 				time.Sleep(backoff)
 				continue
 			}
-			
+
 			// All retries failed, check if we have cached data to fall back on
 			dm.mu.RLock()
 			if dm.cache != nil {
@@ -106,10 +106,10 @@ func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 				return result, nil
 			}
 			dm.mu.RUnlock()
-			
+
 			return nil, fmt.Errorf("failed to get usage data after %d attempts: %w", maxRetries, err)
 		}
-		
+
 		// Success - update cache
 		dm.mu.Lock()
 		dm.cache = data
@@ -117,10 +117,10 @@ func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 		dm.lastSuccessfulFetch = time.Now()
 		dm.lastError = nil
 		dm.mu.Unlock()
-		
+
 		return data, nil
 	}
-	
+
 	return nil, fmt.Errorf("unexpected error in data fetching loop")
 }
 
@@ -136,11 +136,11 @@ func (dm *DataManager) InvalidateCache() {
 func (dm *DataManager) GetCacheAge() float64 {
 	dm.mu.RLock()
 	defer dm.mu.RUnlock()
-	
+
 	if dm.cacheTimestamp.IsZero() {
 		return -1 // No cache
 	}
-	
+
 	return time.Since(dm.cacheTimestamp).Seconds()
 }
 
@@ -163,7 +163,7 @@ func (dm *DataManager) isCacheValid() bool {
 	if dm.cache == nil || dm.cacheTimestamp.IsZero() {
 		return false
 	}
-	
+
 	cacheAge := time.Since(dm.cacheTimestamp)
 	return cacheAge <= dm.cacheTTL
 }
@@ -171,7 +171,7 @@ func (dm *DataManager) isCacheValid() bool {
 // analyzeUsage performs the equivalent of Claude Monitor's analyze_usage function
 func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 	_ = time.Now() // startTime was unused
-	
+
 	// Load usage entries with cache support
 	opts := fileio.LoadUsageEntriesOptions{
 		DataPath:           dm.dataPath,
@@ -181,34 +181,34 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
 		CacheThreshold:     dm.summaryCacheConfig.Threshold,
 	}
-	
+
 	// Set cache store adapter if available
 	if dm.cacheStore != nil {
 		opts.CacheStore = fileio.NewStoreAdapter(dm.cacheStore)
 	}
-	
+
 	result, err := fileio.LoadUsageEntries(opts)
 	if err != nil {
 		logging.LogErrorf("Error loading usage entries from %s: %v", dm.dataPath, err)
 		return nil, fmt.Errorf("failed to load usage entries: %w", err)
 	}
-	
+
 	logging.LogInfof("Loaded %d usage entries from %s", len(result.Entries), dm.dataPath)
 	if len(result.Entries) == 0 {
 		logging.LogWarnf("No usage entries found in %s", dm.dataPath)
 		return nil, fmt.Errorf("no usage entries found")
 	}
-	
+
 	loadTime := result.Metadata.LoadDuration
 	logging.LogInfof("Data loaded in %.3fs", loadTime.Seconds())
-	
+
 	// Transform entries to blocks using SessionAnalyzer
 	transformStart := time.Now()
 	analyzer := sessions.NewSessionAnalyzer(5) // 5-hour sessions
 	blocks := analyzer.TransformToBlocks(result.Entries)
 	transformTime := time.Since(transformStart)
 	logging.LogInfof("Created %d blocks in %.3fs", len(blocks), transformTime.Seconds())
-	
+
 	// Detect limits if we have raw entries
 	var limitsDetected int
 	if result.RawEntries != nil {
@@ -217,10 +217,10 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 		for i, entry := range result.RawEntries {
 			rawEntries[i] = entry
 		}
-		
+
 		limitDetections := analyzer.DetectLimits(rawEntries)
 		limitsDetected = len(limitDetections)
-		
+
 		// Add limit messages to appropriate blocks
 		for i := range blocks {
 			var blockLimits []models.LimitMessage
@@ -234,7 +234,7 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 			}
 		}
 	}
-	
+
 	// Create metadata
 	metadata := AnalysisMetadata{
 		GeneratedAt:          time.Now(),
@@ -247,12 +247,12 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 		CacheUsed:            false,
 		QuickStart:           false,
 	}
-	
+
 	analysisResult := &AnalysisResult{
 		Blocks:   blocks,
 		Metadata: metadata,
 	}
-	
+
 	logging.LogInfof("Analysis completed, returning %d blocks", len(blocks))
 	return analysisResult, nil
 }

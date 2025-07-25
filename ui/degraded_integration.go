@@ -14,14 +14,14 @@ import (
 
 // DegradedApp 降级模式应用
 type DegradedApp struct {
-	model    *DegradedModel
-	program  *tea.Program
-	config   Config
-	ctx      context.Context
-	cancel   context.CancelFunc
-	mode     DegradedMode
+	model        *DegradedModel
+	program      *tea.Program
+	config       Config
+	ctx          context.Context
+	cancel       context.CancelFunc
+	mode         DegradedMode
 	errorHandler *errors.ErrorHandler
-	mu       sync.RWMutex
+	mu           sync.RWMutex
 }
 
 // DegradedConfig 降级配置
@@ -35,7 +35,7 @@ type DegradedConfig struct {
 // NewDegradedApp 创建降级应用
 func NewDegradedApp(cfg Config, degradedCfg DegradedConfig, errorHandler *errors.ErrorHandler) *DegradedApp {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// 根据配置选择降级模式
 	mode := DegradedModeBasic
 	if degradedCfg.SafeMode {
@@ -43,9 +43,9 @@ func NewDegradedApp(cfg Config, degradedCfg DegradedConfig, errorHandler *errors
 	} else if degradedCfg.AutoDetectMode {
 		mode = detectDegradedMode()
 	}
-	
+
 	model := NewDegradedModel(mode)
-	
+
 	app := &DegradedApp{
 		model:        model,
 		config:       cfg,
@@ -54,13 +54,13 @@ func NewDegradedApp(cfg Config, degradedCfg DegradedConfig, errorHandler *errors
 		mode:         mode,
 		errorHandler: errorHandler,
 	}
-	
+
 	// 创建 Bubble Tea 程序（简化配置，无全屏模式）
 	app.program = tea.NewProgram(
 		model,
 		tea.WithContext(ctx),
 	)
-	
+
 	return app
 }
 
@@ -85,10 +85,10 @@ func (da *DegradedApp) Stop() error {
 func (da *DegradedApp) UpdateData(sessions []*sessions.Session, entries []models.UsageEntry) {
 	da.mu.Lock()
 	defer da.mu.Unlock()
-	
+
 	if da.model != nil {
 		da.model.SetSessions(sessions)
-		
+
 		// 计算简化统计信息
 		stats := da.calculateSimpleStats(sessions, entries)
 		da.model.SetStats(stats)
@@ -99,7 +99,7 @@ func (da *DegradedApp) UpdateData(sessions []*sessions.Session, entries []models
 func (da *DegradedApp) SetError(err error) {
 	da.mu.Lock()
 	defer da.mu.Unlock()
-	
+
 	if da.model != nil {
 		da.model.SetError(err)
 	}
@@ -109,7 +109,7 @@ func (da *DegradedApp) SetError(err error) {
 func (da *DegradedApp) SwitchMode(mode DegradedMode) {
 	da.mu.Lock()
 	defer da.mu.Unlock()
-	
+
 	da.mode = mode
 	if da.model != nil {
 		da.model.mode = mode
@@ -119,47 +119,47 @@ func (da *DegradedApp) SwitchMode(mode DegradedMode) {
 // calculateSimpleStats 计算简化统计信息
 func (da *DegradedApp) calculateSimpleStats(sessions []*sessions.Session, entries []models.UsageEntry) Statistics {
 	stats := Statistics{}
-	
+
 	// 基础计算，避免复杂操作
 	stats.SessionCount = len(sessions)
-	
+
 	var totalTokens int64
 	var totalCost float64
-	
+
 	for _, session := range sessions {
 		if session.IsActive {
 			stats.ActiveSessions++
 		}
-		
+
 		// 简化的条目处理
 		for _, entry := range session.Entries {
 			totalTokens += int64(entry.TotalTokens)
 			totalCost += entry.CostUSD
 		}
-		
+
 		if stats.LastSession == nil || session.StartTime.After(stats.LastSession.StartTime) {
 			stats.LastSession = session
 		}
 	}
-	
+
 	stats.TotalTokens = totalTokens
 	stats.TotalCost = totalCost
-	
+
 	if stats.SessionCount > 0 {
 		stats.AverageCost = totalCost / float64(stats.SessionCount)
 	}
-	
+
 	// 简化的时间计算
 	now := time.Now()
 	nextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, now.Location())
 	stats.TimeToReset = nextMonth.Sub(now)
-	
+
 	// 简化的使用率计算
 	stats.PlanUsage = (totalCost / 100.0) * 100 // 假设 $100 计划
 	if stats.PlanUsage > 100 {
 		stats.PlanUsage = 100
 	}
-	
+
 	return stats
 }
 
@@ -167,7 +167,7 @@ func (da *DegradedApp) calculateSimpleStats(sessions []*sessions.Session, entrie
 func detectDegradedMode() DegradedMode {
 	// 简单的终端能力检测
 	// 在实际实现中可以检测终端支持的功能
-	
+
 	// 检查终端宽度
 	// 如果宽度太小，使用最小模式
 	// 这里简化为返回基础模式
@@ -189,7 +189,7 @@ type AppWithFallback struct {
 func NewAppWithFallback(cfg Config, degradedCfg DegradedConfig, errorHandler *errors.ErrorHandler) *AppWithFallback {
 	primaryApp := NewApp(cfg)
 	degradedApp := NewDegradedApp(cfg, degradedCfg, errorHandler)
-	
+
 	return &AppWithFallback{
 		primaryApp:   primaryApp,
 		degradedApp:  degradedApp,
@@ -203,11 +203,11 @@ func NewAppWithFallback(cfg Config, degradedCfg DegradedConfig, errorHandler *er
 func (awf *AppWithFallback) Start() error {
 	awf.mu.Lock()
 	defer awf.mu.Unlock()
-	
+
 	if awf.isDegraded {
 		return awf.degradedApp.Start()
 	}
-	
+
 	// 尝试启动主应用
 	err := awf.primaryApp.Start()
 	if err != nil {
@@ -215,7 +215,7 @@ func (awf *AppWithFallback) Start() error {
 		awf.enterDegradedMode(err)
 		return awf.degradedApp.Start()
 	}
-	
+
 	return nil
 }
 
@@ -223,24 +223,24 @@ func (awf *AppWithFallback) Start() error {
 func (awf *AppWithFallback) Stop() error {
 	awf.mu.Lock()
 	defer awf.mu.Unlock()
-	
+
 	var err error
 	if awf.isDegraded {
 		err = awf.degradedApp.Stop()
 	} else {
 		err = awf.primaryApp.Stop()
 	}
-	
+
 	return err
 }
 
 // enterDegradedMode 进入降级模式
 func (awf *AppWithFallback) enterDegradedMode(err error) {
 	awf.isDegraded = true
-	
+
 	// 设置错误状态
 	awf.degradedApp.SetError(err)
-	
+
 	// 记录错误
 	if awf.errorHandler != nil {
 		context := &errors.ErrorContext{
@@ -261,19 +261,19 @@ func (awf *AppWithFallback) enterDegradedMode(err error) {
 func (awf *AppWithFallback) exitDegradedMode() error {
 	awf.mu.Lock()
 	defer awf.mu.Unlock()
-	
+
 	if !awf.isDegraded {
 		return nil
 	}
-	
+
 	// 停止降级应用
 	if err := awf.degradedApp.Stop(); err != nil {
 		return err
 	}
-	
+
 	// 尝试重新启动主应用
 	awf.primaryApp = NewApp(awf.config)
-	
+
 	awf.isDegraded = false
 	return nil
 }
@@ -282,7 +282,7 @@ func (awf *AppWithFallback) exitDegradedMode() error {
 func (awf *AppWithFallback) UpdateData(sessions []*sessions.Session, entries []models.UsageEntry) {
 	awf.mu.RLock()
 	defer awf.mu.RUnlock()
-	
+
 	if awf.isDegraded {
 		awf.degradedApp.UpdateData(sessions, entries)
 	} else {
@@ -294,7 +294,7 @@ func (awf *AppWithFallback) UpdateData(sessions []*sessions.Session, entries []m
 func (awf *AppWithFallback) SetDataSource(manager *sessions.Manager) {
 	awf.mu.RLock()
 	defer awf.mu.RUnlock()
-	
+
 	if !awf.isDegraded {
 		awf.primaryApp.SetDataSource(manager)
 	}
@@ -304,7 +304,7 @@ func (awf *AppWithFallback) SetDataSource(manager *sessions.Manager) {
 func (awf *AppWithFallback) IsRunning() bool {
 	awf.mu.RLock()
 	defer awf.mu.RUnlock()
-	
+
 	if awf.isDegraded {
 		return awf.degradedApp.ctx.Err() == nil
 	}
@@ -323,7 +323,7 @@ func (awf *AppWithFallback) TryRecover() error {
 	if !awf.IsDegraded() {
 		return nil
 	}
-	
+
 	return awf.exitDegradedMode()
 }
 
@@ -331,7 +331,7 @@ func (awf *AppWithFallback) TryRecover() error {
 func (awf *AppWithFallback) GetCurrentApp() interface{} {
 	awf.mu.RLock()
 	defer awf.mu.RUnlock()
-	
+
 	if awf.isDegraded {
 		return awf.degradedApp
 	}

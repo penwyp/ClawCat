@@ -30,7 +30,7 @@ type EnhancedDashboardView struct {
 // NewEnhancedDashboardView 创建增强的 Dashboard
 func NewEnhancedDashboardView(config Config) *EnhancedDashboardView {
 	limitDisplay := components.NewLimitDisplay()
-	
+
 	return &EnhancedDashboardView{
 		config:          config,
 		styles:          NewStyles(GetThemeByName(config.Theme)),
@@ -73,21 +73,21 @@ func (d *EnhancedDashboardView) View() string {
 
 	// 组合所有部分
 	sections := []string{header}
-	
+
 	if limits != "" {
 		sections = append(sections, limits)
 	}
-	
+
 	if progress != "" {
 		sections = append(sections, progress)
 	}
-	
+
 	sections = append(sections, metrics)
-	
+
 	if statistics != "" {
 		sections = append(sections, statistics)
 	}
-	
+
 	sections = append(sections, charts, footer)
 
 	content := strings.Join(sections, "\n\n")
@@ -160,17 +160,17 @@ func (d *EnhancedDashboardView) renderLimitsSection() string {
 	if d.limitDisplay == nil {
 		return ""
 	}
-	
+
 	// 如果有限额管理器，更新最新状态
 	if d.limitManager != nil {
 		status := d.limitManager.GetStatus()
 		d.limitDisplay.Update(status)
 	}
-	
+
 	// 根据屏幕空间决定是否展开显示
 	expanded := d.width > 80 && d.height > 30
 	d.limitDisplay.SetExpanded(expanded)
-	
+
 	return d.limitDisplay.Render()
 }
 
@@ -230,7 +230,7 @@ func (d *EnhancedDashboardView) renderMetrics() string {
 // renderBurnRateCard 渲染增强的燃烧率卡片
 func (d *EnhancedDashboardView) renderBurnRateCard() string {
 	var burnRateText, statusStyle string
-	
+
 	if d.metrics != nil {
 		burnRate := d.metrics.BurnRate
 		if burnRate > 200 {
@@ -425,18 +425,18 @@ func (d *EnhancedDashboardView) UpdateLimitStatus(tokens int64, cost float64) er
 	if d.limitManager == nil {
 		return nil
 	}
-	
+
 	err := d.limitManager.UpdateUsage(tokens, cost)
 	if err != nil {
 		return err
 	}
-	
+
 	// 更新限额显示
 	if d.limitDisplay != nil {
 		status := d.limitManager.GetStatus()
 		d.limitDisplay.Update(status)
 	}
-	
+
 	return nil
 }
 

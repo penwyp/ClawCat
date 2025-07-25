@@ -91,7 +91,7 @@ func TestP90Calculator_CalculateWithOutlierRemoval(t *testing.T) {
 
 	// Test with outliers
 	values := append(generateSequence(1, 10, 1), 100, 200, 300) // Add extreme outliers
-	
+
 	regular := calc.Calculate(values)
 	withoutOutliers := calc.CalculateWithOutlierRemoval(values)
 
@@ -104,7 +104,7 @@ func TestP90Calculator_CalculateWithOutlierRemoval(t *testing.T) {
 	smallValues := []float64{1, 2, 3}
 	result1 := calc.Calculate(smallValues)
 	result2 := calc.CalculateWithOutlierRemoval(smallValues)
-	
+
 	if result1 != result2 {
 		t.Errorf("With insufficient samples, results should be equal: %v vs %v", result1, result2)
 	}
@@ -226,9 +226,9 @@ func TestP90Calculator_ValidateHistoricalData(t *testing.T) {
 	calc := NewP90Calculator()
 
 	tests := []struct {
-		name        string
-		values      []float64
-		expectValid bool
+		name         string
+		values       []float64
+		expectValid  bool
 		expectIssues int
 	}{
 		{
@@ -266,13 +266,13 @@ func TestP90Calculator_ValidateHistoricalData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			valid, issues := calc.ValidateHistoricalData(tt.values)
-			
+
 			if valid != tt.expectValid {
 				t.Errorf("ValidateHistoricalData() valid = %v, want %v", valid, tt.expectValid)
 			}
-			
+
 			if len(issues) != tt.expectIssues {
-				t.Errorf("ValidateHistoricalData() issues count = %v, want %v. Issues: %v", 
+				t.Errorf("ValidateHistoricalData() issues count = %v, want %v. Issues: %v",
 					len(issues), tt.expectIssues, issues)
 			}
 		})
@@ -282,7 +282,7 @@ func TestP90Calculator_ValidateHistoricalData(t *testing.T) {
 func TestLimitManager_CalculateP90Limit(t *testing.T) {
 	cfg := &config.Config{
 		Subscription: config.SubscriptionConfig{
-			Plan: "custom",
+			Plan:            "custom",
 			CustomCostLimit: 0, // Will be set by P90 calculation
 		},
 	}

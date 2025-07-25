@@ -154,13 +154,13 @@ func (pi *ProgressIndicator) renderProgressBlocks(percentage float64, label stri
 
 	// Use different Unicode blocks for smoother progress
 	blocks := []string{"", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"}
-	
+
 	fullBlocks := int((percentage / 100.0) * float64(blockWidth))
-	remainder := (percentage / 100.0) * float64(blockWidth) - float64(fullBlocks)
+	remainder := (percentage/100.0)*float64(blockWidth) - float64(fullBlocks)
 	partialBlock := int(remainder * 8)
 
 	var progress strings.Builder
-	
+
 	// Add full blocks
 	for i := 0; i < fullBlocks && i < blockWidth; i++ {
 		if pi.colors {
@@ -170,7 +170,7 @@ func (pi *ProgressIndicator) renderProgressBlocks(percentage float64, label stri
 			progress.WriteString("█")
 		}
 	}
-	
+
 	// Add partial block
 	if fullBlocks < blockWidth && partialBlock > 0 {
 		if pi.colors {
@@ -181,7 +181,7 @@ func (pi *ProgressIndicator) renderProgressBlocks(percentage float64, label stri
 		}
 		fullBlocks++
 	}
-	
+
 	// Add empty space
 	for i := fullBlocks; i < blockWidth; i++ {
 		if pi.colors {
@@ -202,7 +202,7 @@ func (pi *ProgressIndicator) renderSpinner(label string) string {
 	spinners := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 	// Use current time to animate
 	frame := int(time.Now().UnixNano()/100000000) % len(spinners)
-	
+
 	spinner := spinners[frame]
 	if pi.colors {
 		spinner = lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Render(spinner)
@@ -221,7 +221,7 @@ func (pi *ProgressIndicator) getProgressColor(percentage float64) lipgloss.Style
 	} else if percentage >= 60 {
 		return lipgloss.NewStyle().Foreground(lipgloss.Color("226")) // Yellow
 	} else if percentage >= 40 {
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("39"))  // Blue
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("39")) // Blue
 	}
 	return lipgloss.NewStyle().Foreground(lipgloss.Color("46")) // Green
 }
@@ -258,14 +258,14 @@ func (mpi *MultiProgressIndicator) UpdateProgress(id string, percentage float64)
 // RenderAll renders all progress indicators
 func (mpi *MultiProgressIndicator) RenderAll(progresses map[string]ProgressData) string {
 	var lines []string
-	
+
 	for id, data := range progresses {
 		if indicator, exists := mpi.indicators[id]; exists {
 			line := indicator.RenderProgress(data.Percentage, data.Label)
 			lines = append(lines, line)
 		}
 	}
-	
+
 	return strings.Join(lines, "\n")
 }
 
@@ -293,7 +293,7 @@ func NewHealthIndicator() *HealthIndicator {
 func (hi *HealthIndicator) RenderHealth(health int, label string, details map[string]interface{}) string {
 	var indicator string
 	var status string
-	
+
 	if health >= 90 {
 		indicator = "🟢"
 		status = "Excellent"
@@ -376,10 +376,10 @@ func (ti *TrendIndicator) RenderTrend(trend string, value float64, label string)
 
 // StatusBar renders a comprehensive status bar
 type StatusBar struct {
-	width      int
-	sections   []StatusSection
-	separator  string
-	colors     bool
+	width     int
+	sections  []StatusSection
+	separator string
+	colors    bool
 }
 
 // StatusSection represents a section in the status bar
@@ -424,7 +424,7 @@ func (sb *StatusBar) Render() string {
 	}
 
 	result := strings.Join(parts, sb.separator)
-	
+
 	// Truncate if too long
 	if len(result) > sb.width {
 		result = result[:sb.width-3] + "..."

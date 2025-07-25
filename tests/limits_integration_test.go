@@ -43,7 +43,7 @@ func TestLimitsIntegration(t *testing.T) {
 
 	// Update display with initial status
 	limitDisplay.Update(status)
-	
+
 	// Test usage updates
 	usageEntry := models.UsageEntry{
 		TotalTokens: 100000,
@@ -188,7 +188,7 @@ func TestLimitsWorkflow(t *testing.T) {
 func TestCustomPlanWorkflow(t *testing.T) {
 	cfg := &config.Config{
 		Subscription: config.SubscriptionConfig{
-			Plan: "custom",
+			Plan:            "custom",
 			CustomCostLimit: 20.0, // Fixed custom limit for testing
 		},
 	}
@@ -206,11 +206,11 @@ func TestCustomPlanWorkflow(t *testing.T) {
 	// if err != nil {
 	// 	t.Fatalf("Failed to calculate P90 limit: %v", err)
 	// }
-	// 
+	//
 	// if p90Limit <= 0 {
 	// 	t.Error("P90 limit should be positive")
 	// }
-	// 
+	//
 	// t.Logf("Calculated P90 limit: %.2f", p90Limit)
 
 	// Note: Cannot update plan directly due to private fields
@@ -228,7 +228,7 @@ func TestCustomPlanWorkflow(t *testing.T) {
 
 	// Get the current status to debug
 	currentStatus := lm.GetStatus()
-	t.Logf("Current usage: $%.2f, Limit: $%.2f, Percentage: %.2f%%", 
+	t.Logf("Current usage: $%.2f, Limit: $%.2f, Percentage: %.2f%%",
 		currentStatus.CurrentUsage.Cost, currentStatus.Plan.CostLimit, currentStatus.Percentage)
 
 	// With $15 usage on $20 limit, should be exactly 75%
@@ -375,7 +375,7 @@ func TestResetUsageCycle(t *testing.T) {
 	// lm.mu.RLock()
 	// historyLen := len(lm.history)
 	// lm.mu.RUnlock()
-	// 
+	//
 	// if historyLen == 0 {
 	// 	t.Error("Should have historical data after reset")
 	// }
@@ -432,7 +432,7 @@ func TestPlanMigration(t *testing.T) {
 	newStatus := lm.GetStatus()
 	expectedPercentage := (10.0 / 35.0) * 100
 	// Allow small floating-point precision differences
-	if math.Abs(newStatus.Percentage - expectedPercentage) > 0.01 {
+	if math.Abs(newStatus.Percentage-expectedPercentage) > 0.01 {
 		t.Errorf("Expected percentage %.2f after upgrade, got %.2f",
 			expectedPercentage, newStatus.Percentage)
 	}

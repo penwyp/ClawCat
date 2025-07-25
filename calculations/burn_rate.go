@@ -27,7 +27,7 @@ func (brc *BurnRateCalculator) CalculateBurnRate(block models.SessionBlock) *mod
 
 	duration := block.DurationMinutes()
 	tokensPerMinute := float64(totalTokens) / duration
-	
+
 	var costPerHour float64
 	if duration > 0 {
 		costPerHour = (block.CostUSD / duration) * 60
@@ -188,7 +188,7 @@ func (brc *BurnRateCalculator) CalculateGlobalBurnRate(blocks []models.SessionBl
 func (brc *BurnRateCalculator) GetBurnRateHistory(blocks []models.SessionBlock, duration time.Duration) []models.BurnRate {
 	var history []models.BurnRate
 	now := time.Now().UTC()
-	
+
 	// Sample burn rates at regular intervals
 	sampleInterval := duration / 20 // 20 data points
 	if sampleInterval < time.Minute {
@@ -198,7 +198,7 @@ func (brc *BurnRateCalculator) GetBurnRateHistory(blocks []models.SessionBlock, 
 	for i := 0; i < 20; i++ {
 		sampleTime := now.Add(-duration + time.Duration(i)*sampleInterval)
 		rate := brc.CalculateHourlyBurnRate(blocks, sampleTime)
-		
+
 		history = append(history, models.BurnRate{
 			TokensPerMinute: rate,
 			CostPerHour:     rate * 60, // Approximate cost conversion

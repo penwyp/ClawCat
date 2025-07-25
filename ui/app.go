@@ -20,12 +20,12 @@ type App struct {
 
 // Config holds UI configuration
 type Config struct {
-	RefreshRate    time.Duration
-	Theme          string
-	ShowSpinner    bool
-	CompactMode    bool
-	ChartHeight    int
-	TablePageSize  int
+	RefreshRate   time.Duration
+	Theme         string
+	ShowSpinner   bool
+	CompactMode   bool
+	ChartHeight   int
+	TablePageSize int
 }
 
 // DefaultConfig returns the default UI configuration
@@ -41,23 +41,23 @@ var DefaultConfig = Config{
 // NewApp creates a new application instance
 func NewApp(cfg Config) *App {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	model := NewModel(cfg)
-	
+
 	app := &App{
 		model:  model,
 		config: cfg,
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Create Bubble Tea program without alt screen for inline terminal display
 	app.program = tea.NewProgram(
 		model,
 		tea.WithMouseCellMotion(),
 		tea.WithContext(ctx),
 	)
-	
+
 	return app
 }
 

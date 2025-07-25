@@ -48,26 +48,26 @@ func (sd *StreamingDisplay) RenderHeader() string {
 	}
 
 	timestamp := time.Now().Format("15:04:05")
-	
+
 	// Key metrics in compact format
 	tokens := formatNumber(sd.metrics.CurrentTokens)
 	cost := fmt.Sprintf("$%.2f", sd.metrics.CurrentCost)
 	burnRate := fmt.Sprintf("%.0f/min", sd.metrics.TokensPerMinute)
 	progress := fmt.Sprintf("%.0f%%", sd.metrics.SessionProgress)
-	
+
 	// Color-coded status
 	status := sd.getStatusIndicator()
-	
+
 	header := fmt.Sprintf(
 		"[%s] %s | 📊 %s tokens | 💰 %s | ⚡ %s | 🎯 %s | %s",
 		timestamp, status, tokens, cost, burnRate, progress, sd.getHealthStatus(),
 	)
-	
+
 	// Truncate if too long
 	if len(header) > sd.width {
 		header = header[:sd.width-3] + "..."
 	}
-	
+
 	return sd.styleHeader(header)
 }
 
@@ -95,53 +95,53 @@ func (sd *StreamingDisplay) RenderDetailedReport() string {
 	}
 
 	var report strings.Builder
-	
+
 	// Header
 	report.WriteString("═══ ClawCat Metrics Report ═══\n")
 	report.WriteString(fmt.Sprintf("Time: %s\n", time.Now().Format("2006-01-02 15:04:05")))
 	report.WriteString("\n")
-	
+
 	// Core metrics
 	report.WriteString("📊 Usage Statistics:\n")
-	report.WriteString(fmt.Sprintf("  Tokens:     %s (projected: %s)\n", 
+	report.WriteString(fmt.Sprintf("  Tokens:     %s (projected: %s)\n",
 		formatNumber(sd.metrics.CurrentTokens),
 		formatNumber(sd.metrics.ProjectedTokens)))
-	report.WriteString(fmt.Sprintf("  Cost:       $%.2f (projected: $%.2f)\n", 
+	report.WriteString(fmt.Sprintf("  Cost:       $%.2f (projected: $%.2f)\n",
 		sd.metrics.CurrentCost, sd.metrics.ProjectedCost))
 	report.WriteString(fmt.Sprintf("  Progress:   %.1f%% complete\n", sd.metrics.SessionProgress))
 	report.WriteString("\n")
-	
+
 	// Performance metrics
 	report.WriteString("⚡ Performance:\n")
 	report.WriteString(fmt.Sprintf("  Burn rate:  %.1f tokens/min\n", sd.metrics.BurnRate))
 	report.WriteString(fmt.Sprintf("  Cost rate:  $%.2f/hour\n", sd.metrics.CostPerHour))
 	report.WriteString(fmt.Sprintf("  Efficiency: %.1f tokens/request\n", sd.getTokensPerRequest()))
 	report.WriteString("\n")
-	
+
 	// Session info
 	activeSessions := sd.getActiveSessions()
-	report.WriteString(fmt.Sprintf("🔄 Sessions: %d active, %d total\n", 
+	report.WriteString(fmt.Sprintf("🔄 Sessions: %d active, %d total\n",
 		activeSessions, len(sd.sessions)))
-	
+
 	// Model distribution (top 3)
 	if len(sd.metrics.ModelDistribution) > 0 {
 		report.WriteString("\n🤖 Top Models:\n")
 		topModels := sd.getTopModels(3)
 		for _, model := range topModels {
-			report.WriteString(fmt.Sprintf("  %s: %.1f%% (%s tokens)\n", 
-				truncateString(model.Name, 15), model.Percentage, 
+			report.WriteString(fmt.Sprintf("  %s: %.1f%% (%s tokens)\n",
+				truncateString(model.Name, 15), model.Percentage,
 				formatNumber(model.TokenCount)))
 		}
 	}
-	
+
 	// Time remaining and predictions
 	if !sd.metrics.PredictedEndTime.IsZero() {
-		report.WriteString(fmt.Sprintf("\n⏱️  Est. completion: %s (%.0f%% confidence)\n", 
+		report.WriteString(fmt.Sprintf("\n⏱️  Est. completion: %s (%.0f%% confidence)\n",
 			sd.metrics.PredictedEndTime.Format("15:04"), sd.metrics.ConfidenceLevel))
 	}
-	
+
 	report.WriteString("\n" + strings.Repeat("═", 50))
-	
+
 	return report.String()
 }
 
@@ -150,19 +150,19 @@ func (sd *StreamingDisplay) RenderProgressBar() string {
 	if sd.metrics == nil {
 		return ""
 	}
-	
+
 	barWidth := sd.width - 20 // Leave space for labels
 	if barWidth < 10 {
 		barWidth = 10
 	}
-	
+
 	filled := int((sd.metrics.SessionProgress / 100.0) * float64(barWidth))
 	if filled > barWidth {
 		filled = barWidth
 	}
-	
+
 	bar := strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
-	
+
 	return fmt.Sprintf("Progress [%s] %.1f%%", bar, sd.metrics.SessionProgress)
 }
 
@@ -177,7 +177,7 @@ func (sd *StreamingDisplay) getStatusIndicator() string {
 	if sd.metrics == nil {
 		return "⏳"
 	}
-	
+
 	if sd.metrics.BurnRate > 200 {
 		return "🔴 HIGH"
 	} else if sd.metrics.BurnRate > 100 {
@@ -216,16 +216,16 @@ func (sd *StreamingDisplay) getTokensPerRequest() float64 {
 	if sd.metrics == nil || len(sd.sessions) == 0 {
 		return 0
 	}
-	
+
 	totalRequests := 0
 	for _, session := range sd.sessions {
 		totalRequests += len(session.Entries)
 	}
-	
+
 	if totalRequests == 0 {
 		return 0
 	}
-	
+
 	return float64(sd.metrics.CurrentTokens) / float64(totalRequests)
 }
 
@@ -246,7 +246,7 @@ func (sd *StreamingDisplay) getTopModels(limit int) []ModelInfo {
 	if sd.metrics == nil {
 		return nil
 	}
-	
+
 	var models []ModelInfo
 	for model, metrics := range sd.metrics.ModelDistribution {
 		models = append(models, ModelInfo{
@@ -255,7 +255,7 @@ func (sd *StreamingDisplay) getTopModels(limit int) []ModelInfo {
 			Percentage: metrics.Percentage,
 		})
 	}
-	
+
 	// Sort by percentage (simple bubble sort for small lists)
 	for i := 0; i < len(models)-1; i++ {
 		for j := 0; j < len(models)-i-1; j++ {
@@ -264,11 +264,11 @@ func (sd *StreamingDisplay) getTopModels(limit int) []ModelInfo {
 			}
 		}
 	}
-	
+
 	if len(models) > limit {
 		models = models[:limit]
 	}
-	
+
 	return models
 }
 

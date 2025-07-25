@@ -16,16 +16,30 @@ type Reader struct {
 	filepath string
 }
 
+// RawMessage represents a raw JSON message from a Claude usage log file.
+// It supports two formats:
+// 1. Direct API format: type="message" with top-level usage and model fields
+// 2. Claude Code session format: type="assistant" with nested message.usage data
 type RawMessage struct {
 	Type      string    `json:"type"`
 	Timestamp time.Time `json:"timestamp"`
-	Model     string    `json:"model"`
+	Model     string    `json:"model"` // Used in direct API format
 	Usage     struct {
 		InputTokens         int `json:"input_tokens"`
 		OutputTokens        int `json:"output_tokens"`
 		CacheCreationTokens int `json:"cache_creation_tokens"`
 		CacheReadTokens     int `json:"cache_read_tokens"`
-	} `json:"usage"`
+	} `json:"usage"` // Used in direct API format
+	// Claude Code session format fields
+	Message struct {
+		Model string `json:"model"`
+		Usage struct {
+			InputTokens              int `json:"input_tokens"`
+			OutputTokens             int `json:"output_tokens"`
+			CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+			CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+		} `json:"usage"`
+	} `json:"message"` // Used in Claude Code session format
 }
 
 func NewReader(filepath string) (*Reader, error) {
@@ -62,8 +76,9 @@ func (r *Reader) ReadEntries() (<-chan models.UsageEntry, <-chan error) {
 				continue // Skip invalid JSON lines
 			}
 
-			// Only process "message" type entries with usage data
-			if msg.Type == "message" && (msg.Usage.InputTokens > 0 || msg.Usage.OutputTokens > 0) {
+			// Process both "message" and "assistant" type entries with usage data
+			if (msg.Type == "message" && (msg.Usage.InputTokens > 0 || msg.Usage.OutputTokens > 0)) ||
+				(msg.Type == "assistant" && (msg.Message.Usage.InputTokens > 0 || msg.Message.Usage.OutputTokens > 0)) {
 				entry, err := convertToUsageEntry(&msg)
 				if err != nil {
 					continue // Skip entries that can't be converted
@@ -106,26 +121,48 @@ func (r *Reader) Close() error {
 	return nil
 }
 
+// convertToUsageEntry converts a RawMessage to a UsageEntry, handling both
+// direct API format (type="message") and Claude Code session format (type="assistant").
 func convertToUsageEntry(msg *RawMessage) (models.UsageEntry, error) {
-	if msg.Model == "" {
-		return models.UsageEntry{}, fmt.Errorf("missing model information")
+	var modelName string
+	var inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens int
+
+	if msg.Type == "assistant" {
+		// Claude Code session format
+		if msg.Message.Model == "" {
+			return models.UsageEntry{}, fmt.Errorf("missing model information in assistant message")
+		}
+		modelName = msg.Message.Model
+		inputTokens = msg.Message.Usage.InputTokens
+		outputTokens = msg.Message.Usage.OutputTokens
+		cacheCreationTokens = msg.Message.Usage.CacheCreationInputTokens
+		cacheReadTokens = msg.Message.Usage.CacheReadInputTokens
+	} else {
+		// Original API format
+		if msg.Model == "" {
+			return models.UsageEntry{}, fmt.Errorf("missing model information")
+		}
+		modelName = msg.Model
+		inputTokens = msg.Usage.InputTokens
+		outputTokens = msg.Usage.OutputTokens
+		cacheCreationTokens = msg.Usage.CacheCreationTokens
+		cacheReadTokens = msg.Usage.CacheReadTokens
 	}
 
-	totalTokens := msg.Usage.InputTokens + msg.Usage.OutputTokens +
-		msg.Usage.CacheCreationTokens + msg.Usage.CacheReadTokens
+	totalTokens := inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens
 
 	entry := models.UsageEntry{
 		Timestamp:           msg.Timestamp,
-		Model:               msg.Model,
-		InputTokens:         msg.Usage.InputTokens,
-		OutputTokens:        msg.Usage.OutputTokens,
-		CacheCreationTokens: msg.Usage.CacheCreationTokens,
-		CacheReadTokens:     msg.Usage.CacheReadTokens,
+		Model:               modelName,
+		InputTokens:         inputTokens,
+		OutputTokens:        outputTokens,
+		CacheCreationTokens: cacheCreationTokens,
+		CacheReadTokens:     cacheReadTokens,
 		TotalTokens:         totalTokens,
 	}
 
 	// Calculate cost using the pricing model
-	pricing := models.GetPricing(msg.Model)
+	pricing := models.GetPricing(modelName)
 	entry.CostUSD = entry.CalculateCost(pricing)
 	return entry, nil
 }

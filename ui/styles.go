@@ -2,50 +2,50 @@ package ui
 
 import (
 	"strings"
-	
+
 	"github.com/charmbracelet/lipgloss"
 )
 
 // Theme defines color scheme for the application
 type Theme struct {
-	Primary     lipgloss.Color
-	Secondary   lipgloss.Color
-	Success     lipgloss.Color
-	Warning     lipgloss.Color
-	Error       lipgloss.Color
-	Info        lipgloss.Color
-	Background  lipgloss.Color
-	Foreground  lipgloss.Color
-	Muted       lipgloss.Color
-	Border      lipgloss.Color
-	Highlight   lipgloss.Color
-	Accent      lipgloss.Color
+	Primary    lipgloss.Color
+	Secondary  lipgloss.Color
+	Success    lipgloss.Color
+	Warning    lipgloss.Color
+	Error      lipgloss.Color
+	Info       lipgloss.Color
+	Background lipgloss.Color
+	Foreground lipgloss.Color
+	Muted      lipgloss.Color
+	Border     lipgloss.Color
+	Highlight  lipgloss.Color
+	Accent     lipgloss.Color
 }
 
 // Styles contains all styled components
 type Styles struct {
 	// Basic text styles
-	Title       lipgloss.Style
-	Subtitle    lipgloss.Style
-	Normal      lipgloss.Style
-	Bold        lipgloss.Style
-	Italic      lipgloss.Style
-	Muted       lipgloss.Style
-	
+	Title    lipgloss.Style
+	Subtitle lipgloss.Style
+	Normal   lipgloss.Style
+	Bold     lipgloss.Style
+	Italic   lipgloss.Style
+	Muted    lipgloss.Style
+
 	// Status styles
-	Success     lipgloss.Style
-	Warning     lipgloss.Style
-	Error       lipgloss.Style
-	Info        lipgloss.Style
-	
+	Success lipgloss.Style
+	Warning lipgloss.Style
+	Error   lipgloss.Style
+	Info    lipgloss.Style
+
 	// Layout styles
-	Border      lipgloss.Style
-	Panel       lipgloss.Style
-	Header      lipgloss.Style
-	Footer      lipgloss.Style
-	Sidebar     lipgloss.Style
-	Content     lipgloss.Style
-	
+	Border  lipgloss.Style
+	Panel   lipgloss.Style
+	Header  lipgloss.Style
+	Footer  lipgloss.Style
+	Sidebar lipgloss.Style
+	Content lipgloss.Style
+
 	// Component styles
 	Button      lipgloss.Style
 	ButtonFocus lipgloss.Style
@@ -55,23 +55,23 @@ type Styles struct {
 	TableHeader lipgloss.Style
 	TableRow    lipgloss.Style
 	TableFocus  lipgloss.Style
-	
+
 	// Chart styles
-	Chart       lipgloss.Style
-	ChartAxis   lipgloss.Style
-	ChartBar    lipgloss.Style
-	ChartLine   lipgloss.Style
-	
+	Chart     lipgloss.Style
+	ChartAxis lipgloss.Style
+	ChartBar  lipgloss.Style
+	ChartLine lipgloss.Style
+
 	// Progress styles
-	Progress    lipgloss.Style
-	ProgressBar lipgloss.Style
+	Progress     lipgloss.Style
+	ProgressBar  lipgloss.Style
 	ProgressFill lipgloss.Style
-	
+
 	// Special styles
-	Highlight   lipgloss.Style
-	Selected    lipgloss.Style
-	Disabled    lipgloss.Style
-	Loading     lipgloss.Style
+	Highlight lipgloss.Style
+	Selected  lipgloss.Style
+	Disabled  lipgloss.Style
+	Loading   lipgloss.Style
 }
 
 // DefaultTheme returns the default color theme
@@ -82,54 +82,54 @@ func DefaultTheme() Theme {
 // DarkTheme returns a dark color theme
 func DarkTheme() Theme {
 	return Theme{
-		Primary:     lipgloss.Color("#7C3AED"), // Purple
-		Secondary:   lipgloss.Color("#6366F1"), // Indigo
-		Success:     lipgloss.Color("#10B981"), // Green
-		Warning:     lipgloss.Color("#F59E0B"), // Amber
-		Error:       lipgloss.Color("#EF4444"), // Red
-		Info:        lipgloss.Color("#3B82F6"), // Blue
-		Background:  lipgloss.Color("#1F2937"), // Gray-800
-		Foreground:  lipgloss.Color("#F3F4F6"), // Gray-100
-		Muted:       lipgloss.Color("#9CA3AF"), // Gray-400
-		Border:      lipgloss.Color("#374151"), // Gray-700
-		Highlight:   lipgloss.Color("#FCD34D"), // Yellow-300
-		Accent:      lipgloss.Color("#EC4899"), // Pink
+		Primary:    lipgloss.Color("#7C3AED"), // Purple
+		Secondary:  lipgloss.Color("#6366F1"), // Indigo
+		Success:    lipgloss.Color("#10B981"), // Green
+		Warning:    lipgloss.Color("#F59E0B"), // Amber
+		Error:      lipgloss.Color("#EF4444"), // Red
+		Info:       lipgloss.Color("#3B82F6"), // Blue
+		Background: lipgloss.Color("#1F2937"), // Gray-800
+		Foreground: lipgloss.Color("#F3F4F6"), // Gray-100
+		Muted:      lipgloss.Color("#9CA3AF"), // Gray-400
+		Border:     lipgloss.Color("#374151"), // Gray-700
+		Highlight:  lipgloss.Color("#FCD34D"), // Yellow-300
+		Accent:     lipgloss.Color("#EC4899"), // Pink
 	}
 }
 
 // LightTheme returns a light color theme
 func LightTheme() Theme {
 	return Theme{
-		Primary:     lipgloss.Color("#7C3AED"), // Purple
-		Secondary:   lipgloss.Color("#6366F1"), // Indigo
-		Success:     lipgloss.Color("#059669"), // Green-600
-		Warning:     lipgloss.Color("#D97706"), // Amber-600
-		Error:       lipgloss.Color("#DC2626"), // Red-600
-		Info:        lipgloss.Color("#2563EB"), // Blue-600
-		Background:  lipgloss.Color("#FFFFFF"), // White
-		Foreground:  lipgloss.Color("#111827"), // Gray-900
-		Muted:       lipgloss.Color("#6B7280"), // Gray-500
-		Border:      lipgloss.Color("#D1D5DB"), // Gray-300
-		Highlight:   lipgloss.Color("#FDE047"), // Yellow-300
-		Accent:      lipgloss.Color("#EC4899"), // Pink
+		Primary:    lipgloss.Color("#7C3AED"), // Purple
+		Secondary:  lipgloss.Color("#6366F1"), // Indigo
+		Success:    lipgloss.Color("#059669"), // Green-600
+		Warning:    lipgloss.Color("#D97706"), // Amber-600
+		Error:      lipgloss.Color("#DC2626"), // Red-600
+		Info:       lipgloss.Color("#2563EB"), // Blue-600
+		Background: lipgloss.Color("#FFFFFF"), // White
+		Foreground: lipgloss.Color("#111827"), // Gray-900
+		Muted:      lipgloss.Color("#6B7280"), // Gray-500
+		Border:     lipgloss.Color("#D1D5DB"), // Gray-300
+		Highlight:  lipgloss.Color("#FDE047"), // Yellow-300
+		Accent:     lipgloss.Color("#EC4899"), // Pink
 	}
 }
 
 // HighContrastTheme returns a high contrast theme for accessibility
 func HighContrastTheme() Theme {
 	return Theme{
-		Primary:     lipgloss.Color("#FFFFFF"), // White
-		Secondary:   lipgloss.Color("#CCCCCC"), // Light gray
-		Success:     lipgloss.Color("#00FF00"), // Bright green
-		Warning:     lipgloss.Color("#FFFF00"), // Bright yellow
-		Error:       lipgloss.Color("#FF0000"), // Bright red
-		Info:        lipgloss.Color("#00FFFF"), // Bright cyan
-		Background:  lipgloss.Color("#000000"), // Black
-		Foreground:  lipgloss.Color("#FFFFFF"), // White
-		Muted:       lipgloss.Color("#808080"), // Gray
-		Border:      lipgloss.Color("#FFFFFF"), // White
-		Highlight:   lipgloss.Color("#FFFF00"), // Bright yellow
-		Accent:      lipgloss.Color("#FF00FF"), // Bright magenta
+		Primary:    lipgloss.Color("#FFFFFF"), // White
+		Secondary:  lipgloss.Color("#CCCCCC"), // Light gray
+		Success:    lipgloss.Color("#00FF00"), // Bright green
+		Warning:    lipgloss.Color("#FFFF00"), // Bright yellow
+		Error:      lipgloss.Color("#FF0000"), // Bright red
+		Info:       lipgloss.Color("#00FFFF"), // Bright cyan
+		Background: lipgloss.Color("#000000"), // Black
+		Foreground: lipgloss.Color("#FFFFFF"), // White
+		Muted:      lipgloss.Color("#808080"), // Gray
+		Border:     lipgloss.Color("#FFFFFF"), // White
+		Highlight:  lipgloss.Color("#FFFF00"), // Bright yellow
+		Accent:     lipgloss.Color("#FF00FF"), // Bright magenta
 	}
 }
 
@@ -141,48 +141,48 @@ func NewStyles(theme Theme) Styles {
 			Foreground(theme.Primary).
 			Bold(true).
 			MarginBottom(1),
-		
+
 		Subtitle: lipgloss.NewStyle().
 			Foreground(theme.Secondary).
 			Bold(true),
-		
+
 		Normal: lipgloss.NewStyle().
 			Foreground(theme.Foreground),
-		
+
 		Bold: lipgloss.NewStyle().
 			Foreground(theme.Foreground).
 			Bold(true),
-		
+
 		Italic: lipgloss.NewStyle().
 			Foreground(theme.Foreground).
 			Italic(true),
-		
+
 		Muted: lipgloss.NewStyle().
 			Foreground(theme.Muted),
-		
+
 		// Status styles
 		Success: lipgloss.NewStyle().
 			Foreground(theme.Success).
 			Bold(true),
-		
+
 		Warning: lipgloss.NewStyle().
 			Foreground(theme.Warning).
 			Bold(true),
-		
+
 		Error: lipgloss.NewStyle().
 			Foreground(theme.Error).
 			Bold(true),
-		
+
 		Info: lipgloss.NewStyle().
 			Foreground(theme.Info).
 			Bold(true),
-		
+
 		// Layout styles
 		Border: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Border).
 			Padding(1),
-		
+
 		Panel: lipgloss.NewStyle().
 			Background(theme.Background).
 			Foreground(theme.Foreground).
@@ -190,7 +190,7 @@ func NewStyles(theme Theme) Styles {
 			BorderForeground(theme.Border).
 			Padding(1).
 			Margin(1),
-		
+
 		Header: lipgloss.NewStyle().
 			Foreground(theme.Primary).
 			Background(theme.Background).
@@ -198,118 +198,118 @@ func NewStyles(theme Theme) Styles {
 			Padding(0, 1).
 			Border(lipgloss.Border{Bottom: "─"}).
 			BorderForeground(theme.Border),
-		
+
 		Footer: lipgloss.NewStyle().
 			Foreground(theme.Muted).
 			Background(theme.Background).
 			Padding(0, 1).
 			Border(lipgloss.Border{Top: "─"}).
 			BorderForeground(theme.Border),
-		
+
 		Sidebar: lipgloss.NewStyle().
 			Background(theme.Background).
 			Border(lipgloss.Border{Right: "│"}).
 			BorderForeground(theme.Border).
 			Padding(1),
-		
+
 		Content: lipgloss.NewStyle().
 			Background(theme.Background).
 			Foreground(theme.Foreground).
 			Padding(1),
-		
+
 		// Component styles
 		Button: lipgloss.NewStyle().
 			Foreground(theme.Background).
 			Background(theme.Secondary).
 			Padding(0, 2).
 			Margin(0, 1),
-		
+
 		ButtonFocus: lipgloss.NewStyle().
 			Foreground(theme.Background).
 			Background(theme.Primary).
 			Padding(0, 2).
 			Margin(0, 1).
 			Bold(true),
-		
+
 		Input: lipgloss.NewStyle().
 			Foreground(theme.Foreground).
 			Background(theme.Background).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Border).
 			Padding(0, 1),
-		
+
 		InputFocus: lipgloss.NewStyle().
 			Foreground(theme.Foreground).
 			Background(theme.Background).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Primary).
 			Padding(0, 1),
-		
+
 		Table: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Border),
-		
+
 		TableHeader: lipgloss.NewStyle().
 			Foreground(theme.Primary).
 			Bold(true).
 			Padding(0, 1).
 			Border(lipgloss.Border{Bottom: "─"}).
 			BorderForeground(theme.Border),
-		
+
 		TableRow: lipgloss.NewStyle().
 			Foreground(theme.Foreground).
 			Padding(0, 1),
-		
+
 		TableFocus: lipgloss.NewStyle().
 			Foreground(theme.Background).
 			Background(theme.Primary).
 			Padding(0, 1).
 			Bold(true),
-		
+
 		// Chart styles
 		Chart: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Border).
 			Padding(1),
-		
+
 		ChartAxis: lipgloss.NewStyle().
 			Foreground(theme.Muted),
-		
+
 		ChartBar: lipgloss.NewStyle().
 			Foreground(theme.Primary),
-		
+
 		ChartLine: lipgloss.NewStyle().
 			Foreground(theme.Secondary),
-		
+
 		// Progress styles
 		Progress: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(theme.Border).
 			Padding(0, 1),
-		
+
 		ProgressBar: lipgloss.NewStyle().
 			Background(theme.Background).
 			Height(1),
-		
+
 		ProgressFill: lipgloss.NewStyle().
 			Background(theme.Primary).
 			Height(1),
-		
+
 		// Special styles
 		Highlight: lipgloss.NewStyle().
 			Foreground(theme.Background).
 			Background(theme.Highlight).
 			Bold(true),
-		
+
 		Selected: lipgloss.NewStyle().
 			Foreground(theme.Background).
 			Background(theme.Primary).
 			Bold(true),
-		
+
 		Disabled: lipgloss.NewStyle().
 			Foreground(theme.Muted).
 			Strikethrough(true),
-		
+
 		Loading: lipgloss.NewStyle().
 			Foreground(theme.Info).
 			Bold(true),
@@ -438,13 +438,12 @@ func (s Styles) StyleByStatus(status string) lipgloss.Style {
 func (s Styles) ProgressStyle(percent float64, width int) string {
 	filled := int(float64(width) * percent / 100.0)
 	empty := width - filled
-	
+
 	bar := s.ProgressFill.Render(strings.Repeat("█", filled)) +
 		s.ProgressBar.Render(strings.Repeat("░", empty))
-	
+
 	return s.Progress.Render(bar)
 }
-
 
 // GetThemeByName returns a theme by its name
 func GetThemeByName(name string) Theme {

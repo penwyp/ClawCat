@@ -3,35 +3,35 @@ package pipeline
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"sync"
 	"time"
 
 	"github.com/penwyp/ClawCat/calculations"
+	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/ui/components"
 )
 
 // RealtimeUpdatePipeline 实时更新管道
 type RealtimeUpdatePipeline struct {
 	// 核心组件
-	fileWatcher   *EnhancedFileWatcher
-	streamReader  *StreamReader
-	dataProcessor *DataProcessor
+	fileWatcher     *EnhancedFileWatcher
+	streamReader    *StreamReader
+	dataProcessor   *DataProcessor
 	batchAggregator *BatchAggregator
 	eventDispatcher *EventDispatcher
 
 	// 配置和状态
-	config        PipelineConfig
-	state         *PipelineState
-	metrics       *PipelineMetrics
-	
+	config  PipelineConfig
+	state   *PipelineState
+	metrics *PipelineMetrics
+
 	// 上下文和同步
-	ctx           context.Context
-	cancel        context.CancelFunc
-	wg            sync.WaitGroup
-	mu            sync.RWMutex
-	isRunning     bool
+	ctx       context.Context
+	cancel    context.CancelFunc
+	wg        sync.WaitGroup
+	mu        sync.RWMutex
+	isRunning bool
 
 	// UI更新
 	metricsCalculator *calculations.MetricsCalculator
@@ -39,7 +39,7 @@ type RealtimeUpdatePipeline struct {
 	statisticsTable   *components.StatisticsTable
 
 	// 错误处理
-	errorChannel  chan error
+	errorChannel chan error
 }
 
 // NewRealtimeUpdatePipeline 创建实时更新管道
@@ -109,7 +109,9 @@ func (rp *RealtimeUpdatePipeline) Start() error {
 		return fmt.Errorf("pipeline is already running")
 	}
 
-	log.Println("Starting realtime update pipeline...")
+	if logging.GetGlobalLogger() != nil {
+		logging.GetGlobalLogger().Info("Starting realtime update pipeline...")
+	}
 
 	// 启动核心组件
 	components := []struct {
@@ -360,7 +362,7 @@ func (rp *RealtimeUpdatePipeline) handleBatchEvent(event BatchUpdateEvent) {
 	// 更新指标
 	rp.metrics.BatchesProcessed.Inc()
 	rp.metrics.BatchSize.Observe(float64(event.BatchSize))
-	
+
 	rp.mu.Lock()
 	rp.state.ProcessedCount += int64(event.BatchSize)
 	rp.state.LastUpdate = time.Now()
@@ -567,7 +569,7 @@ func (rp *RealtimeUpdatePipeline) UpdateConfig(config PipelineConfig) error {
 	defer rp.mu.Unlock()
 
 	rp.config = config
-	
+
 	// 更新文件模式
 	rp.fileWatcher.SetPatterns(config.FilePatterns, config.IgnorePatterns)
 

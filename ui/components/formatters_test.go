@@ -340,13 +340,13 @@ func TestFormatETA(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := formatETA(tt.eta)
-			
+
 			// For future times, allow some variance due to test execution time
 			if strings.HasPrefix(tt.expected, "in ") && strings.HasPrefix(result, "in ") {
 				// Extract the duration part and check if it's within acceptable range
 				expectedDur := strings.TrimPrefix(tt.expected, "in ")
 				actualDur := strings.TrimPrefix(result, "in ")
-				
+
 				// Accept if the actual duration is within 1 minute of expected
 				if expectedDur == "30m" && (actualDur == "29m" || actualDur == "30m" || actualDur == "31m") {
 					return
@@ -355,7 +355,7 @@ func TestFormatETA(t *testing.T) {
 					return
 				}
 			}
-			
+
 			assert.Equal(t, tt.expected, result)
 		})
 	}

@@ -47,7 +47,7 @@ type Serializer interface {
 func NewFileCache(maxSize int64) *FileCache {
 	cache := NewLRUCache(maxSize)
 	cache.SetPriority(2) // Higher priority than general cache
-	
+
 	return &FileCache{
 		cache:      cache,
 		serializer: NewSonicSerializer(),
@@ -64,26 +64,26 @@ func (f *FileCache) GetFile(path string) (*CachedFile, bool) {
 	if err != nil {
 		return nil, false
 	}
-	
+
 	// Get from cache
 	value, exists := f.cache.Get(path)
 	if !exists {
 		return nil, false
 	}
-	
+
 	cached, ok := value.(*CachedFile)
 	if !ok {
 		// Invalid cache entry, remove it
 		_ = f.cache.Delete(path)
 		return nil, false
 	}
-	
+
 	// Check if file has been modified
 	if !cached.ModTime.Equal(info.ModTime()) {
 		_ = f.cache.Delete(path)
 		return nil, false
 	}
-	
+
 	return cached, true
 }
 
@@ -91,10 +91,10 @@ func (f *FileCache) GetFile(path string) (*CachedFile, bool) {
 func (f *FileCache) SetFile(path string, cached *CachedFile) error {
 	cached.Path = path
 	cached.ParsedAt = time.Now()
-	
+
 	// Calculate size for cache management
 	size := f.calculateSize(cached)
-	
+
 	return f.cache.SetWithSize(path, cached, size)
 }
 
@@ -104,7 +104,7 @@ func (f *FileCache) GetEntries(path string) ([]models.UsageEntry, bool) {
 	if !exists {
 		return nil, false
 	}
-	
+
 	return cached.Entries, true
 }
 
@@ -117,7 +117,7 @@ func (f *FileCache) InvalidateFile(path string) error {
 func (f *FileCache) InvalidatePattern(pattern string) error {
 	// Get all cache keys and match pattern
 	keysToDelete := make([]string, 0)
-	
+
 	// This is a simplified approach - in a real implementation,
 	// we'd need to iterate through all keys
 	f.cache.mu.RLock()
@@ -131,14 +131,14 @@ func (f *FileCache) InvalidatePattern(pattern string) error {
 		}
 	}
 	f.cache.mu.RUnlock()
-	
+
 	// Delete matched keys
 	for _, key := range keysToDelete {
 		if err := f.cache.Delete(key); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -148,10 +148,10 @@ func (f *FileCache) CacheFileContent(path string, content []byte, entries []mode
 	if err != nil {
 		return fmt.Errorf("failed to stat file %s: %w", path, err)
 	}
-	
+
 	// Calculate checksum
 	checksum := fmt.Sprintf("%x", md5.Sum(content))
-	
+
 	cached := &CachedFile{
 		Path:     path,
 		Content:  content,
@@ -160,7 +160,7 @@ func (f *FileCache) CacheFileContent(path string, content []byte, entries []mode
 		Size:     info.Size(),
 		Checksum: checksum,
 	}
-	
+
 	return f.SetFile(path, cached)
 }
 
@@ -178,25 +178,25 @@ func (f *FileCache) Preload(paths []string) error {
 		if _, err := os.Stat(path); err != nil {
 			continue // Skip non-existent files
 		}
-		
+
 		// Check if already cached
 		if _, exists := f.GetFile(path); exists {
 			continue
 		}
-		
+
 		// Read and cache file
 		content, err := os.ReadFile(path)
 		if err != nil {
 			continue // Skip unreadable files
 		}
-		
+
 		// For preloading, we'll cache just the content without parsing
 		// The parsing will happen on first access
 		info, err := os.Stat(path)
 		if err != nil {
 			continue
 		}
-		
+
 		checksum := fmt.Sprintf("%x", md5.Sum(content))
 		cached := &CachedFile{
 			Path:     path,
@@ -206,10 +206,10 @@ func (f *FileCache) Preload(paths []string) error {
 			Size:     info.Size(),
 			Checksum: checksum,
 		}
-		
+
 		_ = f.SetFile(path, cached)
 	}
-	
+
 	return nil
 }
 
@@ -219,7 +219,7 @@ func (f *FileCache) WarmCache(pattern string) error {
 	if err != nil {
 		return fmt.Errorf("failed to expand pattern %s: %w", pattern, err)
 	}
-	
+
 	return f.Preload(matches)
 }
 
@@ -275,7 +275,7 @@ func (f *FileCache) calculateSize(cached *CachedFile) int64 {
 	size += int64(len(cached.Entries)) * 200 // Rough estimate per entry
 	size += int64(len(cached.Checksum))
 	size += 100 // Overhead for struct fields
-	
+
 	return size
 }
 
@@ -285,11 +285,11 @@ func (f *FileCache) IsStale(path string) bool {
 	if !exists {
 		return true
 	}
-	
+
 	info, err := os.Stat(path)
 	if err != nil {
 		return true
 	}
-	
+
 	return !cached.ModTime.Equal(info.ModTime())
 }

@@ -11,31 +11,31 @@ import (
 
 // Manager coordinates all session operations with thread-safe access
 type Manager struct {
-	sessions     map[string]*Session // All sessions by ID
-	activeSessions []*Session        // Currently active sessions
-	mu           sync.RWMutex        // Protects concurrent access
-	detector     *Detector           // Session boundary detection
-	costCalc     *calculations.CostCalculator // Cost calculations
+	sessions       map[string]*Session          // All sessions by ID
+	activeSessions []*Session                   // Currently active sessions
+	mu             sync.RWMutex                 // Protects concurrent access
+	detector       *Detector                    // Session boundary detection
+	costCalc       *calculations.CostCalculator // Cost calculations
 }
 
 // Session represents a 5-hour usage session with statistics
 type Session struct {
-	ID           string                    `json:"id"`
-	StartTime    time.Time                 `json:"start_time"`
-	EndTime      time.Time                 `json:"end_time"`
-	IsActive     bool                      `json:"is_active"`
-	Entries      []models.UsageEntry       `json:"entries"`
-	Stats        SessionStats              `json:"stats"`
-	LastUpdate   time.Time                 `json:"last_update"`
+	ID         string              `json:"id"`
+	StartTime  time.Time           `json:"start_time"`
+	EndTime    time.Time           `json:"end_time"`
+	IsActive   bool                `json:"is_active"`
+	Entries    []models.UsageEntry `json:"entries"`
+	Stats      SessionStats        `json:"stats"`
+	LastUpdate time.Time           `json:"last_update"`
 }
 
 // SessionStats contains aggregated statistics for a session
 type SessionStats struct {
-	TotalTokens         int                               `json:"total_tokens"`
-	TotalCost           float64                           `json:"total_cost"`
-	ModelBreakdown      map[string]calculations.ModelStats `json:"model_breakdown"`
-	TimeRemaining       time.Duration                     `json:"time_remaining"`
-	PercentageUsed      float64                           `json:"percentage_used"`
+	TotalTokens    int                                `json:"total_tokens"`
+	TotalCost      float64                            `json:"total_cost"`
+	ModelBreakdown map[string]calculations.ModelStats `json:"model_breakdown"`
+	TimeRemaining  time.Duration                      `json:"time_remaining"`
+	PercentageUsed float64                            `json:"percentage_used"`
 }
 
 const (
@@ -64,7 +64,7 @@ func (m *Manager) AddEntry(entry models.UsageEntry) error {
 
 	// Find or create appropriate session
 	session := m.findOrCreateSession(entry.Timestamp)
-	
+
 	if err := session.AddEntry(entry); err != nil {
 		return fmt.Errorf("failed to add entry to session: %w", err)
 	}
@@ -88,7 +88,7 @@ func (m *Manager) GetActiveSession() *Session {
 	if len(m.activeSessions) == 0 {
 		return nil
 	}
-	
+
 	// Return the most recently updated active session
 	var mostRecent *Session
 	for _, session := range m.activeSessions {
@@ -96,7 +96,7 @@ func (m *Manager) GetActiveSession() *Session {
 			mostRecent = session
 		}
 	}
-	
+
 	return mostRecent
 }
 
@@ -181,20 +181,20 @@ func CreateSession(timestamp time.Time) *Session {
 	sessionID := fmt.Sprintf("session_%d", startTime.Unix())
 
 	return &Session{
-		ID:           sessionID,
-		StartTime:    startTime,
-		EndTime:      startTime.Add(SessionDuration),
-		IsActive:     true,
-		Entries:      make([]models.UsageEntry, 0),
-		Stats:        SessionStats{ModelBreakdown: make(map[string]calculations.ModelStats)},
-		LastUpdate:   timestamp,
+		ID:         sessionID,
+		StartTime:  startTime,
+		EndTime:    startTime.Add(SessionDuration),
+		IsActive:   true,
+		Entries:    make([]models.UsageEntry, 0),
+		Stats:      SessionStats{ModelBreakdown: make(map[string]calculations.ModelStats)},
+		LastUpdate: timestamp,
 	}
 }
 
 // AddEntry adds a usage entry to this session
 func (s *Session) AddEntry(entry models.UsageEntry) error {
 	if !IsWithinSession(entry.Timestamp, s.StartTime) {
-		return fmt.Errorf("entry timestamp %v is outside session window %v-%v", 
+		return fmt.Errorf("entry timestamp %v is outside session window %v-%v",
 			entry.Timestamp, s.StartTime, s.EndTime)
 	}
 
@@ -216,7 +216,7 @@ func (s *Session) UpdateStats(calc *calculations.CostCalculator) error {
 
 	for _, entry := range s.Entries {
 		s.Stats.TotalTokens += entry.CalculateTotalTokens()
-		
+
 		result, err := calc.Calculate(entry)
 		if err != nil {
 			return fmt.Errorf("failed to calculate cost for entry: %w", err)

@@ -55,24 +55,24 @@ type PerformanceMetrics struct {
 
 // EfficiencyMetrics 效率指标
 type EfficiencyMetrics struct {
-	CostPerRequest      float64 `json:"cost_per_request"`
-	CostPerToken        float64 `json:"cost_per_token"`
-	TokensPerDollar     float64 `json:"tokens_per_dollar"`
-	EfficiencyScore     float64 `json:"efficiency_score"` // 0-100, 综合效率评分
-	ModelEfficiency     map[string]float64 `json:"model_efficiency"` // 每个模型的效率
-	PeakEfficiencyTime  time.Time `json:"peak_efficiency_time"`
-	WasteIndex          float64 `json:"waste_index"` // 浪费指数
+	CostPerRequest     float64            `json:"cost_per_request"`
+	CostPerToken       float64            `json:"cost_per_token"`
+	TokensPerDollar    float64            `json:"tokens_per_dollar"`
+	EfficiencyScore    float64            `json:"efficiency_score"` // 0-100, 综合效率评分
+	ModelEfficiency    map[string]float64 `json:"model_efficiency"` // 每个模型的效率
+	PeakEfficiencyTime time.Time          `json:"peak_efficiency_time"`
+	WasteIndex         float64            `json:"waste_index"` // 浪费指数
 }
 
 // HealthMetrics 健康指标
 type HealthMetrics struct {
-	ErrorRate           float64 `json:"error_rate"`         // 错误率百分比
-	RetryCount          int     `json:"retry_count"`        // 重试次数
-	ConnectionHealth    int     `json:"connection_health"`  // 连接健康度 0-100
-	CacheHitRate        float64 `json:"cache_hit_rate"`     // 缓存命中率
-	ProcessingSpeed     float64 `json:"processing_speed"`   // 处理速度 tokens/sec
-	SystemLoad          float64 `json:"system_load"`        // 系统负载
-	MemoryUsage         float64 `json:"memory_usage"`       // 内存使用率百分比
+	ErrorRate        float64 `json:"error_rate"`        // 错误率百分比
+	RetryCount       int     `json:"retry_count"`       // 重试次数
+	ConnectionHealth int     `json:"connection_health"` // 连接健康度 0-100
+	CacheHitRate     float64 `json:"cache_hit_rate"`    // 缓存命中率
+	ProcessingSpeed  float64 `json:"processing_speed"`  // 处理速度 tokens/sec
+	SystemLoad       float64 `json:"system_load"`       // 系统负载
+	MemoryUsage      float64 `json:"memory_usage"`      // 内存使用率百分比
 }
 
 // TrendMetrics 趋势指标
@@ -433,7 +433,7 @@ func (mc *MetricsCalculator) calculatePerformanceMetrics(metrics *RealtimeMetric
 	var totalLatency float64
 	var latencies []float64
 	var totalTokens int
-	
+
 	for _, entry := range mc.entries {
 		// 模拟延迟计算 (基于token数量估算)
 		estimatedLatency := float64(entry.TotalTokens) * 0.1 // 假设每token 0.1ms
@@ -443,7 +443,7 @@ func (mc *MetricsCalculator) calculatePerformanceMetrics(metrics *RealtimeMetric
 	}
 
 	perf.AverageLatency = totalLatency / float64(len(mc.entries))
-	
+
 	// 计算P95响应时间
 	if len(latencies) > 0 {
 		// 简单排序获取P95
@@ -468,7 +468,7 @@ func (mc *MetricsCalculator) calculatePerformanceMetrics(metrics *RealtimeMetric
 		if minutes > 0 {
 			perf.RequestsPerMinute = float64(len(mc.entries)) / minutes
 		}
-		
+
 		seconds := sessionDuration.Seconds()
 		if seconds > 0 {
 			perf.ThroughputTokensSec = float64(totalTokens) / seconds
@@ -542,7 +542,7 @@ func (mc *MetricsCalculator) calculateEfficiencyMetrics(metrics *RealtimeMetrics
 // calculateHealthMetrics 计算健康指标
 func (mc *MetricsCalculator) calculateHealthMetrics(metrics *RealtimeMetrics, now time.Time) {
 	health := HealthMetrics{
-		ConnectionHealth: 100, // 默认健康
+		ConnectionHealth: 100,  // 默认健康
 		CacheHitRate:     85.0, // 假设85%缓存命中率
 		SystemLoad:       0.5,  // 假设50%系统负载
 		MemoryUsage:      60.0, // 假设60%内存使用
@@ -634,7 +634,7 @@ func (mc *MetricsCalculator) calculateTrendMetrics(metrics *RealtimeMetrics, now
 	if mc.cachedMetrics != nil {
 		currentBurnRate := metrics.BurnRate
 		previousBurnRate := mc.cachedMetrics.BurnRate
-		
+
 		if currentBurnRate > previousBurnRate*1.1 {
 			trend.BurnRateTrend = "up"
 		} else if currentBurnRate < previousBurnRate*0.9 {
@@ -646,7 +646,7 @@ func (mc *MetricsCalculator) calculateTrendMetrics(metrics *RealtimeMetrics, now
 	if mc.cachedMetrics != nil {
 		currentEfficiency := metrics.EfficiencyMetrics.EfficiencyScore
 		previousEfficiency := mc.cachedMetrics.EfficiencyMetrics.EfficiencyScore
-		
+
 		if currentEfficiency > previousEfficiency+5 {
 			trend.CostEfficiencyTrend = "improving"
 		} else if currentEfficiency < previousEfficiency-5 {

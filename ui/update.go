@@ -58,6 +58,9 @@ const (
 	StatusSuccess
 )
 
+// ForceReadyMsg is sent to force the UI into ready state
+type ForceReadyMsg struct{}
+
 // Update handles incoming messages and updates the model
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -67,7 +70,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		// Handle window resize
 		m.Resize(msg.Width, msg.Height)
-		m.SetReady(true)
+		// Always ensure ready state on window size
+		if !m.ready {
+			m.SetReady(true)
+		}
 		return m, nil
 
 	case tea.KeyMsg:
@@ -79,21 +85,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var spinnerCmd tea.Cmd
 		m.spinner, spinnerCmd = m.spinner.Update(msg)
 		cmds = append(cmds, spinnerCmd)
-		
+
 		// Request data refresh if we have a manager
 		if m.manager != nil {
 			cmds = append(cmds, refreshDataCmd(m.manager))
 		}
-		
+
 		// Schedule next tick
 		cmds = append(cmds, tickCmd())
-		
+
 		return m, tea.Batch(cmds...)
 
 	case DataUpdateMsg:
 		// Update data from manager
 		m.UpdateSessions(msg.Sessions)
 		m.UpdateEntries(msg.Entries)
+		// Clear loading state when we receive data
+		if m.loading && len(msg.Sessions) > 0 {
+			m.SetLoading(false)
+		}
 		return m, nil
 
 	case RealtimeMetricsMsg:
@@ -105,7 +115,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update configuration
 		m.config = msg.Config
 		m.styles = NewStyles(getThemeByName(msg.Config.Theme))
-		
+
 		// Update all views with new config
 		if m.dashboard != nil {
 			m.dashboard.UpdateConfig(msg.Config)
@@ -116,7 +126,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.analytics != nil {
 			m.analytics.UpdateConfig(msg.Config)
 		}
-		
+
 		return m, nil
 
 	case ViewChangeMsg:
@@ -140,6 +150,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StatusMsg:
 		// Handle status messages
 		// Could display in status bar
+		return m, nil
+
+	case ForceReadyMsg:
+		// Force ready state after timeout
+		if !m.ready {
+			m.SetReady(true)
+		}
 		return m, nil
 
 	default:
@@ -383,11 +400,11 @@ func (m Model) renderLoading() string {
 	}
 
 	content := m.styles.Normal.Render("Initializing ClawCat...")
-	
+
 	if m.config.ShowSpinner {
 		content = m.spinner.View() + " " + content
 	}
-	
+
 	return m.styles.Border.
 		Width(m.width - 4).
 		Height(m.height - 4).
@@ -398,7 +415,7 @@ func (m Model) renderLoading() string {
 // renderEmptyView renders an empty view placeholder
 func (m Model) renderEmptyView(viewName string) string {
 	content := m.styles.Normal.Render("No " + viewName + " available")
-	
+
 	return m.styles.Border.
 		Width(m.width - 4).
 		Height(m.height - 4).

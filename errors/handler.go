@@ -26,10 +26,10 @@ type ErrorHandler struct {
 	degradedMode bool
 	uiDegraded   bool
 	mu           sync.RWMutex
-	
+
 	// UI 降级回调
-	onUIDegrade  func(error)
-	onUIRecover  func()
+	onUIDegrade func(error)
+	onUIRecover func()
 }
 
 // NewErrorHandler 创建错误处理器
@@ -74,7 +74,7 @@ func (eh *ErrorHandler) Handle(err error, context *ErrorContext) error {
 	if eh.shouldDegrade(classified) {
 		eh.enterDegradedMode()
 	}
-	
+
 	// 检查是否需要 UI 降级
 	if eh.shouldDegradeUI(classified, context) {
 		eh.enterUIDegradedMode(classified)
@@ -261,14 +261,14 @@ func (eh *ErrorHandler) checkHealth() {
 
 	// 检查最近错误数量
 	recentErrors := eh.errorBuffer.CountRecent(1 * time.Minute)
-	
+
 	if recentErrors == 0 && eh.degradedMode {
 		// 恢复正常模式
 		eh.degradedMode = false
 		eh.healthStatus = HealthStatusHealthy
 		eh.notifyRecovery()
 	}
-	
+
 	// 检查 UI 降级状态
 	recentUIErrors := eh.countRecentUIErrors(1 * time.Minute)
 	if recentUIErrors == 0 && eh.uiDegraded {
@@ -349,17 +349,17 @@ func (eh *ErrorHandler) shouldDegradeUI(err *RecoverableError, context *ErrorCon
 	if err.Type == ErrorTypeUI {
 		return true
 	}
-	
+
 	// 渲染相关组件错误
 	if context.Component == "UI" || context.Component == "renderer" || context.Component == "dashboard" {
 		return true
 	}
-	
+
 	// 严重错误影响 UI 显示
 	if err.Severity >= SeverityCritical {
 		return true
 	}
-	
+
 	// 检查 UI 相关的错误频率
 	recentUIErrors := eh.countRecentUIErrors(2 * time.Minute)
 	return recentUIErrors > 3
@@ -369,10 +369,10 @@ func (eh *ErrorHandler) shouldDegradeUI(err *RecoverableError, context *ErrorCon
 func (eh *ErrorHandler) enterUIDegradedMode(err *RecoverableError) {
 	eh.mu.Lock()
 	defer eh.mu.Unlock()
-	
+
 	if !eh.uiDegraded {
 		eh.uiDegraded = true
-		
+
 		// 触发 UI 降级回调
 		if eh.onUIDegrade != nil {
 			go eh.onUIDegrade(err)
@@ -384,10 +384,10 @@ func (eh *ErrorHandler) enterUIDegradedMode(err *RecoverableError) {
 func (eh *ErrorHandler) exitUIDegradedMode() {
 	eh.mu.Lock()
 	defer eh.mu.Unlock()
-	
+
 	if eh.uiDegraded {
 		eh.uiDegraded = false
-		
+
 		// 触发 UI 恢复回调
 		if eh.onUIRecover != nil {
 			go eh.onUIRecover()
@@ -399,7 +399,7 @@ func (eh *ErrorHandler) exitUIDegradedMode() {
 func (eh *ErrorHandler) SetUICallbacks(onDegrade func(error), onRecover func()) {
 	eh.mu.Lock()
 	defer eh.mu.Unlock()
-	
+
 	eh.onUIDegrade = onDegrade
 	eh.onUIRecover = onRecover
 }
@@ -414,10 +414,10 @@ func (eh *ErrorHandler) IsUIDegraded() bool {
 // countRecentUIErrors 计算最近 UI 错误数量
 func (eh *ErrorHandler) countRecentUIErrors(duration time.Duration) int {
 	count := 0
-	
+
 	eh.bufferMu.RLock()
 	defer eh.bufferMu.RUnlock()
-	
+
 	// 简化实现 - 遍历错误缓冲区
 	for i := 0; i < eh.errorBuffer.Size(); i++ {
 		// 这里需要访问缓冲区的内部数据
@@ -426,6 +426,6 @@ func (eh *ErrorHandler) countRecentUIErrors(duration time.Duration) int {
 			count++
 		}
 	}
-	
+
 	return count
 }

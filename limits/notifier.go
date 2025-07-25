@@ -22,7 +22,7 @@ type Notifier struct {
 // NewNotifier 创建通知器
 func NewNotifier(cfg *config.Config) *Notifier {
 	enabledTypes := []config.NotificationType{config.NotifyDesktop} // 默认启用桌面通知
-	
+
 	if cfg != nil && cfg.Limits.Notifications != nil {
 		enabledTypes = cfg.Limits.Notifications
 	}
@@ -128,7 +128,7 @@ func (n *Notifier) sendWebhookNotification(message string, severity Severity) er
 	if n.config != nil {
 		webhookURL = n.config.Limits.WebhookURL
 	}
-	
+
 	if webhookURL == "" {
 		return nil // 没有配置 webhook，跳过
 	}
@@ -232,18 +232,18 @@ func (n *Notifier) TestNotification() error {
 
 // NotificationHistory 通知历史记录
 type NotificationHistory struct {
-	Message   string    `json:"message"`
-	Severity  Severity  `json:"severity"`
+	Message   string                    `json:"message"`
+	Severity  Severity                  `json:"severity"`
 	Type      []config.NotificationType `json:"types"`
-	Timestamp time.Time `json:"timestamp"`
-	Success   bool      `json:"success"`
-	Error     string    `json:"error,omitempty"`
+	Timestamp time.Time                 `json:"timestamp"`
+	Success   bool                      `json:"success"`
+	Error     string                    `json:"error,omitempty"`
 }
 
 // Enhanced Notifier with history tracking
 type EnhancedNotifier struct {
 	*Notifier
-	history []NotificationHistory
+	history    []NotificationHistory
 	maxHistory int
 }
 
@@ -260,7 +260,7 @@ func NewEnhancedNotifier(cfg *config.Config) *EnhancedNotifier {
 func (en *EnhancedNotifier) SendNotificationWithHistory(message string, severity Severity) error {
 	startTime := time.Now()
 	err := en.Notifier.SendNotification(message, severity)
-	
+
 	// 记录到历史
 	record := NotificationHistory{
 		Message:   message,
@@ -269,20 +269,20 @@ func (en *EnhancedNotifier) SendNotificationWithHistory(message string, severity
 		Timestamp: startTime,
 		Success:   err == nil,
 	}
-	
+
 	if err != nil {
 		record.Error = err.Error()
 	}
-	
+
 	en.addToHistory(record)
-	
+
 	return err
 }
 
 // addToHistory 添加到历史记录
 func (en *EnhancedNotifier) addToHistory(record NotificationHistory) {
 	en.history = append(en.history, record)
-	
+
 	// 限制历史记录数量
 	if len(en.history) > en.maxHistory {
 		en.history = en.history[len(en.history)-en.maxHistory:]
@@ -297,13 +297,13 @@ func (en *EnhancedNotifier) GetHistory() []NotificationHistory {
 // GetRecentFailures 获取最近的失败通知
 func (en *EnhancedNotifier) GetRecentFailures(since time.Time) []NotificationHistory {
 	failures := []NotificationHistory{}
-	
+
 	for _, record := range en.history {
 		if !record.Success && record.Timestamp.After(since) {
 			failures = append(failures, record)
 		}
 	}
-	
+
 	return failures
 }
 
@@ -311,30 +311,30 @@ func (en *EnhancedNotifier) GetRecentFailures(since time.Time) []NotificationHis
 func (en *EnhancedNotifier) GetNotificationStats() map[string]interface{} {
 	if len(en.history) == 0 {
 		return map[string]interface{}{
-			"total": 0,
+			"total":        0,
 			"success_rate": 0.0,
 		}
 	}
-	
+
 	total := len(en.history)
 	successful := 0
 	severityCount := make(map[Severity]int)
-	
+
 	for _, record := range en.history {
 		if record.Success {
 			successful++
 		}
 		severityCount[record.Severity]++
 	}
-	
+
 	successRate := float64(successful) / float64(total) * 100
-	
+
 	return map[string]interface{}{
-		"total":           total,
-		"successful":      successful,
-		"failed":          total - successful,
-		"success_rate":    successRate,
-		"by_severity":     severityCount,
+		"total":             total,
+		"successful":        successful,
+		"failed":            total - successful,
+		"success_rate":      successRate,
+		"by_severity":       severityCount,
 		"last_notification": en.history[len(en.history)-1].Timestamp,
 	}
 }

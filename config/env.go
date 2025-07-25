@@ -183,12 +183,12 @@ var StandardEnvMappings = map[string]string{
 	"CLAWCAT_TIMEZONE":  "app.timezone",
 
 	// Data configuration
-	"CLAWCAT_DATA_PATHS":         "data.paths",
-	"CLAWCAT_AUTO_DISCOVER":      "data.auto_discover",
-	"CLAWCAT_WATCH_INTERVAL":     "data.watch_interval",
-	"CLAWCAT_MAX_FILE_SIZE":      "data.max_file_size",
-	"CLAWCAT_CACHE_ENABLED":      "data.cache_enabled",
-	"CLAWCAT_CACHE_SIZE":         "data.cache_size",
+	"CLAWCAT_DATA_PATHS":     "data.paths",
+	"CLAWCAT_AUTO_DISCOVER":  "data.auto_discover",
+	"CLAWCAT_WATCH_INTERVAL": "data.watch_interval",
+	"CLAWCAT_MAX_FILE_SIZE":  "data.max_file_size",
+	"CLAWCAT_CACHE_ENABLED":  "data.cache_enabled",
+	"CLAWCAT_CACHE_SIZE":     "data.cache_size",
 
 	// UI configuration
 	"CLAWCAT_THEME":           "ui.theme",
@@ -215,11 +215,11 @@ var StandardEnvMappings = map[string]string{
 	"CLAWCAT_ALERT_THRESHOLD":    "subscription.alert_threshold",
 
 	// Debug configuration
-	"CLAWCAT_DEBUG":           "debug.enabled",
-	"CLAWCAT_PROFILE_CPU":     "debug.profile_cpu",
-	"CLAWCAT_PROFILE_MEMORY":  "debug.profile_memory",
-	"CLAWCAT_TRACE_FILE":      "debug.trace_file",
-	"CLAWCAT_METRICS_PORT":    "debug.metrics_port",
+	"CLAWCAT_DEBUG":          "debug.enabled",
+	"CLAWCAT_PROFILE_CPU":    "debug.profile_cpu",
+	"CLAWCAT_PROFILE_MEMORY": "debug.profile_memory",
+	"CLAWCAT_TRACE_FILE":     "debug.trace_file",
+	"CLAWCAT_METRICS_PORT":   "debug.metrics_port",
 }
 
 // GetEnvWithDefault gets an environment variable with a default value
@@ -276,7 +276,7 @@ func GetEnvSlice(key string, defaultValue []string) []string {
 	if value == "" {
 		return defaultValue
 	}
-	
+
 	parts := strings.Split(value, ",")
 	result := make([]string, len(parts))
 	for i, part := range parts {

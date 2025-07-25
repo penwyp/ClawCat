@@ -250,11 +250,11 @@ type TrailingCommaStrategy struct{}
 
 func (t *TrailingCommaStrategy) Repair(data []byte) []byte {
 	s := string(data)
-	
+
 	// 移除对象中的尾随逗号
 	s = strings.ReplaceAll(s, ",}", "}")
 	s = strings.ReplaceAll(s, ",]", "]")
-	
+
 	return []byte(s)
 }
 

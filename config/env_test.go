@@ -188,10 +188,10 @@ func TestEnvMapper_ToCamelCase(t *testing.T) {
 func TestEnvMapper_Apply(t *testing.T) {
 	// Set up test environment variables
 	testEnvVars := map[string]string{
-		"CLAWCAT_LOG_LEVEL":    "debug",
-		"CLAWCAT_THEME":        "light",
-		"CLAWCAT_CACHE_SIZE":   "100",
-		"CLAWCAT_WORKER_COUNT": "8",
+		"CLAWCAT_LOG_LEVEL":     "debug",
+		"CLAWCAT_THEME":         "light",
+		"CLAWCAT_CACHE_SIZE":    "100",
+		"CLAWCAT_WORKER_COUNT":  "8",
 		"CLAWCAT_CACHE_ENABLED": "false",
 	}
 
