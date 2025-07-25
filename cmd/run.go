@@ -106,10 +106,31 @@ func loadConfiguration() (*config.Config, error) {
 	// Create config loader
 	loader := config.NewLoader()
 
-	// Load configuration from multiple sources
-	cfg, err := loader.Load()
+	// Add default configuration paths as file sources
+	for _, path := range config.ConfigPaths() {
+		loader.AddSource(config.NewFileSource(path))
+	}
+
+	// Add environment variable source
+	loader.AddSource(config.NewEnvSource("CLAWCAT"))
+
+	// Add command line flags source
+	loader.AddSource(config.NewFlagSource(rootCmd.PersistentFlags()))
+
+	// Add validator
+	loader.AddValidator(config.NewStandardValidator())
+
+	// Load configuration with defaults as fallback
+	cfg, err := loader.LoadWithDefaults()
 	if err != nil {
 		return nil, err
+	}
+
+	// Apply debug logging if enabled
+	if debug || viper.GetBool("debug.enabled") {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Configuration loaded successfully\n")
+		fmt.Fprintf(os.Stderr, "[DEBUG] Data paths: %+v\n", cfg.Data.Paths)
+		fmt.Fprintf(os.Stderr, "[DEBUG] Debug enabled: %v\n", cfg.Debug.Enabled)
 	}
 
 	return cfg, nil
