@@ -169,7 +169,6 @@ func (ae *AggregationEngine) Aggregate(view AggregationView, start, end time.Tim
 
 	// 根据视图类型分组
 	var grouped map[string][]models.UsageEntry
-	var err error
 
 	switch view {
 	case DailyView:
@@ -506,7 +505,7 @@ func (ae *AggregationEngine) detectAnomalies(aggregated []AggregatedData) []Anom
 	var anomalies []Anomaly
 	threshold := 2.0
 
-	for i, data := range aggregated {
+	for _, data := range aggregated {
 		value := float64(data.Tokens.Total)
 		deviation := (value - mean) / stdDev
 

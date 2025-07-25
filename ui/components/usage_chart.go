@@ -3,7 +3,6 @@ package components
 import (
 	"fmt"
 	"math"
-	"sort"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"

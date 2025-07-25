@@ -20,41 +20,11 @@ type AggregationTable struct {
 	styles     TableStyles
 }
 
-// TableStyles 表格样式
-type TableStyles struct {
-	Header    lipgloss.Style
-	Cell      lipgloss.Style
-	Border    lipgloss.Style
-	Highlight lipgloss.Style
-	Faint     lipgloss.Style
-}
-
 // NewAggregationTable 创建聚合表格
 func NewAggregationTable() *AggregationTable {
 	return &AggregationTable{
 		pageSize: 10,
 		styles:   DefaultTableStyles(),
-	}
-}
-
-// DefaultTableStyles 默认表格样式
-func DefaultTableStyles() TableStyles {
-	return TableStyles{
-		Header: lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("86")).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderBottom(true).
-			BorderForeground(lipgloss.Color("240")),
-		Cell: lipgloss.NewStyle().
-			Padding(0, 1),
-		Border: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240")),
-		Highlight: lipgloss.NewStyle().
-			Background(lipgloss.Color("237")).
-			Foreground(lipgloss.Color("15")),
-		Faint: lipgloss.NewStyle().
-			Faint(true),
 	}
 }
 
@@ -144,7 +114,7 @@ func (at *AggregationTable) Render(width int) string {
 }
 
 // getTopModel 获取使用最多的模型
-func (at *AggregationTable) getTopModel(models map[string]calculations.ModelStats) string {
+func (at *AggregationTable) getTopModel(models map[string]calculations.AggregationModelStats) string {
 	var topModel string
 	var maxTokens int
 
@@ -332,7 +302,7 @@ func (at *AggregationTable) RenderDetailView(data *calculations.AggregatedData, 
 		// 按使用量排序模型
 		type modelUsage struct {
 			name   string
-			stats  calculations.ModelStats
+			stats  calculations.AggregationModelStats
 			percent float64
 		}
 

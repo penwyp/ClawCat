@@ -18,7 +18,7 @@ func TestAggregationEngine_GroupByDay(t *testing.T) {
 		{Timestamp: time.Date(2024, 1, 16, 9, 0, 0, 0, time.UTC), TotalTokens: 150},
 	}
 
-	testConfig := &config.Config{Timezone: "UTC"}
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 
 	grouped := engine.groupByDay(entries)
@@ -35,7 +35,7 @@ func TestAggregationEngine_GroupByWeek(t *testing.T) {
 		{Timestamp: time.Date(2024, 1, 29, 9, 0, 0, 0, time.UTC), TotalTokens: 150},  // Week 5
 	}
 
-	testConfig := &config.Config{Timezone: "UTC"}
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 
 	grouped := engine.groupByWeek(entries)
@@ -51,7 +51,7 @@ func TestAggregationEngine_GroupByMonth(t *testing.T) {
 		{Timestamp: time.Date(2024, 2, 5, 9, 0, 0, 0, time.UTC), TotalTokens: 150},
 	}
 
-	testConfig := &config.Config{Timezone: "UTC"}
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 
 	grouped := engine.groupByMonth(entries)
@@ -81,7 +81,7 @@ func TestAggregationEngine_CalculateStats(t *testing.T) {
 		},
 	}
 
-	testConfig := &config.Config{Timezone: "UTC"}
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 	stats := engine.calculateStats(entries, "2024-01-15", DailyView)
 
@@ -106,8 +106,8 @@ func TestAggregationEngine_CalculateStats(t *testing.T) {
 
 func TestAggregationEngine_Aggregate(t *testing.T) {
 	// 创建跨越多天的测试数据
-	entries := generateTestEntries(30)
-	testConfig := &config.Config{Timezone: "UTC"}
+	entries := generateAggregationTestEntries(30)
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 
 	start := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -146,7 +146,7 @@ func TestAggregationEngine_Aggregate(t *testing.T) {
 func TestAggregationEngine_DetectPatterns(t *testing.T) {
 	// 创建有模式的测试数据
 	entries := generatePatternedEntries()
-	testConfig := &config.Config{Timezone: "UTC"}
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 
 	start := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -198,7 +198,7 @@ func TestAggregationCache(t *testing.T) {
 }
 
 func TestAggregationEngine_DetectTrend(t *testing.T) {
-	testConfig := &config.Config{Timezone: "UTC"}
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine([]models.UsageEntry{}, testConfig)
 
 	t.Run("upward trend", func(t *testing.T) {
@@ -252,7 +252,7 @@ func TestAggregationEngine_FilterByTimeRange(t *testing.T) {
 		{Timestamp: time.Date(2024, 1, 25, 16, 0, 0, 0, time.UTC), TotalTokens: 300},
 	}
 
-	testConfig := &config.Config{Timezone: "UTC"}
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 
 	start := time.Date(2024, 1, 12, 0, 0, 0, 0, time.UTC)
@@ -266,11 +266,11 @@ func TestAggregationEngine_FilterByTimeRange(t *testing.T) {
 }
 
 // 测试辅助函数
-func generateTestEntries(days int) []models.UsageEntry {
+func generateAggregationTestEntries(days int) []models.UsageEntry {
 	entries := make([]models.UsageEntry, 0, days*5)
 	baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	models := []string{"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}
+	modelNames := []string{"claude-3-opus", "claude-3-sonnet", "claude-3-haiku"}
 
 	for i := 0; i < days; i++ {
 		day := baseTime.AddDate(0, 0, i)
@@ -283,7 +283,7 @@ func generateTestEntries(days int) []models.UsageEntry {
 			
 			entry := models.UsageEntry{
 				Timestamp:    timestamp,
-				Model:        models[rand.Intn(len(models))],
+				Model:        modelNames[rand.Intn(len(modelNames))],
 				InputTokens:  100 + rand.Intn(900),
 				OutputTokens: 200 + rand.Intn(1800),
 				TotalTokens:  300 + rand.Intn(2700),
@@ -330,8 +330,8 @@ func generatePatternedEntries() []models.UsageEntry {
 }
 
 func BenchmarkAggregationEngine_Aggregate(b *testing.B) {
-	entries := generateTestEntries(365) // 一年的数据
-	testConfig := &config.Config{Timezone: "UTC"}
+	entries := generateAggregationTestEntries(365) // 一年的数据
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 
 	start := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -345,7 +345,7 @@ func BenchmarkAggregationEngine_Aggregate(b *testing.B) {
 
 func BenchmarkAggregationEngine_DetectPatterns(b *testing.B) {
 	entries := generatePatternedEntries()
-	testConfig := &config.Config{Timezone: "UTC"}
+	testConfig := &config.Config{App: config.AppConfig{Timezone: "UTC"}}
 	engine := NewAggregationEngine(entries, testConfig)
 
 	start := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)

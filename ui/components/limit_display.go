@@ -7,13 +7,49 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/penwyp/ClawCat/limits"
-	"github.com/penwyp/ClawCat/ui"
 )
+
+// LimitDisplayStyles 限额显示样式
+type LimitDisplayStyles struct {
+	Success  lipgloss.Style
+	Warning  lipgloss.Style
+	Error    lipgloss.Style
+	Info     lipgloss.Style
+	Normal   lipgloss.Style
+	Bold     lipgloss.Style
+	Border   lipgloss.Style
+	Faint    lipgloss.Style
+	Title    lipgloss.Style
+	Subtitle lipgloss.Style
+	Badge    lipgloss.Style
+}
+
+// DefaultLimitDisplayStyles 默认限额显示样式
+func DefaultLimitDisplayStyles() LimitDisplayStyles {
+	return LimitDisplayStyles{
+		Success:  lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true),
+		Warning:  lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Bold(true),
+		Error:    lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Bold(true),
+		Info:     lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true),
+		Normal:   lipgloss.NewStyle().Foreground(lipgloss.Color("15")),
+		Bold:     lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true),
+		Border:   lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("240")).Padding(1),
+		Faint:    lipgloss.NewStyle().Faint(true),
+		Title:    lipgloss.NewStyle().Foreground(lipgloss.Color("86")).Bold(true).MarginBottom(1),
+		Subtitle: lipgloss.NewStyle().Foreground(lipgloss.Color("99")).Bold(true),
+		Badge:    lipgloss.NewStyle().Background(lipgloss.Color("240")).Foreground(lipgloss.Color("15")).Padding(0, 1),
+	}
+}
+
+// DashboardCard 获取仪表板卡片样式
+func (lds LimitDisplayStyles) DashboardCard() lipgloss.Style {
+	return lds.Border.Copy().Width(30).Height(8)
+}
 
 // LimitDisplay 限额显示组件
 type LimitDisplay struct {
 	status   *limits.LimitStatus
-	styles   ui.Styles
+	styles   LimitDisplayStyles
 	width    int
 	expanded bool
 }
@@ -21,7 +57,7 @@ type LimitDisplay struct {
 // NewLimitDisplay 创建限额显示组件
 func NewLimitDisplay() *LimitDisplay {
 	return &LimitDisplay{
-		styles:   ui.NewStyles(ui.DefaultTheme()),
+		styles:   DefaultLimitDisplayStyles(),
 		expanded: false,
 	}
 }

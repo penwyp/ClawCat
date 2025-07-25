@@ -41,6 +41,8 @@ type TableStyles struct {
 	Cell      lipgloss.Style
 	Border    lipgloss.Style
 	Separator string
+	Highlight lipgloss.Style
+	Faint     lipgloss.Style
 }
 
 // NewResponsiveTable 创建响应式表格
@@ -59,6 +61,8 @@ func DefaultTableStyles() TableStyles {
 		Cell:      lipgloss.NewStyle(),
 		Border:    lipgloss.NewStyle().Foreground(lipgloss.Color("#6B7280")),
 		Separator: "│",
+		Highlight: lipgloss.NewStyle().Background(lipgloss.Color("237")).Foreground(lipgloss.Color("15")),
+		Faint:     lipgloss.NewStyle().Faint(true),
 	}
 }
 
@@ -266,13 +270,3 @@ func (rt *ResponsiveTable) SetStyles(styles TableStyles) {
 	rt.styles = styles
 }
 
-// truncateString 截断字符串
-func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	if maxLen <= 3 {
-		return s[:maxLen]
-	}
-	return s[:maxLen-3] + "..."
-}
