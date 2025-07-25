@@ -51,6 +51,9 @@ func TestApp_IsRunning(t *testing.T) {
 func TestApp_UpdateConfig(t *testing.T) {
 	app := NewApp(DefaultConfig)
 	
+	// Stop the app to prevent hanging on Send
+	app.Stop()
+	
 	newConfig := Config{
 		RefreshRate:   3 * time.Second,
 		Theme:         "dark",

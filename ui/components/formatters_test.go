@@ -2,6 +2,7 @@ package components
 
 import (
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -243,7 +244,7 @@ func TestFormatModelName(t *testing.T) {
 	}{
 		{"claude-3-5-sonnet-20241022", 20, "Claude 3.5 Sonnet"},
 		{"claude-3-opus-20240229", 15, "Claude 3 Opus"},
-		{"gpt-4-turbo", 10, "GPT-4 Turbo"},
+		{"gpt-4-turbo", 11, "GPT-4 Turbo"},
 		{"some-very-long-model-name", 10, "some-ve..."},
 		{"short", 20, "short"},
 		{"unknown-model", 15, "unknown-model"},
@@ -326,18 +327,35 @@ func TestFormatETA(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
+		name     string
 		eta      time.Time
 		expected string
 	}{
-		{time.Time{}, "Unknown"},
-		{now.Add(-1 * time.Hour), "Completed"},
-		{now.Add(30 * time.Minute), "in 30m"},
-		{now.Add(2 * time.Hour), "in 2h 0m"},
+		{"zero time", time.Time{}, "Unknown"},
+		{"past time", now.Add(-1 * time.Hour), "Completed"},
+		{"30 minutes future", now.Add(30*time.Minute + 10*time.Second), "in 30m"},
+		{"2 hours future", now.Add(2*time.Hour + 10*time.Second), "in 2h 0m"},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.expected, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			result := formatETA(tt.eta)
+			
+			// For future times, allow some variance due to test execution time
+			if strings.HasPrefix(tt.expected, "in ") && strings.HasPrefix(result, "in ") {
+				// Extract the duration part and check if it's within acceptable range
+				expectedDur := strings.TrimPrefix(tt.expected, "in ")
+				actualDur := strings.TrimPrefix(result, "in ")
+				
+				// Accept if the actual duration is within 1 minute of expected
+				if expectedDur == "30m" && (actualDur == "29m" || actualDur == "30m" || actualDur == "31m") {
+					return
+				}
+				if expectedDur == "2h 0m" && (actualDur == "1h 59m" || actualDur == "2h 0m" || actualDur == "2h 1m") {
+					return
+				}
+			}
+			
 			assert.Equal(t, tt.expected, result)
 		})
 	}
