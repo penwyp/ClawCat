@@ -245,9 +245,11 @@ func (awf *AppWithFallback) enterDegradedMode(err error) {
 	// 记录错误
 	if awf.errorHandler != nil {
 		context := &errors.ErrorContext{
-			Component: "UI",
-			Operation: "app_start",
-			TraceID:   "ui-degraded",
+			Component:   "UI",
+			ContextName: "app_start",
+			ContextData: map[string]interface{}{
+				"trace_id": "ui-degraded",
+			},
 		}
 		if handleErr := awf.errorHandler.Handle(err, context); handleErr != nil {
 			// 错误处理失败，记录日志但继续运行

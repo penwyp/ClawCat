@@ -54,14 +54,14 @@ Examples:
 
 		// Configuration is validated by the validator in the config package
 
-		// Create and run application
-		app, err := internal.NewApplication(cfg)
+		// Create and run enhanced application
+		app, err := internal.NewEnhancedApplication(cfg)
 		if err != nil {
-			return fmt.Errorf("failed to create application: %w", err)
+			return fmt.Errorf("failed to create enhanced application: %w", err)
 		}
 
 		if verbose {
-			fmt.Fprintf(os.Stderr, "Starting ClawCat TUI monitor...\n")
+			fmt.Fprintf(os.Stderr, "Starting ClawCat enhanced TUI monitor...\n")
 			fmt.Fprintf(os.Stderr, "Configuration: %+v\n", cfg)
 		}
 

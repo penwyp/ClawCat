@@ -19,9 +19,9 @@ func ExampleUsage() {
 		RecoveryTimeout:  30 * time.Second,
 		ErrorThreshold:   5,
 		CircuitBreakerConfig: errors.CircuitBreakerConfig{
-			FailureThreshold: 5,
-			RecoveryTimeout:  10 * time.Second,
-			MaxConcurrency:   10,
+			MaxFailures:      5,
+			Timeout:          10 * time.Second,
+			SuccessThreshold: 3,
 		},
 	}
 	errorHandler := errors.NewErrorHandler(errorConfig)
@@ -94,9 +94,11 @@ func simulateUIErrors(errorHandler *errors.ErrorHandler) {
 	}
 
 	context := &errors.ErrorContext{
-		Component: "UI",
-		Operation: "render_dashboard",
-		TraceID:   "ui-test-001",
+		Component:   "UI",
+		ContextName: "render_dashboard",
+		ContextData: map[string]interface{}{
+			"trace_id": "ui-test-001",
+		},
 	}
 
 	// 处理错误，这将触发 UI 降级

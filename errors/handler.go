@@ -207,7 +207,13 @@ func (eh *ErrorHandler) registerDefaultStrategies() {
 
 	// 网络错误恢复
 	eh.recoveryManager.RegisterStrategy(ErrorTypeNetwork, &NetworkErrorRecovery{
-		retryPolicy: NewExponentialBackoff(3, 1*time.Second),
+		retryPolicy: &RetryPolicy{
+			MaxRetries:    3,
+			BaseDelay:     1 * time.Second,
+			MaxDelay:      30 * time.Second,
+			BackoffFactor: 2.0,
+			Jitter:        true,
+		},
 	})
 
 	// 资源错误恢复

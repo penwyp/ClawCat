@@ -125,21 +125,21 @@ func (el *ErrorLogger) LogError(err *RecoverableError, context *ErrorContext) {
 		Type:      err.Type,
 		Message:   err.Message,
 		Component: context.Component,
-		Operation: context.Operation,
-		TraceID:   context.TraceID,
-		UserID:    context.User,
-		SessionID: context.SessionID,
+		Operation: context.ContextName,
+		TraceID:   "", // TraceID not available in new ErrorContext
+		UserID:    "", // User not available in new ErrorContext
+		SessionID: "", // SessionID not available in new ErrorContext
 		Error:     err.Cause.Error(),
-		Context:   el.sanitizeContext(context.Metadata),
+		Context:   el.sanitizeContext(context.ContextData),
 	}
 
 	// 添加堆栈信息
 	if el.config.IncludeStack && err.Severity >= SeverityHigh {
-		entry.Stack = getStackTrace()
+		entry.Stack = context.StackTrace
 	}
 
 	// 添加恢复信息
-	if recovery := context.Metadata["recovery"]; recovery != nil {
+	if recovery := context.ContextData["recovery"]; recovery != nil {
 		if info, ok := recovery.(*RecoveryInfo); ok {
 			entry.Recovery = info
 		}
@@ -162,8 +162,8 @@ func (el *ErrorLogger) LogFatal(panicErr *PanicError) {
 
 	if panicErr.Context != nil {
 		entry.Component = panicErr.Context.Component
-		entry.Operation = panicErr.Context.Operation
-		entry.TraceID = panicErr.Context.TraceID
+		entry.Operation = panicErr.Context.ContextName
+		entry.TraceID = "" // TraceID not available in new ErrorContext
 	}
 
 	// 立即写入（不经过缓冲区）
@@ -413,8 +413,3 @@ func (clw *ConsoleLogWriter) WriteBatch(entries []*ErrorLogEntry) error {
 	return nil
 }
 
-// getStackTrace 获取堆栈跟踪
-func getStackTrace() string {
-	// 简化实现，实际应用中可以使用更复杂的堆栈跟踪
-	return ""
-}

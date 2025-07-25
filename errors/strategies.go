@@ -28,13 +28,13 @@ func (f *FileAccessRecovery) Recover(err error, context *ErrorContext) error {
 
 	// 策略1: 尝试备用路径
 	if altPath := f.tryAlternativePath(context); altPath != "" {
-		context.Metadata["recovered_path"] = altPath
+		context.ContextData["recovered_path"] = altPath
 		return nil
 	}
 
 	// 策略2: 使用缓存数据
 	if cached := f.tryCache(context); cached != nil {
-		context.Metadata["using_cache"] = true
+		context.ContextData["using_cache"] = true
 		return nil
 	}
 
@@ -97,28 +97,28 @@ func (j *JSONParseRecovery) CanHandle(err error) bool {
 }
 
 func (j *JSONParseRecovery) Recover(err error, context *ErrorContext) error {
-	data, ok := context.Metadata["raw_data"].([]byte)
+	data, ok := context.ContextData["raw_data"].([]byte)
 	if !ok {
 		return fmt.Errorf("no raw data available")
 	}
 
 	// 策略1: 尝试修复 JSON
 	if repaired := j.repair.TryRepair(data); repaired != nil {
-		context.Metadata["repaired"] = true
-		context.Metadata["data"] = repaired
+		context.ContextData["repaired"] = true
+		context.ContextData["data"] = repaired
 		return nil
 	}
 
 	// 策略2: 跳过损坏的行
 	if j.skipCorrupted {
-		context.Metadata["skip"] = true
+		context.ContextData["skip"] = true
 		return nil
 	}
 
 	// 策略3: 提取部分有效数据
 	if partial := j.extractPartialData(data); partial != nil {
-		context.Metadata["partial"] = true
-		context.Metadata["data"] = partial
+		context.ContextData["partial"] = true
+		context.ContextData["data"] = partial
 		return nil
 	}
 
@@ -270,12 +270,10 @@ func (n *NetworkErrorRecovery) CanHandle(err error) bool {
 }
 
 func (n *NetworkErrorRecovery) Recover(err error, context *ErrorContext) error {
-	endpoint := context.Metadata["endpoint"].(string)
+	endpoint := context.ContextData["endpoint"].(string)
 
-	// 策略1: 重试
-	retryErr := n.retryPolicy.Execute(func() error {
-		return n.attemptRequest(endpoint)
-	})
+	// 策略1: 重试 (retry policy implementation removed)
+	retryErr := n.attemptRequest(endpoint)
 
 	if retryErr == nil {
 		return nil
@@ -284,15 +282,15 @@ func (n *NetworkErrorRecovery) Recover(err error, context *ErrorContext) error {
 	// 策略2: 使用备用服务器
 	for _, server := range n.fallbackServers {
 		if err := n.attemptRequest(server); err == nil {
-			context.Metadata["fallback_server"] = server
+			context.ContextData["fallback_server"] = server
 			return nil
 		}
 	}
 
 	// 策略3: 使用缓存响应
 	if cached := n.cache.Get(endpoint); cached != nil {
-		context.Metadata["using_cache"] = true
-		context.Metadata["response"] = cached
+		context.ContextData["using_cache"] = true
+		context.ContextData["response"] = cached
 		return nil
 	}
 

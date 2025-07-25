@@ -62,15 +62,6 @@ func (e *RecoverableError) Unwrap() error {
 	return e.Cause
 }
 
-// ErrorContext 错误上下文
-type ErrorContext struct {
-	Component   string
-	Operation   string
-	User        string
-	SessionID   string
-	TraceID     string
-	Metadata    map[string]interface{}
-}
 
 // RecoveryStrategy 恢复策略接口
 type RecoveryStrategy interface {
@@ -129,21 +120,6 @@ const (
 	BackoffLinear      BackoffStrategy = "linear"
 )
 
-// CircuitBreakerConfig 熔断器配置
-type CircuitBreakerConfig struct {
-	FailureThreshold int
-	RecoveryTimeout  time.Duration
-	MaxConcurrency   int
-}
-
-// State 熔断器状态
-type State int
-
-const (
-	StateClosed    State = iota // 正常
-	StateOpen                   // 熔断
-	StateHalfOpen              // 半开
-)
 
 // OverallHealth 总体健康状态
 type OverallHealth struct {
