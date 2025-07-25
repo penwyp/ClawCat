@@ -24,11 +24,11 @@ type Styles struct {
 	MetricLabel     lipgloss.Style
 
 	// Status colors
-	Normal    lipgloss.Style
-	Warning   lipgloss.Style
-	Error     lipgloss.Style
-	Success   lipgloss.Style
-	Muted     lipgloss.Style
+	Normal  lipgloss.Style
+	Warning lipgloss.Style
+	Error   lipgloss.Style
+	Success lipgloss.Style
+	Muted   lipgloss.Style
 
 	// Progress bars
 	ProgressBar       lipgloss.Style
@@ -248,7 +248,7 @@ func (md *MetricsDisplay) renderModelDistribution(styles Styles) string {
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left, title, strings.Join(items, "\n"))
-	return styles.MetricCard.Width(md.width-2).Render(content)
+	return styles.MetricCard.Width(md.width - 2).Render(content)
 }
 
 // renderProgressBar 渲染进度条
@@ -346,7 +346,6 @@ func (md *MetricsDisplay) getStyles() Styles {
 }
 
 // Helper functions
-
 
 // RenderCompact 渲染紧凑版本的指标显示
 func (md *MetricsDisplay) RenderCompact() string {

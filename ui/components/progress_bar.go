@@ -10,14 +10,14 @@ import (
 
 // ProgressBar 进度条基础组件
 type ProgressBar struct {
-	Label       string         // 标签文本
-	Current     float64        // 当前值
-	Max         float64        // 最大值
-	Percentage  float64        // 百分比（0-100）
-	Width       int            // 进度条宽度
-	ShowValue   bool           // 是否显示数值
-	ShowPercent bool           // 是否显示百分比
-	Color       lipgloss.Color // 进度条颜色
+	Label       string           // 标签文本
+	Current     float64          // 当前值
+	Max         float64          // 最大值
+	Percentage  float64          // 百分比（0-100）
+	Width       int              // 进度条宽度
+	ShowValue   bool             // 是否显示数值
+	ShowPercent bool             // 是否显示百分比
+	Color       lipgloss.Color   // 进度条颜色
 	Style       ProgressBarStyle // 样式配置
 }
 
@@ -47,10 +47,10 @@ type ProgressColorScheme struct {
 // 默认颜色方案
 var DefaultColorScheme = ProgressColorScheme{
 	Thresholds: []ColorThreshold{
-		{Value: 0, Color: "#00ff00"},    // 绿色 0-50%
-		{Value: 50, Color: "#ffff00"},   // 黄色 50-75%
-		{Value: 75, Color: "#ff8800"},   // 橙色 75-90%
-		{Value: 90, Color: "#ff0000"},   // 红色 90-100%
+		{Value: 0, Color: "#00ff00"},  // 绿色 0-50%
+		{Value: 50, Color: "#ffff00"}, // 黄色 50-75%
+		{Value: 75, Color: "#ff8800"}, // 橙色 75-90%
+		{Value: 90, Color: "#ff0000"}, // 红色 90-100%
 	},
 	Default: "#00ff00",
 }

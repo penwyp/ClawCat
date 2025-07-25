@@ -64,20 +64,20 @@ func TestAggregationEngine_GroupByMonth(t *testing.T) {
 func TestAggregationEngine_CalculateStats(t *testing.T) {
 	entries := []models.UsageEntry{
 		{
-			Model:       "claude-3-opus",
-			TotalTokens: 1000,
-			InputTokens: 400,
+			Model:        "claude-3-opus",
+			TotalTokens:  1000,
+			InputTokens:  400,
 			OutputTokens: 600,
-			CostUSD:     0.15,
-			Timestamp:   time.Now(),
+			CostUSD:      0.15,
+			Timestamp:    time.Now(),
 		},
 		{
-			Model:       "claude-3-sonnet",
-			TotalTokens: 500,
-			InputTokens: 200,
+			Model:        "claude-3-sonnet",
+			TotalTokens:  500,
+			InputTokens:  200,
 			OutputTokens: 300,
-			CostUSD:     0.05,
-			Timestamp:   time.Now(),
+			CostUSD:      0.05,
+			Timestamp:    time.Now(),
 		},
 	}
 
@@ -274,13 +274,13 @@ func generateAggregationTestEntries(days int) []models.UsageEntry {
 
 	for i := 0; i < days; i++ {
 		day := baseTime.AddDate(0, 0, i)
-		
+
 		// 每天生成3-7个条目
 		entriesPerDay := 3 + rand.Intn(5)
-		
+
 		for j := 0; j < entriesPerDay; j++ {
 			timestamp := day.Add(time.Duration(8+rand.Intn(12)) * time.Hour) // 8-20点之间
-			
+
 			entry := models.UsageEntry{
 				Timestamp:    timestamp,
 				Model:        modelNames[rand.Intn(len(modelNames))],
@@ -289,7 +289,7 @@ func generateAggregationTestEntries(days int) []models.UsageEntry {
 				TotalTokens:  300 + rand.Intn(2700),
 				CostUSD:      0.01 + rand.Float64()*0.09,
 			}
-			
+
 			entries = append(entries, entry)
 		}
 	}
@@ -316,7 +316,7 @@ func generatePatternedEntries() []models.UsageEntry {
 			if hour >= 12 && hour <= 14 {
 				tokens = int(float64(tokens) * 1.5) // 高峰时段增加50%
 			}
-			
+
 			entries = append(entries, models.UsageEntry{
 				Timestamp:   day.Add(time.Duration(hour) * time.Hour),
 				Model:       "claude-3-opus",

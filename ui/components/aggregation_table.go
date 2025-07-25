@@ -42,7 +42,7 @@ func (at *AggregationTable) SetWidth(width int) {
 // Render 渲染表格
 func (at *AggregationTable) Render(width int) string {
 	at.width = width
-	
+
 	if len(at.data) == 0 {
 		return at.styles.Faint.Render("No data to display")
 	}
@@ -218,7 +218,7 @@ func (at *AggregationTable) Sort(column int) {
 	// 执行排序
 	sort.Slice(at.data, func(i, j int) bool {
 		var less bool
-		
+
 		switch at.sortColumn {
 		case 0: // Date
 			less = at.data[i].Period.Start.Before(at.data[j].Period.Start)
@@ -257,11 +257,11 @@ func (at *AggregationTable) Sort(column int) {
 func (at *AggregationTable) GetSelectedData(selectedIndex int) *calculations.AggregatedData {
 	start := at.page * at.pageSize
 	actualIndex := start + selectedIndex
-	
+
 	if actualIndex >= 0 && actualIndex < len(at.data) {
 		return &at.data[actualIndex]
 	}
-	
+
 	return nil
 }
 
@@ -298,11 +298,11 @@ func (at *AggregationTable) RenderDetailView(data *calculations.AggregatedData, 
 	// 模型分布
 	if len(data.Models) > 0 {
 		sections = append(sections, at.styles.Header.Render("Model Distribution"))
-		
+
 		// 按使用量排序模型
 		type modelUsage struct {
-			name   string
-			stats  calculations.AggregationModelStats
+			name    string
+			stats   calculations.AggregationModelStats
 			percent float64
 		}
 
@@ -342,7 +342,7 @@ func (at *AggregationTable) RenderDetailView(data *calculations.AggregatedData, 
 	}
 
 	content := strings.Join(sections, "\n\n")
-	
+
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("240")).
@@ -356,12 +356,12 @@ func (at *AggregationTable) simplifyModelName(name string) string {
 	// 移除常见前缀
 	name = strings.TrimPrefix(name, "claude-3-")
 	name = strings.TrimPrefix(name, "claude-")
-	
+
 	// 首字母大写
 	if len(name) > 0 {
 		name = strings.ToUpper(name[:1]) + name[1:]
 	}
-	
+
 	return name
 }
 
@@ -421,20 +421,20 @@ func (at *AggregationTable) Export(format ExportFormat) (string, error) {
 // exportCSV 导出为 CSV
 func (at *AggregationTable) exportCSV() (string, error) {
 	var lines []string
-	
+
 	// CSV 头
 	headers := []string{"Date", "Messages", "Tokens", "Cost", "Avg_Tokens_Per_Message", "Top_Model"}
 	lines = append(lines, strings.Join(headers, ","))
-	
+
 	// 数据行
 	for _, data := range at.data {
 		avgTokens := 0
 		if data.Entries > 0 {
 			avgTokens = data.Tokens.Total / data.Entries
 		}
-		
+
 		topModel := at.getTopModel(data.Models)
-		
+
 		row := []string{
 			fmt.Sprintf("\"%s\"", data.Period.Label),
 			fmt.Sprintf("%d", data.Entries),
@@ -443,10 +443,10 @@ func (at *AggregationTable) exportCSV() (string, error) {
 			fmt.Sprintf("%d", avgTokens),
 			fmt.Sprintf("\"%s\"", topModel),
 		}
-		
+
 		lines = append(lines, strings.Join(row, ","))
 	}
-	
+
 	return strings.Join(lines, "\n"), nil
 }
 
@@ -456,15 +456,15 @@ func (at *AggregationTable) exportJSON() (string, error) {
 	var jsonLines []string
 	jsonLines = append(jsonLines, "{")
 	jsonLines = append(jsonLines, `  "data": [`)
-	
+
 	for i, data := range at.data {
 		avgTokens := 0
 		if data.Entries > 0 {
 			avgTokens = data.Tokens.Total / data.Entries
 		}
-		
+
 		topModel := at.getTopModel(data.Models)
-		
+
 		jsonLine := fmt.Sprintf(`    {`+
 			`"date": "%s", `+
 			`"messages": %d, `+
@@ -480,37 +480,37 @@ func (at *AggregationTable) exportJSON() (string, error) {
 			avgTokens,
 			topModel,
 		)
-		
+
 		if i < len(at.data)-1 {
 			jsonLine += ","
 		}
-		
+
 		jsonLines = append(jsonLines, jsonLine)
 	}
-	
+
 	jsonLines = append(jsonLines, "  ]")
 	jsonLines = append(jsonLines, "}")
-	
+
 	return strings.Join(jsonLines, "\n"), nil
 }
 
 // exportTSV 导出为 TSV
 func (at *AggregationTable) exportTSV() (string, error) {
 	var lines []string
-	
+
 	// TSV 头
 	headers := []string{"Date", "Messages", "Tokens", "Cost", "Avg_Tokens_Per_Message", "Top_Model"}
 	lines = append(lines, strings.Join(headers, "\t"))
-	
+
 	// 数据行
 	for _, data := range at.data {
 		avgTokens := 0
 		if data.Entries > 0 {
 			avgTokens = data.Tokens.Total / data.Entries
 		}
-		
+
 		topModel := at.getTopModel(data.Models)
-		
+
 		row := []string{
 			data.Period.Label,
 			fmt.Sprintf("%d", data.Entries),
@@ -519,10 +519,10 @@ func (at *AggregationTable) exportTSV() (string, error) {
 			fmt.Sprintf("%d", avgTokens),
 			topModel,
 		}
-		
+
 		lines = append(lines, strings.Join(row, "\t"))
 	}
-	
+
 	return strings.Join(lines, "\n"), nil
 }
 

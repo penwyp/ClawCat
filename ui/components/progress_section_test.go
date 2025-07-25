@@ -206,10 +206,10 @@ func TestProgressSection_GetWorstStatus(t *testing.T) {
 	ps := NewProgressSection(100)
 
 	tests := []struct {
-		name        string
-		tokenUsage  float64
-		costUsage   float64
-		expected    string
+		name       string
+		tokenUsage float64
+		costUsage  float64
+		expected   string
 	}{
 		{
 			name:       "normal usage",
@@ -288,9 +288,9 @@ func TestCalculateBarWidth(t *testing.T) {
 		width    int
 		expected int
 	}{
-		{"small width", 50, 20},    // Below reserved space, should return minimum
-		{"normal width", 100, 60},  // Normal case
-		{"large width", 200, 60},   // Above maximum, should be capped
+		{"small width", 50, 20},   // Below reserved space, should return minimum
+		{"normal width", 100, 60}, // Normal case
+		{"large width", 200, 60},  // Above maximum, should be capped
 	}
 
 	for _, tt := range tests {

@@ -100,7 +100,7 @@ func (uc *UsageChart) SetChartType(chartType ChartType) {
 // Render 渲染图表
 func (uc *UsageChart) Render(width int) string {
 	uc.width = width
-	
+
 	if len(uc.data) == 0 {
 		return uc.styles.Title.Render("No data to display")
 	}
@@ -158,17 +158,17 @@ func (uc *UsageChart) renderBarChart() string {
 	// 渲染每一行（从上到下）
 	for row := chartHeight - 1; row >= 0; row-- {
 		var line strings.Builder
-		
+
 		// Y轴标签
 		threshold := float64(row) / float64(chartHeight-1)
 		yValue := int(float64(maxValue) * threshold)
 		yLabel := fmt.Sprintf("%6s ", uc.formatValue(yValue))
 		line.WriteString(uc.styles.Axis.Render(yLabel))
-		
+
 		// 绘制柱状图
 		for i, data := range uc.data {
 			barHeight := float64(data.Tokens.Total) / float64(maxValue) * float64(chartHeight)
-			
+
 			if float64(row) <= barHeight {
 				// 绘制柱子
 				bar := strings.Repeat("█", barWidth)
@@ -192,7 +192,7 @@ func (uc *UsageChart) renderBarChart() string {
 	// X轴标签
 	var xAxis strings.Builder
 	xAxis.WriteString(strings.Repeat(" ", 7)) // 对齐Y轴标签
-	
+
 	for i, data := range uc.data {
 		label := uc.truncateLabel(data.Period.Label, barWidth)
 		if len(label) < barWidth {
@@ -204,7 +204,7 @@ func (uc *UsageChart) renderBarChart() string {
 			xAxis.WriteString(" ")
 		}
 	}
-	
+
 	sections = append(sections, xAxis.String())
 
 	// 图例
@@ -262,7 +262,7 @@ func (uc *UsageChart) renderLineChart() string {
 		x := int(float64(i) / float64(len(uc.data)-1) * float64(chartWidth-1))
 		y := chartHeight - 1 - int(float64(data.Tokens.Total)/float64(maxValue)*float64(chartHeight-1))
 		points[i] = struct{ x, y int }{x, y}
-		
+
 		// 标记数据点
 		if x < chartWidth && y >= 0 && y < chartHeight {
 			canvas[y][x] = '●'
@@ -277,17 +277,17 @@ func (uc *UsageChart) renderLineChart() string {
 	// 渲染画布
 	for row := 0; row < chartHeight; row++ {
 		var line strings.Builder
-		
+
 		// Y轴标签
 		threshold := float64(chartHeight-1-row) / float64(chartHeight-1)
 		yValue := int(float64(maxValue) * threshold)
 		yLabel := fmt.Sprintf("%6s ", uc.formatValue(yValue))
 		line.WriteString(uc.styles.Axis.Render(yLabel))
-		
+
 		// 画布内容
 		lineContent := string(canvas[row])
 		line.WriteString(uc.styles.Line.Render(lineContent))
-		
+
 		sections = append(sections, line.String())
 	}
 
@@ -295,17 +295,17 @@ func (uc *UsageChart) renderLineChart() string {
 	if len(uc.data) > 0 {
 		var xAxis strings.Builder
 		xAxis.WriteString(strings.Repeat(" ", 7))
-		
+
 		firstLabel := uc.truncateLabel(uc.data[0].Period.Label, 8)
 		lastLabel := uc.truncateLabel(uc.data[len(uc.data)-1].Period.Label, 8)
-		
+
 		xAxis.WriteString(uc.styles.Axis.Render(firstLabel))
 		if chartWidth > 16 {
 			padding := chartWidth - len(firstLabel) - len(lastLabel)
 			xAxis.WriteString(strings.Repeat(" ", padding))
 		}
 		xAxis.WriteString(uc.styles.Axis.Render(lastLabel))
-		
+
 		sections = append(sections, xAxis.String())
 	}
 
@@ -362,7 +362,7 @@ func (uc *UsageChart) renderAreaChart() string {
 	for i, data := range uc.data {
 		x := int(float64(i) / float64(len(uc.data)-1) * float64(chartWidth-1))
 		barHeight := int(float64(data.Tokens.Total) / float64(maxValue) * float64(chartHeight-1))
-		
+
 		// 填充列
 		for y := chartHeight - 1; y > chartHeight-1-barHeight; y-- {
 			if x < chartWidth && y >= 0 && y < chartHeight {
@@ -378,32 +378,32 @@ func (uc *UsageChart) renderAreaChart() string {
 	// 渲染画布
 	for row := 0; row < chartHeight; row++ {
 		var line strings.Builder
-		
+
 		// Y轴标签
 		threshold := float64(chartHeight-1-row) / float64(chartHeight-1)
 		yValue := int(float64(maxValue) * threshold)
 		yLabel := fmt.Sprintf("%6s ", uc.formatValue(yValue))
 		line.WriteString(uc.styles.Axis.Render(yLabel))
-		
+
 		// 画布内容
 		lineContent := string(canvas[row])
 		line.WriteString(uc.styles.Bar.Render(lineContent))
-		
+
 		sections = append(sections, line.String())
 	}
 
 	// X轴标签
 	var xAxis strings.Builder
 	xAxis.WriteString(strings.Repeat(" ", 7))
-	
+
 	for i, data := range uc.data {
 		x := int(float64(i) / float64(len(uc.data)-1) * float64(chartWidth-1))
-		if i == 0 || i == len(uc.data)-1 || x % 10 == 0 { // 只显示部分标签
+		if i == 0 || i == len(uc.data)-1 || x%10 == 0 { // 只显示部分标签
 			label := uc.truncateLabel(data.Period.Label, 6)
 			xAxis.WriteString(uc.styles.Axis.Render(label))
 		}
 	}
-	
+
 	sections = append(sections, xAxis.String())
 
 	// 图例
@@ -435,11 +435,11 @@ func (uc *UsageChart) renderCompactChart() string {
 
 	var chart strings.Builder
 	chart.WriteString("📊 ")
-	
+
 	// 使用Unicode块字符创建迷你柱状图
 	for _, data := range uc.data {
 		height := float64(data.Tokens.Total) / float64(maxValue)
-		
+
 		if height > 0.75 {
 			chart.WriteRune('█')
 		} else if height > 0.5 {
@@ -454,7 +454,7 @@ func (uc *UsageChart) renderCompactChart() string {
 	}
 
 	chart.WriteString(fmt.Sprintf(" Max: %s", uc.formatValue(maxValue)))
-	
+
 	return uc.styles.Title.Render(chart.String())
 }
 
@@ -468,7 +468,7 @@ func (uc *UsageChart) renderLegend() string {
 	total := 0
 	max := 0
 	min := math.MaxInt32
-	
+
 	for _, data := range uc.data {
 		total += data.Tokens.Total
 		if data.Tokens.Total > max {
@@ -478,16 +478,16 @@ func (uc *UsageChart) renderLegend() string {
 			min = data.Tokens.Total
 		}
 	}
-	
+
 	avg := total / len(uc.data)
-	
+
 	legend := fmt.Sprintf("Total: %s | Avg: %s | Max: %s | Min: %s",
 		uc.formatValue(total),
 		uc.formatValue(avg),
 		uc.formatValue(max),
 		uc.formatValue(min),
 	)
-	
+
 	return uc.styles.Legend.Render(legend)
 }
 
@@ -495,18 +495,18 @@ func (uc *UsageChart) renderLegend() string {
 func (uc *UsageChart) drawLine(canvas [][]rune, x1, y1, x2, y2 int) {
 	dx := x2 - x1
 	dy := y2 - y1
-	
+
 	if dx == 0 && dy == 0 {
 		return
 	}
-	
+
 	steps := int(math.Max(math.Abs(float64(dx)), math.Abs(float64(dy))))
-	
+
 	for i := 0; i <= steps; i++ {
 		t := float64(i) / float64(steps)
 		x := int(float64(x1) + t*float64(dx))
 		y := int(float64(y1) + t*float64(dy))
-		
+
 		if x >= 0 && x < len(canvas[0]) && y >= 0 && y < len(canvas) {
 			if canvas[y][x] == ' ' {
 				// 根据线条方向选择字符
@@ -541,11 +541,11 @@ func (uc *UsageChart) truncateLabel(label string, maxLen int) string {
 	if len(label) <= maxLen {
 		return label
 	}
-	
+
 	if maxLen <= 3 {
 		return label[:maxLen]
 	}
-	
+
 	return label[:maxLen-3] + "..."
 }
 
@@ -569,7 +569,7 @@ func (uc *UsageChart) GetStats() ChartStats {
 	for _, data := range uc.data {
 		total += data.Tokens.Total
 		costs += data.Cost.Total
-		
+
 		if data.Tokens.Total > max {
 			max = data.Tokens.Total
 		}
@@ -639,12 +639,12 @@ func (uc *UsageChart) RenderMiniChart(width int) string {
 
 	// 计算每个数据点的宽度
 	pointWidth := float64(availableWidth) / float64(len(uc.data))
-	
+
 	if pointWidth >= 1 {
 		// 每个数据点至少占用1个字符
 		for _, data := range uc.data {
 			height := float64(data.Tokens.Total) / float64(maxValue)
-			
+
 			if height > 0.75 {
 				chart.WriteRune('█')
 			} else if height > 0.5 {
@@ -661,16 +661,16 @@ func (uc *UsageChart) RenderMiniChart(width int) string {
 		// 数据点太多，需要采样
 		sampleSize := availableWidth
 		step := float64(len(uc.data)) / float64(sampleSize)
-		
+
 		for i := 0; i < sampleSize; i++ {
 			dataIndex := int(float64(i) * step)
 			if dataIndex >= len(uc.data) {
 				dataIndex = len(uc.data) - 1
 			}
-			
+
 			data := uc.data[dataIndex]
 			height := float64(data.Tokens.Total) / float64(maxValue)
-			
+
 			if height > 0.75 {
 				chart.WriteRune('█')
 			} else if height > 0.5 {

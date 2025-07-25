@@ -91,9 +91,9 @@ func TestFormatPercentage(t *testing.T) {
 		{100, 1, "100.0%"},
 		{33.333, 2, "33.33%"},
 		{66.666, 0, "67%"},
-		{math.NaN(), 1, "0.0%"},     // NaN 处理
-		{math.Inf(1), 1, "0.0%"},    // Inf 处理
-		{math.Inf(-1), 1, "0.0%"},   // -Inf 处理
+		{math.NaN(), 1, "0.0%"},   // NaN 处理
+		{math.Inf(1), 1, "0.0%"},  // Inf 处理
+		{math.Inf(-1), 1, "0.0%"}, // -Inf 处理
 	}
 
 	for _, tt := range tests {
@@ -260,7 +260,7 @@ func TestFormatModelName(t *testing.T) {
 
 func TestFormatTimestamp(t *testing.T) {
 	now := time.Now()
-	
+
 	tests := []struct {
 		timestamp time.Time
 		expected  string
@@ -324,7 +324,7 @@ func TestFormatProgress(t *testing.T) {
 
 func TestFormatETA(t *testing.T) {
 	now := time.Now()
-	
+
 	tests := []struct {
 		eta      time.Time
 		expected string
@@ -345,7 +345,7 @@ func TestFormatETA(t *testing.T) {
 
 func TestNumberFormatter(t *testing.T) {
 	formatter := NewNumberFormatter()
-	
+
 	tests := []struct {
 		value    float64
 		expected string
@@ -366,7 +366,7 @@ func TestNumberFormatter(t *testing.T) {
 
 func TestNumberFormatter_FormatInt(t *testing.T) {
 	formatter := NewNumberFormatter()
-	
+
 	tests := []struct {
 		value    int64
 		expected string

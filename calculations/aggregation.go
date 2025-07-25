@@ -23,13 +23,13 @@ const (
 
 // AggregatedData 聚合数据
 type AggregatedData struct {
-	Period    TimePeriod             `json:"period"`
-	Entries   int                    `json:"entries"`
-	Tokens    TokenStats             `json:"tokens"`
-	Cost      CostStats              `json:"cost"`
-	Models    map[string]AggregationModelStats  `json:"models"`
-	Sessions  []SessionSummary       `json:"sessions"`
-	Patterns  UsagePattern           `json:"patterns"`
+	Period   TimePeriod                       `json:"period"`
+	Entries  int                              `json:"entries"`
+	Tokens   TokenStats                       `json:"tokens"`
+	Cost     CostStats                        `json:"cost"`
+	Models   map[string]AggregationModelStats `json:"models"`
+	Sessions []SessionSummary                 `json:"sessions"`
+	Patterns UsagePattern                     `json:"patterns"`
 }
 
 // TimePeriod 时间段
@@ -70,11 +70,11 @@ type AggregationModelStats struct {
 
 // SessionSummary 会话摘要
 type SessionSummary struct {
-	ID        string        `json:"id"`
-	Start     time.Time     `json:"start"`
-	Duration  time.Duration `json:"duration"`
-	Tokens    int           `json:"tokens"`
-	Cost      float64       `json:"cost"`
+	ID       string        `json:"id"`
+	Start    time.Time     `json:"start"`
+	Duration time.Duration `json:"duration"`
+	Tokens   int           `json:"tokens"`
+	Cost     float64       `json:"cost"`
 }
 
 // UsagePattern 使用模式
@@ -113,8 +113,8 @@ type AggregationEngine struct {
 
 // AggregationCache 聚合数据缓存
 type AggregationCache struct {
-	mu    sync.RWMutex
-	cache map[string]CacheEntry
+	mu      sync.RWMutex
+	cache   map[string]CacheEntry
 	maxSize int
 }
 
@@ -568,15 +568,15 @@ func (ae *AggregationEngine) getAnomalySeverity(deviation float64) string {
 func weekStart(year, week int, loc *time.Location) time.Time {
 	// 计算该年第一天
 	jan1 := time.Date(year, 1, 1, 0, 0, 0, 0, loc)
-	
+
 	// 找到第一个星期一
 	jan1Weekday := int(jan1.Weekday())
 	if jan1Weekday == 0 {
 		jan1Weekday = 7 // 将周日从0改为7
 	}
-	
+
 	firstMonday := jan1.AddDate(0, 0, 8-jan1Weekday)
-	
+
 	// 计算指定周的开始
 	return firstMonday.AddDate(0, 0, (week-1)*7)
 }

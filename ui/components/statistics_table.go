@@ -35,11 +35,11 @@ type TableStatistics struct {
 	ConfidenceLevel   float64
 
 	// 速率指标
-	TokensPerMinute   float64
-	TokensPerHour     float64
-	CostPerMinute     float64
-	CostPerHour       float64
-	MessagesPerHour   float64
+	TokensPerMinute float64
+	TokensPerHour   float64
+	CostPerMinute   float64
+	CostPerHour     float64
+	MessagesPerHour float64
 
 	// 模型分布
 	ModelDistribution []ModelUsage
@@ -318,7 +318,7 @@ func (st *StatisticsTable) formatCostChange(current, projected float64) string {
 	change := projected - current
 
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#F59E0B")) // 橙色
-	if change > 5.0 { // 超过 $5 增长
+	if change > 5.0 {                                                  // 超过 $5 增长
 		style = lipgloss.NewStyle().Foreground(lipgloss.Color("#EF4444")) // 红色
 	}
 

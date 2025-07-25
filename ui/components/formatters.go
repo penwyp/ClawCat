@@ -55,7 +55,7 @@ func formatPercentage(value float64, precision int) string {
 	if math.IsNaN(value) || math.IsInf(value, 0) {
 		return "0.0%"
 	}
-	
+
 	format := fmt.Sprintf("%%.%df%%%%", precision)
 	return fmt.Sprintf(format, value)
 }
@@ -88,7 +88,7 @@ func padString(s string, length int, padLeft bool) string {
 	if len(s) >= length {
 		return s
 	}
-	
+
 	padding := strings.Repeat(" ", length-len(s))
 	if padLeft {
 		return padding + s
@@ -101,11 +101,11 @@ func formatBurnRate(tokensPerMinute float64) string {
 	if tokensPerMinute == 0 {
 		return "0 tok/min"
 	}
-	
+
 	if tokensPerMinute >= 1000 {
 		return fmt.Sprintf("%.1fK tok/min", tokensPerMinute/1000)
 	}
-	
+
 	return fmt.Sprintf("%.1f tok/min", tokensPerMinute)
 }
 
@@ -136,20 +136,20 @@ func formatChange(current, projected float64) string {
 	if projected == current || current == 0 {
 		return "—"
 	}
-	
+
 	change := projected - current
 	percentage := (change / current) * 100
-	
+
 	if math.Abs(percentage) < 0.1 {
 		return "~0%"
 	}
-	
+
 	arrow := "↑"
 	if change < 0 {
 		arrow = "↓"
 		percentage = -percentage
 	}
-	
+
 	return fmt.Sprintf("%s %.1f%%", arrow, percentage)
 }
 
@@ -166,11 +166,11 @@ func formatModelName(model string, maxLength int) string {
 		"gpt-4":                      "GPT-4",
 		"gpt-3.5-turbo":              "GPT-3.5 Turbo",
 	}
-	
+
 	if simplified, exists := simplified[model]; exists {
 		model = simplified
 	}
-	
+
 	return truncateString(model, maxLength)
 }
 
@@ -178,7 +178,7 @@ func formatModelName(model string, maxLength int) string {
 func formatTimestamp(t time.Time) string {
 	now := time.Now()
 	diff := now.Sub(t)
-	
+
 	if diff < time.Minute {
 		return "just now"
 	} else if diff < time.Hour {
@@ -198,13 +198,13 @@ func formatSize(bytes int64) string {
 	if bytes < unit {
 		return fmt.Sprintf("%d B", bytes)
 	}
-	
+
 	div, exp := int64(unit), 0
 	for n := bytes / unit; n >= unit; n /= unit {
 		div *= unit
 		exp++
 	}
-	
+
 	units := []string{"KB", "MB", "GB", "TB"}
 	return fmt.Sprintf("%.1f %s", float64(bytes)/float64(div), units[exp])
 }
@@ -214,7 +214,7 @@ func formatProgress(current, total float64) string {
 	if total == 0 {
 		return "0/0 (0%)"
 	}
-	
+
 	percentage := (current / total) * 100
 	return fmt.Sprintf("%.0f/%.0f (%.1f%%)", current, total, percentage)
 }
@@ -224,12 +224,12 @@ func formatETA(eta time.Time) string {
 	if eta.IsZero() {
 		return "Unknown"
 	}
-	
+
 	now := time.Now()
 	if eta.Before(now) {
 		return "Completed"
 	}
-	
+
 	remaining := eta.Sub(now)
 	return fmt.Sprintf("in %s", formatDuration(remaining))
 }

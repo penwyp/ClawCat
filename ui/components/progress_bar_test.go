@@ -250,10 +250,10 @@ func TestProgressColorScheme_GetProgressColor(t *testing.T) {
 		percentage float64
 		expected   lipgloss.Color
 	}{
-		{25, "#00ff00"},  // Green
-		{60, "#ffff00"},  // Yellow
-		{80, "#ff8800"},  // Orange
-		{95, "#ff0000"},  // Red
+		{25, "#00ff00"}, // Green
+		{60, "#ffff00"}, // Yellow
+		{80, "#ff8800"}, // Orange
+		{95, "#ff0000"}, // Red
 	}
 
 	for _, tt := range tests {

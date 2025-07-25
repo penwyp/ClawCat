@@ -190,7 +190,7 @@ func TestResponsiveTable_CalculateColumnWidths(t *testing.T) {
 					assert.Greater(t, width, 0)
 					totalWidth += width
 				}
-				
+
 				// 总宽度应该接近表格宽度（考虑分隔符）
 				separatorSpace := len(table.visibleCols) * 3
 				assert.LessOrEqual(t, totalWidth+separatorSpace, tt.tableWidth+5) // +5 为容差
@@ -223,7 +223,7 @@ func TestResponsiveTable_SetWidth(t *testing.T) {
 
 func TestResponsiveTable_Clear(t *testing.T) {
 	table := NewResponsiveTable(50)
-	
+
 	columns := []Column{
 		{Key: "test", Title: "Test", MinWidth: 10, Priority: 1},
 	}
@@ -249,12 +249,12 @@ func TestResponsiveTable_TruncateString(t *testing.T) {
 		maxLen   int
 		expected string
 	}{
-		{"Hello World", 15, "Hello World"},     // 不需要截断
-		{"Hello World", 10, "Hello W..."},      // 需要截断
-		{"Hello World", 5, "He..."},            // 短截断
-		{"Hello World", 3, "Hel"},              // 极短截断
-		{"Hi", 5, "Hi"},                        // 输入比限制短
-		{"", 5, ""},                            // 空字符串
+		{"Hello World", 15, "Hello World"}, // 不需要截断
+		{"Hello World", 10, "Hello W..."},  // 需要截断
+		{"Hello World", 5, "He..."},        // 短截断
+		{"Hello World", 3, "Hel"},          // 极短截断
+		{"Hi", 5, "Hi"},                    // 输入比限制短
+		{"", 5, ""},                        // 空字符串
 	}
 
 	for _, tt := range tests {
@@ -268,7 +268,7 @@ func TestResponsiveTable_TruncateString(t *testing.T) {
 
 func TestResponsiveTable_WithNilData(t *testing.T) {
 	table := NewResponsiveTable(50)
-	
+
 	columns := []Column{
 		{Key: "name", Title: "Name", MinWidth: 10, Priority: 1},
 		{Key: "value", Title: "Value", MinWidth: 10, Priority: 2},
@@ -298,7 +298,7 @@ func TestResponsiveTable_EdgeCases(t *testing.T) {
 			{Key: "test", Title: "Test", MinWidth: 10, Priority: 1},
 		}
 		table.SetColumns(columns)
-		
+
 		// 零宽度时不应该有可见列
 		assert.Equal(t, 0, len(table.visibleCols))
 	})
@@ -306,7 +306,7 @@ func TestResponsiveTable_EdgeCases(t *testing.T) {
 	t.Run("no columns", func(t *testing.T) {
 		table := NewResponsiveTable(50)
 		table.AddRow([]interface{}{"data"})
-		
+
 		output := table.Render()
 		assert.Contains(t, output, "No data available")
 	})
@@ -317,7 +317,7 @@ func TestResponsiveTable_EdgeCases(t *testing.T) {
 			{Key: "test", Title: "Test", Priority: 1}, // MinWidth = 0
 		}
 		table.SetColumns(columns)
-		
+
 		// 应该使用默认最小宽度
 		assert.Greater(t, len(table.visibleCols), 0)
 	})

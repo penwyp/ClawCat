@@ -161,7 +161,7 @@ func (rt *ResponsiveTable) calculateColumnWidths() []int {
 		// 平均分配剩余空间
 		extra := remainingSpace / len(rt.visibleCols)
 		remainder := remainingSpace % len(rt.visibleCols)
-		
+
 		for i := range widths {
 			widths[i] += extra
 			if i < remainder {
@@ -198,7 +198,7 @@ func (rt *ResponsiveTable) renderRow(row []interface{}, widths []int) string {
 		if colIdx < len(row) && row[colIdx] != nil {
 			content = fmt.Sprintf("%v", row[colIdx])
 		}
-		
+
 		content = truncateString(content, widths[i])
 
 		// 应用对齐
@@ -269,4 +269,3 @@ func (rt *ResponsiveTable) Clear() {
 func (rt *ResponsiveTable) SetStyles(styles TableStyles) {
 	rt.styles = styles
 }
-

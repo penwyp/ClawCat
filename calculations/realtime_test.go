@@ -14,10 +14,10 @@ import (
 // 测试配置
 var testConfig = &config.Config{
 	Subscription: config.SubscriptionConfig{
-		Plan:              "pro",
-		CustomCostLimit:   18.0,
-		WarnThreshold:     75.0,
-		AlertThreshold:    90.0,
+		Plan:            "pro",
+		CustomCostLimit: 18.0,
+		WarnThreshold:   75.0,
+		AlertThreshold:  90.0,
 	},
 }
 
@@ -53,12 +53,12 @@ func TestMetricsCalculator_UpdateWithNewEntry(t *testing.T) {
 	calc := NewMetricsCalculator(time.Now(), testConfig)
 
 	entry := models.UsageEntry{
-		Timestamp:   time.Now(),
-		Model:       "claude-3-opus",
-		InputTokens: 100,
+		Timestamp:    time.Now(),
+		Model:        "claude-3-opus",
+		InputTokens:  100,
 		OutputTokens: 200,
-		TotalTokens: 300,
-		CostUSD:     0.01,
+		TotalTokens:  300,
+		CostUSD:      0.01,
 	}
 
 	calc.UpdateWithNewEntry(entry)
@@ -106,12 +106,12 @@ func TestMetricsCalculator_Calculate_RateCalculations(t *testing.T) {
 	now := time.Now()
 	for i := 0; i < 30; i++ {
 		entry := models.UsageEntry{
-			Timestamp:   now.Add(-time.Duration(30-i) * time.Minute),
-			Model:       "claude-3-opus",
-			InputTokens: 50,
+			Timestamp:    now.Add(-time.Duration(30-i) * time.Minute),
+			Model:        "claude-3-opus",
+			InputTokens:  50,
 			OutputTokens: 50,
-			TotalTokens: 100,
-			CostUSD:     0.01,
+			TotalTokens:  100,
+			CostUSD:      0.01,
 		}
 		calc.UpdateWithNewEntry(entry)
 	}
@@ -126,7 +126,7 @@ func TestMetricsCalculator_Calculate_RateCalculations(t *testing.T) {
 	assert.GreaterOrEqual(t, metrics.BurnRate, 0.0)
 
 	// 燃烧率应该接近平均值
-	expectedBurnRate := float64(100) // 每分钟100个tokens
+	expectedBurnRate := float64(100)                            // 每分钟100个tokens
 	assert.InDelta(t, expectedBurnRate, metrics.BurnRate, 50.0) // 允许一定误差
 }
 
@@ -138,12 +138,12 @@ func TestMetricsCalculator_Calculate_Projections(t *testing.T) {
 	now := time.Now()
 	for i := 0; i < 60; i++ {
 		entry := models.UsageEntry{
-			Timestamp:   now.Add(-time.Duration(60-i) * time.Minute),
-			Model:       "claude-3-opus",
-			InputTokens: 25,
+			Timestamp:    now.Add(-time.Duration(60-i) * time.Minute),
+			Model:        "claude-3-opus",
+			InputTokens:  25,
 			OutputTokens: 25,
-			TotalTokens: 50,
-			CostUSD:     0.005,
+			TotalTokens:  50,
+			CostUSD:      0.005,
 		}
 		calc.UpdateWithNewEntry(entry)
 	}
@@ -176,12 +176,12 @@ func TestMetricsCalculator_Calculate_ModelDistribution(t *testing.T) {
 	for i, model := range modelNames {
 		for j := 0; j < (i+1)*10; j++ { // 不同模型不同数量
 			entry := models.UsageEntry{
-				Timestamp:   time.Now().Add(-time.Duration(j) * time.Minute),
-				Model:       model,
-				InputTokens: 50,
+				Timestamp:    time.Now().Add(-time.Duration(j) * time.Minute),
+				Model:        model,
+				InputTokens:  50,
 				OutputTokens: 50,
-				TotalTokens: 100,
-				CostUSD:     0.01,
+				TotalTokens:  100,
+				CostUSD:      0.01,
 			}
 			calc.UpdateWithNewEntry(entry)
 		}
@@ -262,13 +262,13 @@ func TestMetricsCalculator_Calculate_PredictedEndTime(t *testing.T) {
 	// 应该有预测的结束时间
 	if metrics.CostPerMinute > 0 {
 		assert.False(t, metrics.PredictedEndTime.IsZero())
-		
+
 		// 验证预测时间的合理性
 		remainingBudget := 18.0 - metrics.CurrentCost
 		if remainingBudget > 0 {
 			expectedMinutes := remainingBudget / metrics.CostPerMinute
 			expectedEndTime := time.Now().Add(time.Duration(expectedMinutes) * time.Minute)
-			
+
 			// 允许5分钟的误差
 			timeDiff := metrics.PredictedEndTime.Sub(expectedEndTime).Abs()
 			assert.Less(t, timeDiff, 5*time.Minute)
@@ -435,8 +435,8 @@ func TestMetricsCalculator_ConcurrentAccess(t *testing.T) {
 	// 验证最终状态
 	assert.Equal(t, 100, calc.GetEntryCount())
 	metrics := calc.Calculate()
-	assert.Equal(t, 10000, metrics.CurrentTokens) // 100 entries * 100 tokens
-	assert.InDelta(t, 1.0, metrics.CurrentCost, 0.01)     // 100 entries * 0.01 cost (允许浮点误差)
+	assert.Equal(t, 10000, metrics.CurrentTokens)     // 100 entries * 100 tokens
+	assert.InDelta(t, 1.0, metrics.CurrentCost, 0.01) // 100 entries * 0.01 cost (允许浮点误差)
 }
 
 // 辅助函数

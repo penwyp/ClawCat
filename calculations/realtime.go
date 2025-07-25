@@ -46,10 +46,10 @@ type ModelMetrics struct {
 
 // MetricsCalculator 指标计算引擎
 type MetricsCalculator struct {
-	mu           sync.RWMutex
-	entries      []models.UsageEntry
-	sessionStart time.Time
-	windowSize   time.Duration // 默认5小时
+	mu             sync.RWMutex
+	entries        []models.UsageEntry
+	sessionStart   time.Time
+	windowSize     time.Duration // 默认5小时
 	updateInterval time.Duration // 默认10秒
 
 	// 缓存
