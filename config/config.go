@@ -22,6 +22,9 @@ type Config struct {
 	// Subscription
 	Subscription SubscriptionConfig `yaml:"subscription" json:"subscription"`
 
+	// Limits
+	Limits LimitsConfig `yaml:"limits" json:"limits"`
+
 	// Debug
 	Debug DebugConfig `yaml:"debug" json:"debug"`
 }
@@ -84,6 +87,35 @@ type DebugConfig struct {
 	MetricsPort   int    `yaml:"metrics_port" json:"metrics_port"`
 }
 
+// LimitsConfig contains subscription limit settings
+type LimitsConfig struct {
+	Enabled       bool               `yaml:"enabled" json:"enabled"`
+	Notifications []NotificationType `yaml:"notifications" json:"notifications"`
+	WebhookURL    string             `yaml:"webhook_url" json:"webhook_url"`
+	EmailEnabled  bool               `yaml:"email_enabled" json:"email_enabled"`
+	EmailSMTP     SMTPConfig         `yaml:"email_smtp" json:"email_smtp"`
+}
+
+// NotificationType represents the type of notification
+type NotificationType string
+
+const (
+	NotifyDesktop NotificationType = "desktop"
+	NotifySound   NotificationType = "sound"
+	NotifyWebhook NotificationType = "webhook"
+	NotifyEmail   NotificationType = "email"
+)
+
+// SMTPConfig contains SMTP settings for email notifications
+type SMTPConfig struct {
+	Host     string `yaml:"host" json:"host"`
+	Port     int    `yaml:"port" json:"port"`
+	Username string `yaml:"username" json:"username"`
+	Password string `yaml:"password" json:"password"`
+	From     string `yaml:"from" json:"from"`
+	To       string `yaml:"to" json:"to"`
+}
+
 // Format represents configuration file format
 type Format int
 
@@ -143,6 +175,10 @@ func DefaultConfig() *Config {
 			Plan:           "pro",
 			WarnThreshold:  0.80, // 80%
 			AlertThreshold: 0.95, // 95%
+		},
+		Limits: LimitsConfig{
+			Enabled:       true,
+			Notifications: []NotificationType{NotifyDesktop},
 		},
 		Debug: DebugConfig{
 			Enabled: false,

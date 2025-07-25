@@ -8,14 +8,17 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/penwyp/ClawCat/calculations"
+	"github.com/penwyp/ClawCat/limits"
 	"github.com/penwyp/ClawCat/ui/components"
 )
 
-// EnhancedDashboardView 增强的 Dashboard 视图，包含进度条
+// EnhancedDashboardView 增强的 Dashboard 视图，包含进度条和限额显示
 type EnhancedDashboardView struct {
 	stats           Statistics
 	metrics         *calculations.RealtimeMetrics
 	progressSection *components.ProgressSection
+	limitDisplay    *components.LimitDisplay
+	limitManager    *limits.LimitManager
 	limits          components.Limits
 	width           int
 	height          int
@@ -25,10 +28,13 @@ type EnhancedDashboardView struct {
 
 // NewEnhancedDashboardView 创建增强的 Dashboard
 func NewEnhancedDashboardView(config Config) *EnhancedDashboardView {
+	limitDisplay := components.NewLimitDisplay()
+	
 	return &EnhancedDashboardView{
 		config:          config,
 		styles:          NewStyles(GetThemeByName(config.Theme)),
 		progressSection: components.NewProgressSection(0),
+		limitDisplay:    limitDisplay,
 		limits:          getLimitsFromConfig(config),
 	}
 }
@@ -56,6 +62,7 @@ func (d *EnhancedDashboardView) View() string {
 
 	// 渲染各个部分
 	header := d.renderHeader()
+	limits := d.renderLimitsSection()
 	progress := d.renderProgressSection()
 	metrics := d.renderMetrics()
 	charts := d.renderCharts()
@@ -63,6 +70,10 @@ func (d *EnhancedDashboardView) View() string {
 
 	// 组合所有部分
 	sections := []string{header}
+	
+	if limits != "" {
+		sections = append(sections, limits)
+	}
 	
 	if progress != "" {
 		sections = append(sections, progress)
@@ -91,12 +102,24 @@ func (d *EnhancedDashboardView) UpdateMetrics(metrics *calculations.RealtimeMetr
 	}
 }
 
+// SetLimitManager 设置限额管理器
+func (d *EnhancedDashboardView) SetLimitManager(lm *limits.LimitManager) {
+	d.limitManager = lm
+	if d.limitDisplay != nil && lm != nil {
+		status := lm.GetStatus()
+		d.limitDisplay.Update(status)
+	}
+}
+
 // Resize 更新 dashboard 尺寸
 func (d *EnhancedDashboardView) Resize(width, height int) {
 	d.width = width
 	d.height = height
 	if d.progressSection != nil {
 		d.progressSection.SetWidth(width - 4)
+	}
+	if d.limitDisplay != nil {
+		d.limitDisplay.SetWidth(width - 4)
 	}
 }
 
@@ -115,6 +138,25 @@ func (d *EnhancedDashboardView) renderHeader() string {
 	)
 
 	return strings.Join([]string{title, subtitle}, "\n")
+}
+
+// renderLimitsSection 渲染限额状态区域
+func (d *EnhancedDashboardView) renderLimitsSection() string {
+	if d.limitDisplay == nil {
+		return ""
+	}
+	
+	// 如果有限额管理器，更新最新状态
+	if d.limitManager != nil {
+		status := d.limitManager.GetStatus()
+		d.limitDisplay.Update(status)
+	}
+	
+	// 根据屏幕空间决定是否展开显示
+	expanded := d.width > 80 && d.height > 30
+	d.limitDisplay.SetExpanded(expanded)
+	
+	return d.limitDisplay.Render()
 }
 
 // renderProgressSection 渲染进度条区域
@@ -266,6 +308,29 @@ func (d *EnhancedDashboardView) renderFooter() string {
 		status += " | ⚠️ Critical usage levels detected"
 	}
 
+	// 添加限额状态摘要
+	if d.limitDisplay != nil {
+		limitStatus := d.limitDisplay.GetStatus()
+		if limitStatus != nil {
+			if limitStatus.WarningLevel != nil {
+				severityIcon := ""
+				switch limitStatus.WarningLevel.Severity {
+				case limits.SeverityInfo:
+					severityIcon = "ℹ️"
+				case limits.SeverityWarning:
+					severityIcon = "⚠️"
+				case limits.SeverityError:
+					severityIcon = "🚨"
+				case limits.SeverityCritical:
+					severityIcon = "❌"
+				}
+				status += fmt.Sprintf(" | %s Limit: %.1f%%", severityIcon, limitStatus.Percentage)
+			} else if limitStatus.Percentage > 50 {
+				status += fmt.Sprintf(" | 📊 Limit: %.1f%%", limitStatus.Percentage)
+			}
+		}
+	}
+
 	return d.styles.Footer.Render(status)
 }
 
@@ -329,4 +394,48 @@ func (d *EnhancedDashboardView) GetProgressSummary() string {
 		return d.progressSection.GetSummary()
 	}
 	return "No progress data available"
+}
+
+// UpdateLimitStatus 更新限额状态
+func (d *EnhancedDashboardView) UpdateLimitStatus(tokens int64, cost float64) error {
+	if d.limitManager == nil {
+		return nil
+	}
+	
+	err := d.limitManager.UpdateUsage(tokens, cost)
+	if err != nil {
+		return err
+	}
+	
+	// 更新限额显示
+	if d.limitDisplay != nil {
+		status := d.limitManager.GetStatus()
+		d.limitDisplay.Update(status)
+	}
+	
+	return nil
+}
+
+// GetLimitStatus 获取当前限额状态
+func (d *EnhancedDashboardView) GetLimitStatus() *limits.LimitStatus {
+	if d.limitManager == nil {
+		return nil
+	}
+	return d.limitManager.GetStatus()
+}
+
+// IsOverLimit 检查是否超过限额
+func (d *EnhancedDashboardView) IsOverLimit() bool {
+	if d.limitDisplay == nil {
+		return false
+	}
+	return d.limitDisplay.IsOverLimit()
+}
+
+// GetQuickLimitStatus 获取快速限额状态
+func (d *EnhancedDashboardView) GetQuickLimitStatus() string {
+	if d.limitDisplay == nil {
+		return "No limit data"
+	}
+	return d.limitDisplay.RenderQuickStatus()
 }
