@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/internal"
 	"github.com/penwyp/ClawCat/models"
@@ -30,6 +31,7 @@ var (
 	analyzeLimit     int
 	analyzeGroupBy   string
 	analyzeBreakdown bool
+	analyzeReset     bool
 )
 
 var analyzeCmd = &cobra.Command{
@@ -63,6 +65,21 @@ Examples:
 		// Apply debug flag if set
 		if debug || viper.GetBool("debug.enabled") {
 			cfg.Debug.Enabled = true
+		}
+
+		// Reset cache if requested
+		if analyzeReset {
+			storeConfig := cache.StoreConfig{
+				MaxFileSize:  50 * 1024 * 1024, // 50MB
+				MaxMemory:    100 * 1024 * 1024, // 100MB
+				FileCacheTTL: time.Hour,
+				CalcCacheTTL: time.Hour,
+			}
+			cacheStore := cache.NewStore(storeConfig)
+			if err := cacheStore.Clear(); err != nil {
+				return fmt.Errorf("failed to clear cache: %w", err)
+			}
+			fmt.Println("Cache cleared successfully")
 		}
 
 		// Create analyzer
@@ -101,7 +118,7 @@ func init() {
 	analyzeCmd.Flags().BoolVar(&analyzeByModel, "by-model", false, "group results by model")
 	analyzeCmd.Flags().BoolVar(&analyzeByDay, "by-day", false, "group results by day")
 	analyzeCmd.Flags().BoolVar(&analyzeByHour, "by-hour", false, "group results by hour")
-	analyzeCmd.Flags().StringVar(&analyzeGroupBy, "group-by", "", "group by field (model, day, hour, session)")
+	analyzeCmd.Flags().StringVar(&analyzeGroupBy, "group-by", "", "group by field (model, day, hour, week, month, session)")
 
 	// Sorting and limiting flags
 	analyzeCmd.Flags().StringVar(&analyzeSortBy, "sort-by", "timestamp", "sort by field (timestamp, cost, tokens, model)")
@@ -109,6 +126,9 @@ func init() {
 	
 	// Breakdown flag
 	analyzeCmd.Flags().BoolVarP(&analyzeBreakdown, "breakdown", "b", false, "Show per-model cost breakdown")
+	
+	// Reset flag
+	analyzeCmd.Flags().BoolVarP(&analyzeReset, "reset", "r", false, "Clear cache before analysis")
 
 	// Bind to viper
 	_ = viper.BindPFlag("analyze.output", analyzeCmd.Flags().Lookup("output"))
@@ -227,7 +247,12 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 		analyzeGroupBy = "day"
 	}
 
-	// Group results by specified field
+	// If breakdown is enabled and we're grouping by time, use special breakdown grouping
+	if analyzeBreakdown && (analyzeGroupBy == "hour" || analyzeGroupBy == "day" || analyzeGroupBy == "week" || analyzeGroupBy == "month") {
+		return applyBreakdownGrouping(results)
+	}
+
+	// Regular grouping logic
 	groups := make(map[string][]models.AnalysisResult)
 
 	for _, result := range results {
@@ -239,6 +264,11 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 			key = result.Timestamp.Format("2006-01-02")
 		case "hour":
 			key = result.Timestamp.Format("2006-01-02 15:00")
+		case "week":
+			year, week := result.Timestamp.ISOWeek()
+			key = fmt.Sprintf("%d-W%02d", year, week)
+		case "month":
+			key = result.Timestamp.Format("2006-01")
 		case "session":
 			key = result.SessionID
 		default:
@@ -277,6 +307,102 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 		aggregated = append(aggregated, agg)
 	}
 
+	return aggregated
+}
+
+func applyBreakdownGrouping(results []models.AnalysisResult) []models.AnalysisResult {
+	// Group by time period, then by model
+	type modelData struct {
+		models map[string]*models.AnalysisResult
+		total  *models.AnalysisResult
+	}
+	
+	groups := make(map[string]*modelData)
+	
+	// First pass: group by time period and model
+	for _, result := range results {
+		var timeKey string
+		switch analyzeGroupBy {
+		case "hour":
+			timeKey = result.Timestamp.Format("2006-01-02 15:00")
+		case "day":
+			timeKey = result.Timestamp.Format("2006-01-02")
+		case "week":
+			year, week := result.Timestamp.ISOWeek()
+			timeKey = fmt.Sprintf("%d-W%02d", year, week)
+		case "month":
+			timeKey = result.Timestamp.Format("2006-01")
+		}
+		
+		if groups[timeKey] == nil {
+			groups[timeKey] = &modelData{
+				models: make(map[string]*models.AnalysisResult),
+				total: &models.AnalysisResult{
+					GroupKey:  timeKey,
+					Model:     "TOTAL",
+					Timestamp: result.Timestamp,
+				},
+			}
+		}
+		
+		// Add to model-specific data
+		if groups[timeKey].models[result.Model] == nil {
+			groups[timeKey].models[result.Model] = &models.AnalysisResult{
+				GroupKey:  timeKey,
+				Model:     result.Model,
+				Timestamp: result.Timestamp,
+			}
+		}
+		
+		modelResult := groups[timeKey].models[result.Model]
+		modelResult.InputTokens += result.InputTokens
+		modelResult.OutputTokens += result.OutputTokens
+		modelResult.CacheCreationTokens += result.CacheCreationTokens
+		modelResult.CacheReadTokens += result.CacheReadTokens
+		modelResult.TotalTokens += result.TotalTokens
+		modelResult.CostUSD += result.CostUSD
+		modelResult.Count++
+		
+		// Add to total
+		totalResult := groups[timeKey].total
+		totalResult.InputTokens += result.InputTokens
+		totalResult.OutputTokens += result.OutputTokens
+		totalResult.CacheCreationTokens += result.CacheCreationTokens
+		totalResult.CacheReadTokens += result.CacheReadTokens
+		totalResult.TotalTokens += result.TotalTokens
+		totalResult.CostUSD += result.CostUSD
+		totalResult.Count++
+	}
+	
+	// Second pass: flatten into results array
+	var aggregated []models.AnalysisResult
+	
+	// Sort time keys
+	var timeKeys []string
+	for key := range groups {
+		timeKeys = append(timeKeys, key)
+	}
+	sort.Strings(timeKeys)
+	
+	for _, timeKey := range timeKeys {
+		groupData := groups[timeKey]
+		
+		// Sort model names
+		var modelNames []string
+		for modelName := range groupData.models {
+			modelNames = append(modelNames, modelName)
+		}
+		sort.Strings(modelNames)
+		
+		// Add model-specific results
+		for _, modelName := range modelNames {
+			aggregated = append(aggregated, *groupData.models[modelName])
+		}
+		
+		// Add total row
+		aggregated = append(aggregated, *groupData.total)
+	}
+	
 	return aggregated
 }
 
@@ -340,8 +466,13 @@ func outputTable(results []models.AnalysisResult) error {
 	}
 
 	// Data rows
-	for _, result := range results {
+	for i, result := range results {
 		if analyzeGroupBy != "" {
+			// Add blank line after TOTAL row when using breakdown (except for the last row)
+			if analyzeBreakdown && i > 0 && results[i-1].Model == "TOTAL" && result.Model != "TOTAL" && i < len(results) {
+				fmt.Fprintln(w, "")
+			}
+			
 			fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t$%.4f\n",
 				result.GroupKey,
 				result.Model,
@@ -545,3 +676,4 @@ func parseTimeString(timeStr string) (time.Time, error) {
 
 	return time.Time{}, fmt.Errorf("unable to parse time: %s", timeStr)
 }
+

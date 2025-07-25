@@ -313,3 +313,233 @@
 2025/07/26 01:59:52 logger.go:98: [INFO] Analyzing path: /Users/penwyp/.claude/projects
 2025/07/26 01:59:54 logger.go:98: [INFO] Found 113153 usage entries in path: /Users/penwyp/.claude/projects
 2025/07/26 01:59:54 logger.go:98: [INFO] Analysis completed: 113153 results from 1 paths
+2025/07/26 02:16:45 [INFO] Using discovered data path: /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:16:45 [INFO] Starting ClawCat enhanced application
+2025/07/26 02:16:45 [INFO] Starting enhanced application components
+2025/07/26 02:16:45 [INFO] Waiting for initial data...
+2025/07/26 02:16:45 [INFO] Found 1125 JSONL files total
+2025/07/26 02:16:53 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:16:53 [INFO] Data loaded in 7.696s
+2025/07/26 02:16:53 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:16:53 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:16:53 [INFO] Starting interactive TUI mode
+2025/07/26 02:16:53 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:16:53 [INFO] Data processing completed in 7.706s
+2025/07/26 02:16:54 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:16:54 [INFO] Data processing completed in 0.002s
+2025/07/26 02:16:55 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:16:55 [INFO] Data processing completed in 0.001s
+2025/07/26 02:16:56 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:16:56 [INFO] Data processing completed in 0.003s
+2025/07/26 02:16:57 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:16:57 [INFO] Data processing completed in 0.002s
+2025/07/26 02:16:58 [INFO] Found 1125 JSONL files total
+2025/07/26 02:17:06 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:17:06 [INFO] Data loaded in 7.465s
+2025/07/26 02:17:06 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:17:06 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:17:06 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:06 [INFO] Data processing completed in 7.477s
+2025/07/26 02:17:06 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:06 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:06 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:06 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:07 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:07 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:08 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:08 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:09 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:09 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:10 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:10 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:11 [INFO] Found 1125 JSONL files total
+2025/07/26 02:17:19 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:17:19 [INFO] Data loaded in 7.435s
+2025/07/26 02:17:19 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:17:19 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:17:19 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:19 [INFO] Data processing completed in 7.447s
+2025/07/26 02:17:19 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:19 [INFO] Data processing completed in 0.004s
+2025/07/26 02:17:19 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:19 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:20 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:20 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:21 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:21 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:22 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:22 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:23 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:23 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:24 [INFO] Found 1125 JSONL files total
+2025/07/26 02:17:32 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:17:32 [INFO] Data loaded in 7.476s
+2025/07/26 02:17:32 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:17:32 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:17:32 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:32 [INFO] Data processing completed in 7.487s
+2025/07/26 02:17:32 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:32 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:32 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:32 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:33 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:33 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:34 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:34 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:35 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:35 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:36 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:36 [INFO] Data processing completed in 0.002s
+2025/07/26 02:17:37 [INFO] Found 1125 JSONL files total
+2025/07/26 02:17:45 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:17:45 [INFO] Data loaded in 7.466s
+2025/07/26 02:17:45 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:17:45 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:17:45 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:45 [INFO] Data processing completed in 7.476s
+2025/07/26 02:17:45 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:45 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:45 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:45 [INFO] Data processing completed in 0.001s
+2025/07/26 02:17:46 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:46 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:47 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:47 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:48 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:48 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:49 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:49 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:50 [INFO] Found 1125 JSONL files total
+2025/07/26 02:17:58 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:17:58 [INFO] Data loaded in 7.530s
+2025/07/26 02:17:58 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:17:58 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:17:58 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:58 [INFO] Data processing completed in 7.540s
+2025/07/26 02:17:58 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:58 [INFO] Data processing completed in 0.001s
+2025/07/26 02:17:58 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:58 [INFO] Data processing completed in 0.003s
+2025/07/26 02:17:59 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:17:59 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:00 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:00 [INFO] Data processing completed in 0.004s
+2025/07/26 02:18:01 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:01 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:02 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:02 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:03 [INFO] Found 1125 JSONL files total
+2025/07/26 02:18:11 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:18:11 [INFO] Data loaded in 7.518s
+2025/07/26 02:18:11 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:18:11 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:18:11 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:11 [INFO] Data processing completed in 7.529s
+2025/07/26 02:18:11 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:11 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:11 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:11 [INFO] Data processing completed in 0.001s
+2025/07/26 02:18:12 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:12 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:13 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:13 [INFO] Data processing completed in 0.004s
+2025/07/26 02:18:14 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:14 [INFO] Data processing completed in 0.003s
+2025/07/26 02:18:15 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:15 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:16 [INFO] Found 1125 JSONL files total
+2025/07/26 02:18:24 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:18:24 [INFO] Data loaded in 7.562s
+2025/07/26 02:18:24 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:18:24 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:18:24 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:24 [INFO] Data processing completed in 7.574s
+2025/07/26 02:18:24 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:24 [INFO] Data processing completed in 0.005s
+2025/07/26 02:18:24 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:24 [INFO] Data processing completed in 0.003s
+2025/07/26 02:18:25 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:25 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:26 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:26 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:27 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:27 [INFO] Data processing completed in 0.003s
+2025/07/26 02:18:28 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:28 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:29 [INFO] Found 1125 JSONL files total
+2025/07/26 02:18:37 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:18:37 [INFO] Data loaded in 7.501s
+2025/07/26 02:18:37 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:18:37 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:18:37 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:37 [INFO] Data processing completed in 7.511s
+2025/07/26 02:18:37 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:37 [INFO] Data processing completed in 0.001s
+2025/07/26 02:18:37 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:37 [INFO] Data processing completed in 0.001s
+2025/07/26 02:18:38 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:38 [INFO] Data processing completed in 0.004s
+2025/07/26 02:18:39 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:39 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:40 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:40 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:41 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:41 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:42 [INFO] Found 1125 JSONL files total
+2025/07/26 02:18:50 [INFO] Loaded 18440 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/26 02:18:50 [INFO] Data loaded in 7.467s
+2025/07/26 02:18:50 [INFO] Created 36 blocks in 0.007s
+2025/07/26 02:18:50 [INFO] Analysis completed, returning 36 blocks
+2025/07/26 02:18:50 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:50 [INFO] Data processing completed in 7.479s
+2025/07/26 02:18:50 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:50 [INFO] Data processing completed in 0.003s
+2025/07/26 02:18:50 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:50 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:51 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:51 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:52 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:52 [INFO] Data processing completed in 0.003s
+2025/07/26 02:18:53 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:53 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:54 [INFO] Updating UI with 29 sessions and 18440 entries
+2025/07/26 02:18:54 [INFO] Data processing completed in 0.002s
+2025/07/26 02:18:55 [INFO] Found 1125 JSONL files total
+2025/07/26 02:18:57 [INFO] Shutting down enhanced application
+2025/07/26 02:19:02 [INFO] ClawCat enhanced application stopped
+2025/07/26 02:19:03 logger.go:83: [INFO] ClawCat enhanced application stopped
+2025/07/26 02:29:55 [INFO] Using default data path: /Users/penwyp/.claude/projects
+2025/07/26 02:29:55 [INFO] Starting analysis of 1 paths: [/Users/penwyp/.claude/projects]
+2025/07/26 02:29:55 [INFO] Analyzing path: /Users/penwyp/.claude/projects
+2025/07/26 02:29:57 [INFO] Found 112704 usage entries in path: /Users/penwyp/.claude/projects
+2025/07/26 02:29:57 [INFO] Analysis completed: 112704 results from 1 paths
+2025/07/26 02:30:40 [INFO] Using default data path: /Users/penwyp/.claude/projects
+2025/07/26 02:30:40 [INFO] Starting analysis of 1 paths: [/Users/penwyp/.claude/projects]
+2025/07/26 02:30:40 [INFO] Analyzing path: /Users/penwyp/.claude/projects
+2025/07/26 02:30:41 [INFO] Found 112712 usage entries in path: /Users/penwyp/.claude/projects
+2025/07/26 02:30:41 [INFO] Analysis completed: 112712 results from 1 paths
+2025/07/26 02:31:01 [INFO] Using default data path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:01 [INFO] Starting analysis of 1 paths: [/Users/penwyp/.claude/projects]
+2025/07/26 02:31:01 [INFO] Analyzing path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:03 [INFO] Found 112716 usage entries in path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:03 [INFO] Analysis completed: 112716 results from 1 paths
+2025/07/26 02:31:10 [INFO] Using default data path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:10 [INFO] Starting analysis of 1 paths: [/Users/penwyp/.claude/projects]
+2025/07/26 02:31:10 [INFO] Analyzing path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:12 [INFO] Found 112718 usage entries in path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:12 [INFO] Analysis completed: 112718 results from 1 paths
+2025/07/26 02:31:18 [INFO] Using default data path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:18 [INFO] Starting analysis of 1 paths: [/Users/penwyp/.claude/projects]
+2025/07/26 02:31:18 [INFO] Analyzing path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:19 [INFO] Found 112720 usage entries in path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:19 [INFO] Analysis completed: 112720 results from 1 paths
+2025/07/26 02:31:25 [INFO] Using default data path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:25 [INFO] Starting analysis of 1 paths: [/Users/penwyp/.claude/projects]
+2025/07/26 02:31:25 [INFO] Analyzing path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:27 [INFO] Found 112722 usage entries in path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:27 [INFO] Analysis completed: 112722 results from 1 paths
+2025/07/26 02:31:32 [INFO] Using default data path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:32 [INFO] Starting analysis of 1 paths: [/Users/penwyp/.claude/projects]
+2025/07/26 02:31:32 [INFO] Analyzing path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:34 [INFO] Found 112724 usage entries in path: /Users/penwyp/.claude/projects
+2025/07/26 02:31:34 [INFO] Analysis completed: 112724 results from 1 paths
