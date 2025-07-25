@@ -151,10 +151,13 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 	
 	result, err := fileio.LoadUsageEntries(opts)
 	if err != nil {
+		fmt.Printf("Error loading usage entries from %s: %v\n", dm.dataPath, err)
 		return nil, fmt.Errorf("failed to load usage entries: %w", err)
 	}
 	
+	fmt.Printf("Loaded %d usage entries from %s\n", len(result.Entries), dm.dataPath)
 	if len(result.Entries) == 0 {
+		fmt.Printf("No usage entries found in %s\n", dm.dataPath)
 		return nil, fmt.Errorf("no usage entries found")
 	}
 	

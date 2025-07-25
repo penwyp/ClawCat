@@ -236,24 +236,33 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 		}
 	}()
 	
+	fmt.Printf("=== DATA UPDATE CALLBACK ===\n")
+	fmt.Printf("Received %d blocks from orchestrator\n", len(data.Data.Blocks))
+	
 	// Update metrics calculator with new session blocks
 	ea.metricsCalc.UpdateSessionBlocks(data.Data.Blocks)
 	
 	// Calculate enhanced metrics
 	metrics := ea.metricsCalc.Calculate()
+	fmt.Printf("Calculated metrics - Current tokens: %d, Current cost: $%.4f\n", 
+		metrics.CurrentTokens, metrics.CurrentCost)
 	
 	// Update UI if running interactively
 	if ea.ui.IsRunning() {
 		// Convert the data to the format expected by the UI
 		sessions := ea.convertBlocksToSessions(data.Data.Blocks)
 		entries := ea.extractEntriesFromBlocks(data.Data.Blocks)
+		fmt.Printf("Updating UI with %d sessions and %d entries\n", len(sessions), len(entries))
 		ea.ui.UpdateData(sessions, entries)
+	} else {
+		fmt.Printf("UI is not running - skipping UI update\n")
 	}
 	
 	// Update application metrics
 	ea.updateApplicationMetrics(metrics)
 	
 	ea.logger.Debugf("Processed data update with %d blocks", len(data.Data.Blocks))
+	fmt.Printf("=== END DATA UPDATE ===\n")
 }
 
 // onSessionChange handles session change events
@@ -326,9 +335,18 @@ func (ea *EnhancedApplication) getDataPath() string {
 		return ea.config.Data.Paths[0]
 	}
 	
-	// Default data path
+	// Use real test data path instead of default
+	testDataPath := "/Users/penwyp/Dat/worktree/claude_data_snapshot/projects"
+	if _, err := os.Stat(testDataPath); err == nil {
+		ea.logger.Infof("Using test data path: %s", testDataPath)
+		return testDataPath
+	}
+	
+	// Fallback to default data path
 	homeDir, _ := os.UserHomeDir()
-	return fmt.Sprintf("%s/.claude/projects", homeDir)
+	defaultPath := fmt.Sprintf("%s/.claude/projects", homeDir)
+	ea.logger.Infof("Using default data path: %s", defaultPath)
+	return defaultPath
 }
 
 // handleSignals handles OS signals

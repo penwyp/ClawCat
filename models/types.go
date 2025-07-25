@@ -28,6 +28,7 @@ type UsageEntry struct {
 	CostUSD             float64   `json:"cost_usd"`     // Calculated field
 	MessageID           string    `json:"message_id"`
 	RequestID           string    `json:"request_id"`
+	SessionID           string    `json:"session_id"`   // Claude Code session ID
 }
 
 // TokenCounts aggregates token counts with computed totals

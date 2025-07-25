@@ -71,11 +71,22 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	var processedHashes = make(map[string]bool) // For deduplication
 	var processingErrors []string
 
-	for _, filePath := range jsonlFiles {
+	for i, filePath := range jsonlFiles {
+		if i < 5 || i%100 == 0 { // Log first 5 files and every 100th file
+			fmt.Printf("Processing file %d/%d: %s\n", i+1, len(jsonlFiles), filepath.Base(filePath))
+		}
+		
 		entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
 		if err != nil {
+			if i < 5 { // Log errors for first 5 files
+				fmt.Printf("Error processing file %s: %v\n", filepath.Base(filePath), err)
+			}
 			processingErrors = append(processingErrors, fmt.Sprintf("%s: %v", filePath, err))
 			continue
+		}
+		
+		if i < 5 { // Log successful processing for first 5 files
+			fmt.Printf("File %s processed: %d entries\n", filepath.Base(filePath), len(entries))
 		}
 		
 		allEntries = append(allEntries, entries...)
@@ -137,12 +148,16 @@ func LoadAllRawEntries(dataPath string) ([]map[string]interface{}, error) {
 func findJSONLFiles(dataPath string) ([]string, error) {
 	var jsonlFiles []string
 	
+	fmt.Printf("Searching for JSONL files in: %s\n", dataPath)
+	
 	err := filepath.Walk(dataPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
+			fmt.Printf("Error accessing path %s: %v\n", path, err)
 			return nil // Continue walking even if we can't access some files
 		}
 		
 		if !info.IsDir() && strings.HasSuffix(strings.ToLower(info.Name()), ".jsonl") {
+			fmt.Printf("Found JSONL file: %s\n", path)
 			jsonlFiles = append(jsonlFiles, path)
 		}
 		
@@ -153,6 +168,7 @@ func findJSONLFiles(dataPath string) ([]string, error) {
 		return nil, err
 	}
 	
+	fmt.Printf("Found %d JSONL files total\n", len(jsonlFiles))
 	return jsonlFiles, nil
 }
 
@@ -166,11 +182,17 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 
 	var entries []models.UsageEntry
 	var rawEntries []map[string]interface{}
+	isDebugFile := strings.Contains(filePath, "073a4655-bd12-402f-904c-7f1fb7d2a563") // Debug first file
 	
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // 64KB initial, 1MB max
 	
 	lineNum := 0
+	processedLines := 0
+	skippedByTime := 0
+	conversionErrors := 0
+	duplicates := 0
+	
 	for scanner.Scan() {
 		lineNum++
 		line := scanner.Bytes()
@@ -181,7 +203,14 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 		
 		var rawData map[string]interface{}
 		if err := json.Unmarshal(line, &rawData); err != nil {
+			if isDebugFile && lineNum <= 3 {
+				fmt.Printf("  JSON parse error line %d: %v\n", lineNum, err)
+			}
 			continue // Skip invalid JSON lines
+		}
+		
+		if isDebugFile && lineNum <= 3 {
+			fmt.Printf("  Line %d parsed successfully, type=%v\n", lineNum, rawData["type"])
 		}
 		
 		// Filter by timestamp if cutoff is specified
@@ -189,6 +218,10 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 			if timestampStr, ok := rawData["timestamp"].(string); ok {
 				if timestamp, err := time.Parse(time.RFC3339, timestampStr); err == nil {
 					if timestamp.Before(*cutoffTime) {
+						skippedByTime++
+						if isDebugFile && lineNum <= 3 {
+							fmt.Printf("  Line %d skipped by time filter\n", lineNum)
+						}
 						continue
 					}
 				}
@@ -198,12 +231,20 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 		// Convert to UsageEntry
 		entry, err := convertRawToUsageEntry(rawData, mode)
 		if err != nil {
+			conversionErrors++
+			if isDebugFile && lineNum <= 3 {
+				fmt.Printf("  Line %d conversion error: %v\n", lineNum, err)
+			}
 			continue // Skip entries that can't be converted
 		}
 		
 		// Deduplicate based on content hash
 		entryHash := generateEntryHash(entry)
 		if processedHashes[entryHash] {
+			duplicates++
+			if isDebugFile && lineNum <= 3 {
+				fmt.Printf("  Line %d duplicate entry\n", lineNum)
+			}
 			continue
 		}
 		processedHashes[entryHash] = true
@@ -212,6 +253,11 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 		entry.NormalizeModel()
 		
 		entries = append(entries, entry)
+		processedLines++
+		
+		if isDebugFile && lineNum <= 3 {
+			fmt.Printf("  Line %d successfully processed\n", lineNum)
+		}
 		
 		if includeRaw {
 			rawEntries = append(rawEntries, rawData)
@@ -220,6 +266,11 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 	
 	if err := scanner.Err(); err != nil {
 		return entries, rawEntries, fmt.Errorf("scanner error: %w", err)
+	}
+	
+	if isDebugFile {
+		fmt.Printf("  File summary: %d total lines, %d processed, %d skipped by time, %d conversion errors, %d duplicates\n",
+			lineNum, processedLines, skippedByTime, conversionErrors, duplicates)
 	}
 	
 	return entries, rawEntries, nil
@@ -269,35 +320,91 @@ func convertRawToUsageEntry(rawData map[string]interface{}, mode models.CostMode
 		return entry, fmt.Errorf("missing timestamp")
 	}
 	
-	// Extract model
-	if model, ok := rawData["model"].(string); ok {
-		entry.Model = model
+	// Check if this is a Claude Code entry (has 'type' field)
+	entryType, hasType := rawData["type"].(string)
+	if hasType {
+		// Only process assistant messages for usage data
+		if entryType != "assistant" {
+			return entry, fmt.Errorf("not an assistant message")
+		}
+		
+		// Extract message data for Claude Code format
+		if messageData, ok := rawData["message"].(map[string]interface{}); ok {
+			// Extract model from message
+			if model, ok := messageData["model"].(string); ok {
+				entry.Model = model
+			} else {
+				return entry, fmt.Errorf("missing model in message")
+			}
+			
+			// Extract usage data from message
+			if usageData, ok := messageData["usage"].(map[string]interface{}); ok {
+				if inputTokens, ok := usageData["input_tokens"].(float64); ok {
+					entry.InputTokens = int(inputTokens)
+				}
+				if outputTokens, ok := usageData["output_tokens"].(float64); ok {
+					entry.OutputTokens = int(outputTokens)
+				}
+				if cacheCreationTokens, ok := usageData["cache_creation_input_tokens"].(float64); ok {
+					entry.CacheCreationTokens = int(cacheCreationTokens)
+				}
+				if cacheReadTokens, ok := usageData["cache_read_input_tokens"].(float64); ok {
+					entry.CacheReadTokens = int(cacheReadTokens)
+				}
+			} else {
+				return entry, fmt.Errorf("missing usage data in message")
+			}
+			
+			// Extract message ID from message
+			if messageID, ok := messageData["id"].(string); ok {
+				entry.MessageID = messageID
+			}
+		} else {
+			return entry, fmt.Errorf("missing message data")
+		}
+		
+		// Extract request ID from top level
+		if requestID, ok := rawData["requestId"].(string); ok {
+			entry.RequestID = requestID
+		}
+		
+		// Extract session ID
+		if sessionID, ok := rawData["sessionId"].(string); ok {
+			entry.SessionID = sessionID
+		}
+		
 	} else {
-		return entry, fmt.Errorf("missing model")
-	}
-	
-	// Extract usage data
-	if usageData, ok := rawData["usage"].(map[string]interface{}); ok {
-		if inputTokens, ok := usageData["input_tokens"].(float64); ok {
-			entry.InputTokens = int(inputTokens)
+		// Legacy format support - direct usage data
+		// Extract model
+		if model, ok := rawData["model"].(string); ok {
+			entry.Model = model
+		} else {
+			return entry, fmt.Errorf("missing model")
 		}
-		if outputTokens, ok := usageData["output_tokens"].(float64); ok {
-			entry.OutputTokens = int(outputTokens)
+		
+		// Extract usage data
+		if usageData, ok := rawData["usage"].(map[string]interface{}); ok {
+			if inputTokens, ok := usageData["input_tokens"].(float64); ok {
+				entry.InputTokens = int(inputTokens)
+			}
+			if outputTokens, ok := usageData["output_tokens"].(float64); ok {
+				entry.OutputTokens = int(outputTokens)
+			}
+			if cacheCreationTokens, ok := usageData["cache_creation_tokens"].(float64); ok {
+				entry.CacheCreationTokens = int(cacheCreationTokens)
+			}
+			if cacheReadTokens, ok := usageData["cache_read_tokens"].(float64); ok {
+				entry.CacheReadTokens = int(cacheReadTokens)
+			}
 		}
-		if cacheCreationTokens, ok := usageData["cache_creation_tokens"].(float64); ok {
-			entry.CacheCreationTokens = int(cacheCreationTokens)
+		
+		// Extract IDs if available
+		if messageID, ok := rawData["message_id"].(string); ok {
+			entry.MessageID = messageID
 		}
-		if cacheReadTokens, ok := usageData["cache_read_tokens"].(float64); ok {
-			entry.CacheReadTokens = int(cacheReadTokens)
+		if requestID, ok := rawData["request_id"].(string); ok {
+			entry.RequestID = requestID
 		}
-	}
-	
-	// Extract IDs if available
-	if messageID, ok := rawData["message_id"].(string); ok {
-		entry.MessageID = messageID
-	}
-	if requestID, ok := rawData["request_id"].(string); ok {
-		entry.RequestID = requestID
 	}
 	
 	// Calculate total tokens
