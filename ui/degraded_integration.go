@@ -55,10 +55,9 @@ func NewDegradedApp(cfg Config, degradedCfg DegradedConfig, errorHandler *errors
 		errorHandler: errorHandler,
 	}
 	
-	// 创建 Bubble Tea 程序（简化配置）
+	// 创建 Bubble Tea 程序（简化配置，无全屏模式）
 	app.program = tea.NewProgram(
 		model,
-		tea.WithAltScreen(),
 		tea.WithContext(ctx),
 	)
 	

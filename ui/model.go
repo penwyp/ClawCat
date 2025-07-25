@@ -7,6 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/ClawCat/ui/components"
+	"github.com/penwyp/ClawCat/calculations"
 )
 
 // ViewType represents different views in the application
@@ -23,30 +25,33 @@ const (
 // Model represents the application state
 type Model struct {
 	// Data
-	sessions    []*sessions.Session
-	entries     []models.UsageEntry
-	stats       Statistics
-	manager     *sessions.Manager
+	sessions       []*sessions.Session
+	entries        []models.UsageEntry
+	stats          Statistics
+	manager        *sessions.Manager
+	realtimeMetrics *calculations.RealtimeMetrics
 	
 	// UI State
-	view        ViewType
-	width       int
-	height      int
-	ready       bool
-	loading     bool
-	lastUpdate  time.Time
+	view           ViewType
+	width          int
+	height         int
+	ready          bool
+	loading        bool
+	lastUpdate     time.Time
+	streamingMode  bool // New: enables non-fullscreen streaming mode
 	
 	// Components
-	dashboard   *DashboardView
-	sessionList *SessionListView
-	analytics   *AnalyticsView
-	help        *HelpView
+	dashboard      *DashboardView
+	sessionList    *SessionListView
+	analytics      *AnalyticsView
+	help           *HelpView
+	streamDisplay  *components.StreamingDisplay
 	
 	// Utilities
-	keys        KeyMap
-	styles      Styles
-	spinner     spinner.Model
-	config      Config
+	keys           KeyMap
+	styles         Styles
+	spinner        spinner.Model
+	config         Config
 }
 
 // Statistics holds current usage statistics
@@ -70,14 +75,15 @@ func NewModel(cfg Config) Model {
 	s.Style = NewStyles(DefaultTheme()).Normal
 	
 	m := Model{
-		config:      cfg,
-		view:        ViewDashboard,
-		ready:       false,
-		loading:     true,
-		keys:        DefaultKeyMap(),
-		styles:      NewStyles(DefaultTheme()),
-		spinner:     s,
-		lastUpdate:  time.Now(),
+		config:        cfg,
+		view:          ViewDashboard,
+		ready:         false,
+		loading:       true,
+		keys:          DefaultKeyMap(),
+		styles:        NewStyles(DefaultTheme()),
+		spinner:       s,
+		lastUpdate:    time.Now(),
+		streamingMode: !cfg.CompactMode, // Enable streaming mode unless in compact mode
 	}
 	
 	// Initialize views
@@ -85,6 +91,7 @@ func NewModel(cfg Config) Model {
 	m.sessionList = NewSessionListView()
 	m.analytics = NewAnalyticsView()
 	m.help = NewHelpView()
+	m.streamDisplay = components.NewStreamingDisplay()
 	
 	return m
 }
@@ -134,6 +141,25 @@ func (m *Model) UpdateEntries(entries []models.UsageEntry) {
 	}
 	
 	m.lastUpdate = time.Now()
+}
+
+// UpdateRealtimeMetrics updates the realtime metrics
+func (m *Model) UpdateRealtimeMetrics(metrics *calculations.RealtimeMetrics) {
+	m.realtimeMetrics = metrics
+	
+	// Update streaming display
+	if m.streamDisplay != nil {
+		m.streamDisplay.SetMetrics(metrics)
+		m.streamDisplay.SetSessions(m.sessions)
+		m.streamDisplay.SetWidth(m.width)
+	}
+	
+	m.lastUpdate = time.Now()
+}
+
+// SetStreamingMode enables/disables streaming mode
+func (m *Model) SetStreamingMode(enabled bool) {
+	m.streamingMode = enabled
 }
 
 // updateStatistics calculates current statistics

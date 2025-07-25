@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"fmt"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/penwyp/ClawCat/calculations"
 	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/sessions"
 )
@@ -26,6 +28,11 @@ type ConfigUpdateMsg struct {
 
 // ViewChangeMsg requests a view change
 type ViewChangeMsg ViewType
+
+// RealtimeMetricsMsg carries updated realtime metrics
+type RealtimeMetricsMsg struct {
+	Metrics *calculations.RealtimeMetrics
+}
 
 // RefreshRequestMsg requests a data refresh
 type RefreshRequestMsg struct{}
@@ -87,6 +94,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update data from manager
 		m.UpdateSessions(msg.Sessions)
 		m.UpdateEntries(msg.Entries)
+		return m, nil
+
+	case RealtimeMetricsMsg:
+		// Update realtime metrics
+		m.UpdateRealtimeMetrics(msg.Metrics)
 		return m, nil
 
 	case ConfigUpdateMsg:
@@ -266,7 +278,12 @@ func (m Model) View() string {
 		return m.renderLoading()
 	}
 
-	// Render current view
+	// Use streaming mode for non-fullscreen display
+	if m.streamingMode {
+		return m.renderStreamingView()
+	}
+
+	// Render current view (legacy fullscreen mode)
 	switch m.view {
 	case ViewDashboard:
 		if m.dashboard != nil {
@@ -297,8 +314,74 @@ func (m Model) View() string {
 	}
 }
 
+// renderStreamingView renders the non-fullscreen streaming view
+func (m Model) renderStreamingView() string {
+	if m.streamDisplay == nil {
+		return "ClawCat - Streaming mode loading..."
+	}
+
+	// Choose display format based on view
+	switch m.view {
+	case ViewDashboard:
+		// Show header with inline summary
+		header := m.streamDisplay.RenderHeader()
+		return header
+
+	case ViewAnalytics:
+		// Show detailed report
+		return m.streamDisplay.RenderDetailedReport()
+
+	case ViewSessions:
+		// Show inline summary with session info
+		summary := m.streamDisplay.RenderInlineSummary()
+		sessionInfo := m.renderSessionSummary()
+		return summary + "\n" + sessionInfo
+
+	case ViewHelp:
+		return m.renderStreamingHelp()
+
+	default:
+		// Default to compact header
+		return m.streamDisplay.RenderHeader()
+	}
+}
+
+// renderSessionSummary renders a compact session summary
+func (m Model) renderSessionSummary() string {
+	if len(m.sessions) == 0 {
+		return "No active sessions"
+	}
+
+	active := 0
+	for _, session := range m.sessions {
+		if session.IsActive {
+			active++
+		}
+	}
+
+	return fmt.Sprintf("Sessions: %d total, %d active", len(m.sessions), active)
+}
+
+// renderStreamingHelp renders help for streaming mode
+func (m Model) renderStreamingHelp() string {
+	return `ClawCat Streaming Mode - Keyboard Shortcuts:
+  q/Ctrl+C: Quit
+  1/d: Dashboard view    2/s: Sessions view    3/a: Analytics view
+  r/F5: Refresh data     Tab: Next view        h/?: Help
+  
+This is non-fullscreen mode - output streams inline with your terminal.`
+}
+
 // renderLoading renders the loading screen
 func (m Model) renderLoading() string {
+	if m.streamingMode {
+		content := "📊 ClawCat - Starting up..."
+		if m.config.ShowSpinner {
+			content = m.spinner.View() + " " + content
+		}
+		return content
+	}
+
 	content := m.styles.Normal.Render("Initializing ClawCat...")
 	
 	if m.config.ShowSpinner {

@@ -51,10 +51,9 @@ func NewApp(cfg Config) *App {
 		cancel: cancel,
 	}
 	
-	// Create Bubble Tea program with alt screen
+	// Create Bubble Tea program without alt screen for inline terminal display
 	app.program = tea.NewProgram(
 		model,
-		tea.WithAltScreen(),
 		tea.WithMouseCellMotion(),
 		tea.WithContext(ctx),
 	)
