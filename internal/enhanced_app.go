@@ -118,7 +118,15 @@ func (ea *EnhancedApplication) Run() error {
 // bootstrap initializes all application components
 func (ea *EnhancedApplication) bootstrap() error {
 	// Initialize cache
-	ea.cache = cache.NewStore(cache.DefaultConfig())
+	ea.cache = cache.NewStore(cache.StoreConfig{
+		MaxFileSize:       10 * 1024 * 1024, // 10MB
+		MaxMemory:         50 * 1024 * 1024, // 50MB
+		FileCacheTTL:      24 * time.Hour,
+		CalcCacheTTL:      1 * time.Hour,
+		CompressionLevel:  6,
+		EnableMetrics:     true,
+		EnableCompression: true,
+	})
 	
 	// Initialize metrics calculator
 	ea.metricsCalc = calculations.NewEnhancedMetricsCalculator(ea.config)
@@ -185,7 +193,7 @@ func (ea *EnhancedApplication) start() error {
 	// Wait for initial data with timeout
 	ea.logger.Info("Waiting for initial data...")
 	if !ea.orchestrator.WaitForInitialData(10 * time.Second) {
-		ea.logger.Warning("Timeout waiting for initial data, continuing anyway")
+		ea.logger.Warn("Timeout waiting for initial data, continuing anyway")
 	}
 	
 	return nil
