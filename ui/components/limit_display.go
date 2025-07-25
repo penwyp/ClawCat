@@ -43,7 +43,7 @@ func DefaultLimitDisplayStyles() LimitDisplayStyles {
 
 // DashboardCard 获取仪表板卡片样式
 func (lds LimitDisplayStyles) DashboardCard() lipgloss.Style {
-	return lds.Border.Copy().Width(30).Height(8)
+	return lds.Border.Width(30).Height(8)
 }
 
 // LimitDisplay 限额显示组件

@@ -168,7 +168,10 @@ func (el *ErrorLogger) LogFatal(panicErr *PanicError) {
 
 	// 立即写入（不经过缓冲区）
 	for _, writer := range el.writers {
-		writer.Write(entry)
+		if err := writer.Write(entry); err != nil {
+			// 写入失败，记录到标准错误输出
+			fmt.Fprintf(os.Stderr, "Failed to write error log: %v\n", err)
+		}
 	}
 }
 
@@ -369,7 +372,9 @@ func (flw *FileLogWriter) WriteBatch(entries []*ErrorLogEntry) error {
 		}
 
 		data = append(data, '\n')
-		flw.file.Write(data)
+		if _, err := flw.file.Write(data); err != nil {
+			return fmt.Errorf("failed to write to file: %w", err)
+		}
 	}
 
 	return flw.file.Sync()
@@ -401,7 +406,9 @@ func (clw *ConsoleLogWriter) Write(entry *ErrorLogEntry) error {
 // WriteBatch 批量写入日志条目
 func (clw *ConsoleLogWriter) WriteBatch(entries []*ErrorLogEntry) error {
 	for _, entry := range entries {
-		clw.Write(entry)
+		if err := clw.Write(entry); err != nil {
+			return fmt.Errorf("failed to write console log entry: %w", err)
+		}
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -78,12 +79,24 @@ func init() {
 	runCmd.Flags().BoolVar(&runBackground, "background", false, "run in background mode (minimal UI)")
 
 	// Bind flags to viper for configuration
-	viper.BindPFlag("app.data_paths", runCmd.Flags().Lookup("paths"))
-	viper.BindPFlag("app.subscription_plan", runCmd.Flags().Lookup("plan"))
-	viper.BindPFlag("app.refresh_interval", runCmd.Flags().Lookup("refresh"))
-	viper.BindPFlag("ui.theme", runCmd.Flags().Lookup("theme"))
-	viper.BindPFlag("fileio.watch_enabled", runCmd.Flags().Lookup("watch"))
-	viper.BindPFlag("app.background_mode", runCmd.Flags().Lookup("background"))
+	if err := viper.BindPFlag("app.data_paths", runCmd.Flags().Lookup("paths")); err != nil {
+		log.Printf("Failed to bind paths flag: %v", err)
+	}
+	if err := viper.BindPFlag("app.subscription_plan", runCmd.Flags().Lookup("plan")); err != nil {
+		log.Printf("Failed to bind plan flag: %v", err)
+	}
+	if err := viper.BindPFlag("app.refresh_interval", runCmd.Flags().Lookup("refresh")); err != nil {
+		log.Printf("Failed to bind refresh flag: %v", err)
+	}
+	if err := viper.BindPFlag("ui.theme", runCmd.Flags().Lookup("theme")); err != nil {
+		log.Printf("Failed to bind theme flag: %v", err)
+	}
+	if err := viper.BindPFlag("fileio.watch_enabled", runCmd.Flags().Lookup("watch")); err != nil {
+		log.Printf("Failed to bind watch flag: %v", err)
+	}
+	if err := viper.BindPFlag("app.background_mode", runCmd.Flags().Lookup("background")); err != nil {
+		log.Printf("Failed to bind background flag: %v", err)
+	}
 
 	// Add to root command
 	rootCmd.AddCommand(runCmd)

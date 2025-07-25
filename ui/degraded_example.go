@@ -69,7 +69,11 @@ func ExampleUsage() {
 	}
 
 	// 7. 清理
-	defer app.Stop()
+	defer func() {
+		if err := app.Stop(); err != nil {
+			log.Printf("Error stopping app: %v", err)
+		}
+	}()
 }
 
 // simulateUIErrors 模拟 UI 错误场景
@@ -96,7 +100,9 @@ func simulateUIErrors(errorHandler *errors.ErrorHandler) {
 	}
 
 	// 处理错误，这将触发 UI 降级
-	errorHandler.Handle(uiError, context)
+	if err := errorHandler.Handle(uiError, context); err != nil {
+		log.Printf("Failed to handle UI error: %v", err)
+	}
 
 	// 等待一段时间后模拟恢复
 	time.Sleep(10 * time.Second)

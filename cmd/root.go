@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -60,10 +61,18 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 
 	// Bind flags to viper
-	viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level"))
-	viper.BindPFlag("ui.no_color", rootCmd.PersistentFlags().Lookup("no-color"))
-	viper.BindPFlag("debug.enabled", rootCmd.PersistentFlags().Lookup("debug"))
-	viper.BindPFlag("log.verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	if err := viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
+		log.Printf("Failed to bind log-level flag: %v", err)
+	}
+	if err := viper.BindPFlag("ui.no_color", rootCmd.PersistentFlags().Lookup("no-color")); err != nil {
+		log.Printf("Failed to bind no-color flag: %v", err)
+	}
+	if err := viper.BindPFlag("debug.enabled", rootCmd.PersistentFlags().Lookup("debug")); err != nil {
+		log.Printf("Failed to bind debug flag: %v", err)
+	}
+	if err := viper.BindPFlag("log.verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
+		log.Printf("Failed to bind verbose flag: %v", err)
+	}
 }
 
 // initConfig reads in config file and ENV variables

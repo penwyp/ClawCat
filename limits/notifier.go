@@ -115,10 +115,7 @@ func (n *Notifier) playSound(severity Severity) error {
 		return exec.Command("paplay", soundFile).Run()
 	case "windows":
 		// Windows 系统声音
-		if soundFile == "" {
-			soundFile = "SystemHand" // 默认错误声音
-		}
-		ps := fmt.Sprintf(`[console]::beep(800,300)`)
+		ps := `[console]::beep(800,300)`
 		return exec.Command("powershell", "-c", ps).Run()
 	default:
 		return nil

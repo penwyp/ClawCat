@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -357,6 +358,7 @@ func (am *AlertManager) SendAlert(err *RecoverableError, context *ErrorContext) 
 		go func(ch AlertChannel) {
 			if err := ch.Send(alert); err != nil {
 				// 记录告警发送失败
+				log.Printf("Failed to send alert: %v", err)
 			}
 		}(channel)
 	}

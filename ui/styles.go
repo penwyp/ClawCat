@@ -318,48 +318,48 @@ func NewStyles(theme Theme) Styles {
 
 // Dashboard-specific styles
 func (s Styles) DashboardCard() lipgloss.Style {
-	return s.Panel.Copy().
+	return s.Panel.
 		Width(30).
 		Height(8)
 }
 
 func (s Styles) DashboardMetric() lipgloss.Style {
-	return s.Bold.Copy().
+	return s.Bold.
 		Align(lipgloss.Center)
 }
 
 func (s Styles) DashboardLabel() lipgloss.Style {
-	return s.Muted.Copy().
+	return s.Muted.
 		Align(lipgloss.Center)
 }
 
 // Session list specific styles
 func (s Styles) SessionActive() lipgloss.Style {
-	return s.Success.Copy()
+	return s.Success
 }
 
 func (s Styles) SessionInactive() lipgloss.Style {
-	return s.Muted.Copy()
+	return s.Muted
 }
 
 func (s Styles) SessionCost(cost float64) lipgloss.Style {
 	if cost > 10.0 {
-		return s.Error.Copy()
+		return s.Error
 	} else if cost > 1.0 {
-		return s.Warning.Copy()
+		return s.Warning
 	}
-	return s.Success.Copy()
+	return s.Success
 }
 
 // Analytics specific styles
 func (s Styles) ChartTitle() lipgloss.Style {
-	return s.Subtitle.Copy().
+	return s.Subtitle.
 		Align(lipgloss.Center).
 		MarginBottom(1)
 }
 
 func (s Styles) StatCard() lipgloss.Style {
-	return s.Panel.Copy().
+	return s.Panel.
 		Width(20).
 		Height(5).
 		Align(lipgloss.Center)
@@ -367,42 +367,42 @@ func (s Styles) StatCard() lipgloss.Style {
 
 // Status bar styles
 func (s Styles) StatusBar() lipgloss.Style {
-	return s.Footer.Copy().
+	return s.Footer.
 		Width(100).
 		Align(lipgloss.Left)
 }
 
 func (s Styles) StatusInfo() lipgloss.Style {
-	return s.Info.Copy()
+	return s.Info
 }
 
 func (s Styles) StatusWarning() lipgloss.Style {
-	return s.Warning.Copy()
+	return s.Warning
 }
 
 func (s Styles) StatusError() lipgloss.Style {
-	return s.Error.Copy()
+	return s.Error
 }
 
 // Help styles
 func (s Styles) HelpTitle() lipgloss.Style {
-	return s.Title.Copy().
+	return s.Title.
 		Align(lipgloss.Center).
 		MarginBottom(2)
 }
 
 func (s Styles) HelpSection() lipgloss.Style {
-	return s.Subtitle.Copy().
+	return s.Subtitle.
 		MarginTop(1).
 		MarginBottom(1)
 }
 
 func (s Styles) HelpKey() lipgloss.Style {
-	return s.Bold.Copy()
+	return s.Bold
 }
 
 func (s Styles) HelpDescription() lipgloss.Style {
-	return s.Normal.Copy()
+	return s.Normal
 }
 
 // Utility functions for dynamic styling
@@ -467,28 +467,28 @@ func GetAvailableThemes() []string {
 
 // Additional styles for progress components
 func (s Styles) Box() lipgloss.Style {
-	return s.Border.Copy()
+	return s.Border
 }
 
 func (s Styles) SectionTitle() lipgloss.Style {
-	return s.Subtitle.Copy().Bold(true)
+	return s.Subtitle.Bold(true)
 }
 
 func (s Styles) Card() lipgloss.Style {
-	return s.Panel.Copy().
+	return s.Panel.
 		Padding(1).
 		Margin(0, 1)
 }
 
 func (s Styles) ButtonActive() lipgloss.Style {
-	return s.ButtonFocus.Copy()
+	return s.ButtonFocus
 }
 
 func (s Styles) Faint() lipgloss.Style {
-	return s.Muted.Copy()
+	return s.Muted
 }
 
 func (s Styles) Help() lipgloss.Style {
-	return s.Footer.Copy().
+	return s.Footer.
 		Foreground(s.Muted.GetForeground())
 }

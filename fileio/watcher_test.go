@@ -148,7 +148,9 @@ func TestWatcher_FileEvents(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Stop watcher to close event channel
-	watcher.Stop()
+	if err := watcher.Stop(); err != nil {
+		t.Logf("Error stopping watcher: %v", err)
+	}
 	<-done
 
 	mu.Lock()
@@ -254,7 +256,9 @@ func TestWatcher_ConcurrentAccess(t *testing.T) {
 
 			// Test concurrent path operations
 			tempSubDir := filepath.Join(tempDir, "subdir"+string(rune(id+'0')))
-			os.MkdirAll(tempSubDir, 0755)
+			if err := os.MkdirAll(tempSubDir, 0755); err != nil {
+				t.Logf("Error creating temp subdir: %v", err)
+			}
 
 			// These operations should be thread-safe
 			_ = watcher.GetWatchedPaths()
@@ -315,7 +319,9 @@ func TestWatcher_MultipleFiles(t *testing.T) {
 	// Wait for all events to be processed
 	time.Sleep(200 * time.Millisecond)
 
-	watcher.Stop()
+	if err := watcher.Stop(); err != nil {
+		t.Logf("Error stopping watcher: %v", err)
+	}
 	<-done
 
 	mu.Lock()
@@ -432,7 +438,9 @@ func TestWatcher_NoDebounce(t *testing.T) {
 	// Wait for events
 	time.Sleep(100 * time.Millisecond)
 
-	watcher.Stop()
+	if err := watcher.Stop(); err != nil {
+		t.Logf("Error stopping watcher: %v", err)
+	}
 	<-done
 
 	mu.Lock()

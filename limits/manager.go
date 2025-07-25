@@ -2,6 +2,7 @@ package limits
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -281,7 +282,10 @@ func (lm *LimitManager) triggerWarningActions(level WarningLevel, status *LimitS
 	for _, action := range level.Actions {
 		switch action.Type {
 		case ActionNotify:
-			lm.notifier.SendNotification(level.Message, level.Severity)
+			if err := lm.notifier.SendNotification(level.Message, level.Severity); err != nil {
+				// 通知发送失败，记录日志但继续处理其他动作
+				log.Printf("Failed to send notification: %v", err)
+			}
 		case ActionLog:
 			lm.logWarning(level, status)
 		case ActionWebhook:

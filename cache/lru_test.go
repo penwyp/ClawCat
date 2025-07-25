@@ -65,8 +65,8 @@ func TestLRUCache_Delete(t *testing.T) {
 	cache := NewLRUCache(1024)
 	
 	// Set and delete
-	cache.Set("key1", "value1")
-	cache.Set("key2", "value2")
+	_ = cache.Set("key1", "value1")
+	_ = cache.Set("key2", "value2")
 	assert.Equal(t, 2, cache.Size())
 	
 	err := cache.Delete("key1")
@@ -88,9 +88,9 @@ func TestLRUCache_Clear(t *testing.T) {
 	cache := NewLRUCache(1024)
 	
 	// Add some items
-	cache.Set("key1", "value1")
-	cache.Set("key2", "value2")
-	cache.Set("key3", "value3")
+	_ = cache.Set("key1", "value1")
+	_ = cache.Set("key2", "value2")
+	_ = cache.Set("key3", "value3")
 	assert.Equal(t, 3, cache.Size())
 	
 	// Clear cache
@@ -116,7 +116,7 @@ func TestLRUCache_LRUEviction(t *testing.T) {
 	cache.Get("key1")
 	
 	// Add another item that should evict key2 (least recently used)
-	cache.SetWithSize("key4", "value4", 20)
+	_ = cache.SetWithSize("key4", "value4", 20)
 	
 	// key2 should be evicted
 	_, exists := cache.Get("key2")
@@ -149,9 +149,9 @@ func TestLRUCache_EvictionCallback(t *testing.T) {
 	})
 	
 	// Fill cache to capacity
-	cache.SetWithSize("key1", "value1", 40)
-	cache.SetWithSize("key2", "value2", 40)
-	cache.SetWithSize("key3", "value3", 40) // Should evict key1
+	_ = cache.SetWithSize("key1", "value1", 40)
+	_ = cache.SetWithSize("key2", "value2", 40)
+	_ = cache.SetWithSize("key3", "value3", 40) // Should evict key1
 	
 	assert.Equal(t, []string{"key1"}, evictedKeys)
 }
@@ -160,9 +160,9 @@ func TestLRUCache_Resize(t *testing.T) {
 	cache := NewLRUCache(100)
 	
 	// Add items
-	cache.SetWithSize("key1", "value1", 30)
-	cache.SetWithSize("key2", "value2", 30)
-	cache.SetWithSize("key3", "value3", 30)
+	_ = cache.SetWithSize("key1", "value1", 30)
+	_ = cache.SetWithSize("key2", "value2", 30)
+	_ = cache.SetWithSize("key3", "value3", 30)
 	assert.Equal(t, 3, cache.Size())
 	
 	// Resize to smaller capacity
@@ -189,7 +189,7 @@ func TestLRUCache_ConcurrentAccess(t *testing.T) {
 			for j := 0; j < numOperations; j++ {
 				key := fmt.Sprintf("key_%d_%d", id, j)
 				value := fmt.Sprintf("value_%d_%d", id, j)
-				cache.Set(key, value)
+				_ = cache.Set(key, value)
 			}
 		}(i)
 	}
@@ -241,9 +241,9 @@ func TestLRUCache_EvictOldest(t *testing.T) {
 	assert.NoError(t, err)
 	
 	// Add items
-	cache.Set("key1", "value1")
-	cache.Set("key2", "value2")
-	cache.Set("key3", "value3")
+	_ = cache.Set("key1", "value1")
+	_ = cache.Set("key2", "value2")
+	_ = cache.Set("key3", "value3")
 	assert.Equal(t, 3, cache.Size())
 	
 	// Evict oldest
@@ -260,9 +260,9 @@ func TestLRUCache_MoveToFront(t *testing.T) {
 	cache := NewLRUCache(1024)
 	
 	// Add items in order
-	cache.Set("key1", "value1")
-	cache.Set("key2", "value2")
-	cache.Set("key3", "value3")
+	_ = cache.Set("key1", "value1")
+	_ = cache.Set("key2", "value2")
+	_ = cache.Set("key3", "value3")
 	
 	// Access key1 to move it to front
 	cache.Get("key1")
@@ -279,7 +279,7 @@ func BenchmarkLRUCache_SetWithEviction(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("key%d", i)
-		cache.Set(key, "benchmark value")
+		_ = cache.Set(key, "benchmark value")
 	}
 }
 
@@ -288,7 +288,7 @@ func BenchmarkLRUCache_GetHit(b *testing.B) {
 	
 	// Pre-populate
 	for i := 0; i < 1000; i++ {
-		cache.Set(fmt.Sprintf("key%d", i), "value")
+		_ = cache.Set(fmt.Sprintf("key%d", i), "value")
 	}
 	
 	b.ResetTimer()

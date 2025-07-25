@@ -126,7 +126,9 @@ func (rp *RealtimeUpdatePipeline) Start() error {
 	for _, comp := range components {
 		if err := comp.startFunc(); err != nil {
 			log.Printf("Failed to start %s: %v", comp.name, err)
-			rp.stop() // 清理已启动的组件
+			if stopErr := rp.stop(); stopErr != nil {
+				log.Printf("Failed to stop pipeline during cleanup: %v", stopErr)
+			} // 清理已启动的组件
 			return fmt.Errorf("failed to start %s: %w", comp.name, err)
 		}
 		log.Printf("Started %s", comp.name)

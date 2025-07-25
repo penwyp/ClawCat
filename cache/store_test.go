@@ -230,8 +230,8 @@ func TestStore_InvalidateCalculations(t *testing.T) {
 	store := NewStore(config)
 	
 	// Set calculations
-	store.SetCalculation("calc1", "result1")
-	store.SetCalculation("calc2", "result2")
+	_ = store.SetCalculation("calc1", "result1")
+	_ = store.SetCalculation("calc2", "result2")
 	
 	// Verify cached
 	_, err := store.GetCalculation("calc1")
@@ -391,7 +391,7 @@ func TestStore_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(file string) {
 			defer func() { done <- true }()
-			store.GetFile(file)
+			_, _ = store.GetFile(file)
 		}(files[i])
 	}
 	
@@ -436,6 +436,6 @@ func BenchmarkStore_GetFile(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		store.GetFile(files[i%100])
+		_, _ = store.GetFile(files[i%100])
 	}
 }

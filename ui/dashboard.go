@@ -153,7 +153,7 @@ func (d *DashboardView) renderFooter() string {
 // renderMetricCard renders a single metric card
 func (d *DashboardView) renderMetricCard(title, value string, style lipgloss.Style) string {
 	cardTitle := d.styles.DashboardLabel().Render(title)
-	cardValue := style.Copy().Render(value)
+	cardValue := style.Render(value)
 	
 	content := strings.Join([]string{cardTitle, cardValue}, "\n")
 	

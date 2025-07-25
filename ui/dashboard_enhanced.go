@@ -376,7 +376,7 @@ func (d *EnhancedDashboardView) renderResetInfo() string {
 // renderMetricCard 渲染单个指标卡片
 func (d *EnhancedDashboardView) renderMetricCard(title, value string, style lipgloss.Style) string {
 	cardTitle := d.styles.DashboardLabel().Render(title)
-	cardValue := style.Copy().Render(value)
+	cardValue := style.Render(value)
 
 	content := strings.Join([]string{cardTitle, cardValue}, "\n")
 

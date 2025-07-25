@@ -374,7 +374,7 @@ func (av *AggregationView) GetModelDistribution(index int) map[string]calculatio
 // RenderModelDistribution 渲染模型分布
 func (av *AggregationView) RenderModelDistribution(index int) string {
 	models := av.GetModelDistribution(index)
-	if models == nil || len(models) == 0 {
+	if len(models) == 0 {
 		return "No model distribution data"
 	}
 

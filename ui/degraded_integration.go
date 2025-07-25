@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
 
@@ -248,7 +249,10 @@ func (awf *AppWithFallback) enterDegradedMode(err error) {
 			Operation: "app_start",
 			TraceID:   "ui-degraded",
 		}
-		awf.errorHandler.Handle(err, context)
+		if handleErr := awf.errorHandler.Handle(err, context); handleErr != nil {
+			// 错误处理失败，记录日志但继续运行
+			log.Printf("Failed to handle error during startup: %v", handleErr)
+		}
 	}
 }
 

@@ -84,7 +84,7 @@ func TestFileCache_GetFile_ModifiedFile(t *testing.T) {
 	require.NoError(t, err)
 	
 	// File should be considered stale
-	cached, exists = cache.GetFile(testFile)
+	_, exists = cache.GetFile(testFile)
 	assert.False(t, exists) // Should return false due to modification time
 }
 

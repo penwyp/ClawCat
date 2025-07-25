@@ -153,7 +153,7 @@ func BenchmarkCacheSet(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("key%d", i)
-		cache.Set(key, "some test value")
+		_ = cache.Set(key, "some test value")
 	}
 }
 
@@ -163,7 +163,7 @@ func BenchmarkCacheGet(b *testing.B) {
 	// Pre-populate cache
 	for i := 0; i < 1000; i++ {
 		key := fmt.Sprintf("key%d", i)
-		cache.Set(key, "some test value")
+		_ = cache.Set(key, "some test value")
 	}
 	
 	b.ResetTimer()
@@ -179,7 +179,7 @@ func BenchmarkCacheSetGet(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		key := fmt.Sprintf("key%d", i)
-		cache.Set(key, "test value")
+		_ = cache.Set(key, "test value")
 		cache.Get(key)
 	}
 }

@@ -103,11 +103,17 @@ func (eh *ErrorHandler) HandlePanic(context *ErrorContext) {
 		}
 
 		// 记录严重错误
-		eh.Handle(panicErr, context)
+		if err := eh.Handle(panicErr, context); err != nil {
+			// 记录失败，但不能中断恢复过程
+			fmt.Printf("Failed to handle panic error: %v\n", err)
+		}
 
 		// 尝试恢复
 		if eh.recoveryManager.CanRecoverFromPanic(panicErr) {
-			eh.recoveryManager.RecoverFromPanic(panicErr)
+			if err := eh.recoveryManager.RecoverFromPanic(panicErr); err != nil {
+				// 恢复失败，进行优雅关闭
+				eh.gracefulShutdown(panicErr)
+			}
 		} else {
 			// 无法恢复，优雅关闭
 			eh.gracefulShutdown(panicErr)
@@ -216,11 +222,7 @@ func (eh *ErrorHandler) shouldDegrade(err *RecoverableError) bool {
 
 	// 检查错误频率
 	recentErrors := eh.errorBuffer.CountRecent(5 * time.Minute)
-	if recentErrors > 10 {
-		return true
-	}
-
-	return false
+	return recentErrors > 10
 }
 
 // enterDegradedMode 进入降级模式
@@ -354,11 +356,7 @@ func (eh *ErrorHandler) shouldDegradeUI(err *RecoverableError, context *ErrorCon
 	
 	// 检查 UI 相关的错误频率
 	recentUIErrors := eh.countRecentUIErrors(2 * time.Minute)
-	if recentUIErrors > 3 {
-		return true
-	}
-	
-	return false
+	return recentUIErrors > 3
 }
 
 // enterUIDegradedMode 进入 UI 降级模式

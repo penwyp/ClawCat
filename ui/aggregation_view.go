@@ -353,8 +353,8 @@ func (av *AggregationView) renderSummary() string {
 // renderSummaryCard 渲染摘要卡片
 func (av *AggregationView) renderSummaryCard(title, value string, style lipgloss.Style) string {
 	card := fmt.Sprintf("%s\n%s", 
-		style.Copy().Bold(true).Render(title),
-		style.Copy().Faint(true).Render(value),
+		style.Bold(true).Render(title),
+		style.Faint(true).Render(value),
 	)
 	
 	return av.styles.Card().

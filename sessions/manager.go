@@ -250,7 +250,7 @@ func (s *Session) IsExpired() bool {
 
 // TimeRemaining returns remaining time in the session
 func (s *Session) TimeRemaining() time.Duration {
-	remaining := s.EndTime.Sub(time.Now())
+	remaining := time.Until(s.EndTime)
 	if remaining < 0 {
 		return 0
 	}

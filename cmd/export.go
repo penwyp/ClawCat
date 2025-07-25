@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -132,8 +133,12 @@ func init() {
 	exportCmd.Flags().StringVar(&exportTemplate, "template", "", "custom export template file")
 
 	// Bind to viper
-	viper.BindPFlag("export.default_format", exportCmd.Flags().Lookup("format"))
-	viper.BindPFlag("export.compress", exportCmd.Flags().Lookup("compress"))
+	if err := viper.BindPFlag("export.default_format", exportCmd.Flags().Lookup("format")); err != nil {
+		log.Printf("Failed to bind format flag: %v", err)
+	}
+	if err := viper.BindPFlag("export.compress", exportCmd.Flags().Lookup("compress")); err != nil {
+		log.Printf("Failed to bind compress flag: %v", err)
+	}
 
 	rootCmd.AddCommand(exportCmd)
 }
