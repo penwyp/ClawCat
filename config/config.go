@@ -40,12 +40,21 @@ type AppConfig struct {
 
 // DataConfig contains data source and processing settings
 type DataConfig struct {
-	Paths         []string      `yaml:"paths" json:"paths"`
-	AutoDiscover  bool          `yaml:"auto_discover" json:"auto_discover"`
-	WatchInterval time.Duration `yaml:"watch_interval" json:"watch_interval"`
-	MaxFileSize   int64         `yaml:"max_file_size" json:"max_file_size"`
-	CacheEnabled  bool          `yaml:"cache_enabled" json:"cache_enabled"`
-	CacheSize     int           `yaml:"cache_size" json:"cache_size"`
+	Paths            []string      `yaml:"paths" json:"paths"`
+	AutoDiscover     bool          `yaml:"auto_discover" json:"auto_discover"`
+	WatchInterval    time.Duration `yaml:"watch_interval" json:"watch_interval"`
+	MaxFileSize      int64         `yaml:"max_file_size" json:"max_file_size"`
+	CacheEnabled     bool          `yaml:"cache_enabled" json:"cache_enabled"`
+	CacheSize        int           `yaml:"cache_size" json:"cache_size"`
+	SummaryCache     SummaryCacheConfig `yaml:"summary_cache" json:"summary_cache"`
+}
+
+// SummaryCacheConfig contains file summary caching settings
+type SummaryCacheConfig struct {
+	Enabled       bool          `yaml:"enabled" json:"enabled"`
+	Threshold     time.Duration `yaml:"threshold" json:"threshold"`     // Time threshold for using cache
+	MaxSize       int64         `yaml:"max_size" json:"max_size"`       // Maximum cache size in bytes
+	MaxEntries    int           `yaml:"max_entries" json:"max_entries"` // Maximum number of cached summaries
 }
 
 // UIConfig contains user interface settings
@@ -154,6 +163,12 @@ func DefaultConfig() *Config {
 			MaxFileSize:   100 * 1024 * 1024, // 100MB
 			CacheEnabled:  true,
 			CacheSize:     50, // 50MB
+			SummaryCache: SummaryCacheConfig{
+				Enabled:    true,
+				Threshold:  time.Hour,             // Use cache for files not modified in last hour
+				MaxSize:    10 * 1024 * 1024,      // 10MB for summary cache
+				MaxEntries: 1000,                  // Maximum 1000 cached summaries
+			},
 		},
 		UI: UIConfig{
 			Theme:         "dark",

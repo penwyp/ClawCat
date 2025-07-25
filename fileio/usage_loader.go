@@ -17,10 +17,53 @@ import (
 
 // LoadUsageEntriesOptions configures the usage loading behavior
 type LoadUsageEntriesOptions struct {
-	DataPath    string            // Path to Claude data directory
-	HoursBack   *int              // Only include entries from last N hours (nil = all data)
-	Mode        models.CostMode   // Cost calculation mode
-	IncludeRaw  bool              // Whether to return raw JSON data alongside entries
+	DataPath           string            // Path to Claude data directory
+	HoursBack          *int              // Only include entries from last N hours (nil = all data)
+	Mode               models.CostMode   // Cost calculation mode
+	IncludeRaw         bool              // Whether to return raw JSON data alongside entries
+	CacheStore         CacheStore        // Optional cache store for file summaries
+	CacheThreshold     time.Duration     // Time threshold for using cache (default: 1 hour)
+	EnableSummaryCache bool              // Whether to enable summary caching
+}
+
+// CacheStore defines the interface for file summary caching
+type CacheStore interface {
+	GetFileSummary(absolutePath string) (*FileSummary, error)
+	SetFileSummary(summary *FileSummary) error
+	HasFileSummary(absolutePath string) bool
+	InvalidateFileSummary(absolutePath string) error
+}
+
+// FileSummary represents a cached summary of a parsed usage file
+// This is imported from cache package but defined here to avoid circular import
+type FileSummary struct {
+	Path            string
+	AbsolutePath    string
+	ModTime         time.Time
+	FileSize        int64
+	EntryCount      int
+	TotalCost       float64
+	TotalTokens     int
+	DateRange       DateRange
+	ModelStats      map[string]ModelStat
+	ProcessedAt     time.Time
+	Checksum        string
+	ProcessedHashes map[string]bool
+}
+
+type DateRange struct {
+	Start time.Time
+	End   time.Time
+}
+
+type ModelStat struct {
+	Model               string
+	EntryCount          int
+	TotalCost           float64
+	InputTokens         int
+	OutputTokens        int
+	CacheCreationTokens int
+	CacheReadTokens     int
 }
 
 // LoadUsageEntriesResult contains the loaded data
@@ -53,6 +96,11 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 		opts.DataPath = filepath.Join(homeDir, ".claude", "projects")
 	}
 
+	// Set default cache threshold if not provided
+	if opts.CacheThreshold == 0 {
+		opts.CacheThreshold = time.Hour
+	}
+
 	// Calculate cutoff time if specified
 	var cutoffTime *time.Time
 	if opts.HoursBack != nil {
@@ -71,13 +119,14 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	var allRawEntries []map[string]interface{}
 	var processedHashes = make(map[string]bool) // For deduplication
 	var processingErrors []string
+	var cacheHits, cacheMisses int
 
 	for i, filePath := range jsonlFiles {
 		if i < 5 || i%100 == 0 { // Log first 5 files and every 100th file
 			logging.LogDebugf("Processing file %d/%d: %s", i+1, len(jsonlFiles), filepath.Base(filePath))
 		}
 		
-		entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
+		entries, rawEntries, fromCache, err := processSingleFileWithCache(filePath, opts, cutoffTime, processedHashes)
 		if err != nil {
 			if i < 5 { // Log errors for first 5 files
 				logging.LogErrorf("Error processing file %s: %v", filepath.Base(filePath), err)
@@ -86,8 +135,14 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 			continue
 		}
 		
+		if fromCache {
+			cacheHits++
+		} else {
+			cacheMisses++
+		}
+		
 		if i < 5 { // Log successful processing for first 5 files
-			logging.LogDebugf("File %s processed: %d entries", filepath.Base(filePath), len(entries))
+			logging.LogDebugf("File %s processed: %d entries (from cache: %v)", filepath.Base(filePath), len(entries), fromCache)
 		}
 		
 		allEntries = append(allEntries, entries...)
@@ -102,6 +157,11 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	})
 
 	loadDuration := time.Since(startTime)
+
+	if opts.EnableSummaryCache && opts.CacheStore != nil {
+		logging.LogInfof("Cache performance: %d hits, %d misses (%.1f%% hit rate)", 
+			cacheHits, cacheMisses, float64(cacheHits)/float64(cacheHits+cacheMisses)*100)
+	}
 
 	result := &LoadUsageEntriesResult{
 		Entries:    allEntries,
@@ -171,6 +231,66 @@ func findJSONLFiles(dataPath string) ([]string, error) {
 	
 	logging.LogInfof("Found %d JSONL files total", len(jsonlFiles))
 	return jsonlFiles, nil
+}
+
+// processSingleFileWithCache processes a single JSONL file with caching support
+func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes map[string]bool) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
+	// Get absolute path for cache key
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		absPath = filePath // fallback to relative path
+	}
+
+	// Check if caching is enabled
+	if opts.EnableSummaryCache && opts.CacheStore != nil {
+		// Get file info
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			// File doesn't exist, fall back to normal processing
+			entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
+			return entries, rawEntries, false, err
+		}
+
+		// Check if we have a cached summary
+		if summary, err := opts.CacheStore.GetFileSummary(absPath); err == nil {
+			// Check if we should use cache
+			if summary.ShouldUseCache(fileInfo.ModTime(), opts.CacheThreshold) {
+				// Use cached summary
+				logging.LogDebugf("Using cached summary for %s", filepath.Base(filePath))
+				
+				// Merge processed hashes to avoid duplicates
+				summary.MergeHashes(processedHashes)
+				
+				// Create entries from summary (simplified approach)
+				entries := createEntriesFromSummary(summary, cutoffTime)
+				
+				return entries, nil, true, nil
+			} else {
+				// File is too recent or has been modified, invalidate cache
+				opts.CacheStore.InvalidateFileSummary(absPath)
+			}
+		}
+	}
+
+	// Cache miss or caching disabled, process normally
+	entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
+	if err != nil {
+		return entries, rawEntries, false, err
+	}
+
+	// If caching is enabled and we successfully processed the file, create and cache summary
+	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 {
+		summary := createSummaryFromEntries(absPath, filePath, entries, processedHashes)
+		if summary != nil {
+			if err := opts.CacheStore.SetFileSummary(summary); err != nil {
+				logging.LogWarnf("Failed to cache summary for %s: %v", filepath.Base(filePath), err)
+			} else {
+				logging.LogDebugf("Cached summary for %s", filepath.Base(filePath))
+			}
+		}
+	}
+
+	return entries, rawEntries, false, nil
 }
 
 // processSingleFile processes a single JSONL file
@@ -436,7 +556,7 @@ func convertRawToUsageEntry(rawData map[string]interface{}, mode models.CostMode
 
 // generateEntryHash generates a hash for deduplication
 func generateEntryHash(entry models.UsageEntry) string {
-	hashData := fmt.Sprintf("%s-%s-%d-%d-%d-%d-%f",
+	hashData := fmt.Sprintf("%s-%s-%d-%d-%d-%d",
 		entry.Timestamp.Format(time.RFC3339),
 		entry.Model,
 		entry.InputTokens,
@@ -447,4 +567,147 @@ func generateEntryHash(entry models.UsageEntry) string {
 	
 	hash := md5.Sum([]byte(hashData))
 	return fmt.Sprintf("%x", hash)
+}
+
+// createEntriesFromSummary creates placeholder entries from a cached summary
+// Note: This is a simplified approach that creates aggregate entries for cache hits
+func createEntriesFromSummary(summary *FileSummary, cutoffTime *time.Time) []models.UsageEntry {
+	var entries []models.UsageEntry
+	
+	// Check if the summary's date range intersects with our cutoff time
+	if cutoffTime != nil && summary.DateRange.End.Before(*cutoffTime) {
+		return entries // No entries match the time filter
+	}
+	
+	// For cached summaries, we create synthetic entries based on model stats
+	// This is a simplification - in a more sophisticated implementation,
+	// we might store and retrieve actual entry data
+	for modelName, modelStat := range summary.ModelStats {
+		if modelStat.EntryCount > 0 {
+			// Create a representative entry for this model
+			entry := models.UsageEntry{
+				Timestamp:           summary.DateRange.Start, // Use start of range
+				Model:               modelStat.Model,
+				InputTokens:         modelStat.InputTokens,
+				OutputTokens:        modelStat.OutputTokens,
+				CacheCreationTokens: modelStat.CacheCreationTokens,
+				CacheReadTokens:     modelStat.CacheReadTokens,
+				TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
+				CostUSD:             modelStat.TotalCost,
+				MessageID:           fmt.Sprintf("cached_%s_%d", modelName, summary.ProcessedAt.Unix()),
+			}
+			
+			entry.NormalizeModel()
+			entries = append(entries, entry)
+		}
+	}
+	
+	return entries
+}
+
+// createSummaryFromEntries creates a FileSummary from processed entries
+func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEntry, processedHashes map[string]bool) *FileSummary {
+	if len(entries) == 0 {
+		return nil
+	}
+	
+	// Get file info
+	fileInfo, err := os.Stat(relPath)
+	if err != nil {
+		return nil
+	}
+	
+	// Initialize summary
+	summary := &FileSummary{
+		Path:            relPath,
+		AbsolutePath:    absPath,
+		ModTime:         fileInfo.ModTime(),
+		FileSize:        fileInfo.Size(),
+		EntryCount:      len(entries),
+		ProcessedAt:     time.Now(),
+		ModelStats:      make(map[string]ModelStat),
+		ProcessedHashes: make(map[string]bool),
+	}
+	
+	// Copy processed hashes
+	for hash := range processedHashes {
+		summary.ProcessedHashes[hash] = true
+	}
+	
+	// Calculate checksum (simple approach based on file mod time and size)
+	summary.Checksum = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s_%d_%d", 
+		absPath, fileInfo.ModTime().Unix(), fileInfo.Size()))))
+	
+	// Process entries to create statistics
+	var totalCost float64
+	var totalTokens int
+	var startTime, endTime time.Time
+	
+	for i, entry := range entries {
+		totalCost += entry.CostUSD
+		totalTokens += entry.TotalTokens
+		
+		// Track time range
+		if i == 0 {
+			startTime = entry.Timestamp
+			endTime = entry.Timestamp
+		} else {
+			if entry.Timestamp.Before(startTime) {
+				startTime = entry.Timestamp
+			}
+			if entry.Timestamp.After(endTime) {
+				endTime = entry.Timestamp
+			}
+		}
+		
+		// Update model statistics
+		modelStat, exists := summary.ModelStats[entry.Model]
+		if !exists {
+			modelStat = ModelStat{
+				Model: entry.Model,
+			}
+		}
+		
+		modelStat.EntryCount++
+		modelStat.TotalCost += entry.CostUSD
+		modelStat.InputTokens += entry.InputTokens
+		modelStat.OutputTokens += entry.OutputTokens
+		modelStat.CacheCreationTokens += entry.CacheCreationTokens
+		modelStat.CacheReadTokens += entry.CacheReadTokens
+		
+		summary.ModelStats[entry.Model] = modelStat
+	}
+	
+	summary.TotalCost = totalCost
+	summary.TotalTokens = totalTokens
+	summary.DateRange = DateRange{
+		Start: startTime,
+		End:   endTime,
+	}
+	
+	return summary
+}
+
+// ShouldUseCache determines if cache should be used based on time since last modification
+func (fs *FileSummary) ShouldUseCache(currentModTime time.Time, cacheThreshold time.Duration) bool {
+	// If file has been modified, don't use cache
+	if fs.IsExpired(currentModTime) {
+		return false
+	}
+	
+	// If file hasn't been modified for longer than threshold, use cache
+	timeSinceModification := time.Since(currentModTime)
+	return timeSinceModification >= cacheThreshold
+}
+
+// IsExpired checks if the summary is expired based on file modification time
+func (fs *FileSummary) IsExpired(currentModTime time.Time) bool {
+	return !fs.ModTime.Equal(currentModTime)
+}
+
+// MergeHashes merges processed hashes from summary into the target map
+func (fs *FileSummary) MergeHashes(target map[string]bool) {
+	for hash := range fs.ProcessedHashes {
+		target[hash] = true
+	}
 }

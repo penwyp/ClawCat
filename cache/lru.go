@@ -26,6 +26,8 @@ type lruItem struct {
 	size       int64
 	accessTime time.Time
 	createTime time.Time
+	ttl        time.Duration
+	persistent bool // Never evict if true
 	prev       *lruItem
 	next       *lruItem
 }
@@ -60,6 +62,14 @@ func (c *LRUCache) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 	
+	// Check if item has expired (but not persistent items)
+	if !item.persistent && item.ttl > 0 && time.Since(item.createTime) > item.ttl {
+		c.removeItem(item)
+		c.stats.Misses++
+		c.stats.UpdateHitRate()
+		return nil, false
+	}
+	
 	// Move to front (most recently used)
 	c.moveToFront(item)
 	item.accessTime = time.Now()
@@ -78,6 +88,11 @@ func (c *LRUCache) Set(key string, value interface{}) error {
 
 // SetWithSize adds or updates a value with explicit size
 func (c *LRUCache) SetWithSize(key string, value interface{}, size int64) error {
+	return c.SetWithOptions(key, value, size, 0, false)
+}
+
+// SetWithOptions adds or updates a value with explicit options
+func (c *LRUCache) SetWithOptions(key string, value interface{}, size int64, ttl time.Duration, persistent bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	
@@ -90,6 +105,8 @@ func (c *LRUCache) SetWithSize(key string, value interface{}, size int64) error 
 		item.value = value
 		item.size = size
 		item.accessTime = now
+		item.ttl = ttl
+		item.persistent = persistent
 		c.moveToFront(item)
 		return nil
 	}
@@ -113,6 +130,8 @@ func (c *LRUCache) SetWithSize(key string, value interface{}, size int64) error 
 		size:       size,
 		accessTime: now,
 		createTime: now,
+		ttl:        ttl,
+		persistent: persistent,
 	}
 	
 	c.items[key] = item
@@ -274,14 +293,18 @@ func (c *LRUCache) evictOldest() error {
 		return fmt.Errorf("cache is empty")
 	}
 	
-	oldest := c.tail.prev
-	if oldest == c.head {
-		return fmt.Errorf("no items to evict")
+	// Find the oldest non-persistent item
+	current := c.tail.prev
+	for current != c.head {
+		if !current.persistent {
+			c.removeItem(current)
+			c.stats.Evictions++
+			return nil
+		}
+		current = current.prev
 	}
 	
-	c.removeItem(oldest)
-	c.stats.Evictions++
-	return nil
+	return fmt.Errorf("no evictable items found")
 }
 
 // estimateSize provides a rough size estimate for cache values

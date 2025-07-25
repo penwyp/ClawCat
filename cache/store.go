@@ -145,6 +145,58 @@ func (s *Store) SetCalculation(key string, value interface{}) error {
 	return s.lruCache.Set(key, value)
 }
 
+// GetFileSummary retrieves a cached file summary
+func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	
+	key := "summary:" + absolutePath
+	value, exists := s.lruCache.Get(key)
+	if !exists {
+		return nil, fmt.Errorf("file summary not found in cache: %s", absolutePath)
+	}
+	
+	summary, ok := value.(*FileSummary)
+	if !ok {
+		return nil, fmt.Errorf("invalid cached summary type for: %s", absolutePath)
+	}
+	
+	return summary, nil
+}
+
+// SetFileSummary stores a file summary in persistent cache
+func (s *Store) SetFileSummary(summary *FileSummary) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	key := "summary:" + summary.AbsolutePath
+	
+	// Calculate size estimate for the summary
+	size := s.estimateFileSummarySize(summary)
+	
+	// Store as persistent item (never expires, won't be evicted unless by LRU pressure)
+	return s.lruCache.SetWithOptions(key, summary, size, 0, true)
+}
+
+// HasFileSummary checks if a file summary exists in cache
+func (s *Store) HasFileSummary(absolutePath string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	
+	key := "summary:" + absolutePath
+	_, exists := s.lruCache.Get(key)
+	return exists
+}
+
+// InvalidateFileSummary removes a file summary from cache
+func (s *Store) InvalidateFileSummary(absolutePath string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	key := "summary:" + absolutePath
+	return s.lruCache.Delete(key)
+}
+
 // Preload loads multiple files into cache
 func (s *Store) Preload(paths []string) error {
 	s.mu.Lock()
@@ -311,4 +363,25 @@ func (s *Store) IsHealthy() bool {
 	
 	// Consider healthy if memory usage is below 90%
 	return memoryPercentage < 90.0
+}
+
+// estimateFileSummarySize estimates the memory size of a FileSummary
+func (s *Store) estimateFileSummarySize(summary *FileSummary) int64 {
+	size := int64(0)
+	
+	// String fields
+	size += int64(len(summary.Path))
+	size += int64(len(summary.AbsolutePath))
+	size += int64(len(summary.Checksum))
+	
+	// Model stats map
+	size += int64(len(summary.ModelStats)) * 200 // Rough estimate per model stat
+	
+	// Processed hashes map
+	size += int64(len(summary.ProcessedHashes)) * 50 // Rough estimate per hash
+	
+	// Fixed size fields and overhead
+	size += 200
+	
+	return size
 }

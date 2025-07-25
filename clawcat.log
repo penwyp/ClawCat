@@ -20,3 +20,106 @@
 2025/07/25 23:04:12 logger.go:83: [INFO] Shutting down enhanced application
 2025/07/25 23:04:12 global_logger.go:96: [INFO] Data processing completed in 6.822s
 2025/07/25 23:04:12 logger.go:83: [INFO] ClawCat enhanced application stopped
+2025/07/25 23:26:17 logger.go:90: [INFO] Using test data path: /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:26:17 logger.go:83: [INFO] Starting ClawCat enhanced application
+2025/07/25 23:26:17 logger.go:83: [INFO] Starting enhanced application components
+2025/07/25 23:26:17 logger.go:83: [INFO] Waiting for initial data...
+2025/07/25 23:26:17 global_logger.go:96: [INFO] Found 1125 JSONL files total
+2025/07/25 23:26:24 global_logger.go:96: [INFO] Loaded 18657 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:26:24 global_logger.go:96: [INFO] Data loaded in 6.831s
+2025/07/25 23:26:24 global_logger.go:96: [INFO] Created 38 blocks in 0.006s
+2025/07/25 23:26:24 global_logger.go:96: [INFO] Analysis completed, returning 38 blocks
+2025/07/25 23:26:24 logger.go:83: [INFO] Starting interactive TUI mode
+2025/07/25 23:26:24 global_logger.go:96: [INFO] Data processing completed in 6.842s
+2025/07/25 23:26:25 global_logger.go:96: [INFO] Data processing completed in 0.003s
+2025/07/25 23:26:25 logger.go:83: [INFO] Shutting down enhanced application
+2025/07/25 23:26:25 logger.go:83: [INFO] ClawCat enhanced application stopped
+2025/07/25 23:26:26 logger.go:90: [INFO] Using test data path: /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:26:26 logger.go:83: [INFO] Starting ClawCat enhanced application
+2025/07/25 23:26:26 logger.go:83: [INFO] Starting enhanced application components
+2025/07/25 23:26:26 logger.go:83: [INFO] Waiting for initial data...
+2025/07/25 23:26:26 global_logger.go:96: [INFO] Found 1125 JSONL files total
+2025/07/25 23:26:32 global_logger.go:96: [INFO] Loaded 18655 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:26:32 global_logger.go:96: [INFO] Data loaded in 6.405s
+2025/07/25 23:26:32 global_logger.go:96: [INFO] Created 38 blocks in 0.005s
+2025/07/25 23:26:32 global_logger.go:96: [INFO] Analysis completed, returning 38 blocks
+2025/07/25 23:26:32 logger.go:83: [INFO] Starting interactive TUI mode
+2025/07/25 23:26:32 global_logger.go:96: [INFO] Data processing completed in 6.422s
+2025/07/25 23:26:33 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:26:34 global_logger.go:96: [INFO] Data processing completed in 0.003s
+2025/07/25 23:26:34 logger.go:83: [INFO] Shutting down enhanced application
+2025/07/25 23:26:34 logger.go:83: [INFO] ClawCat enhanced application stopped
+2025/07/25 23:26:35 logger.go:90: [INFO] Using test data path: /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:26:35 logger.go:83: [INFO] Starting ClawCat enhanced application
+2025/07/25 23:26:35 logger.go:83: [INFO] Starting enhanced application components
+2025/07/25 23:26:35 logger.go:83: [INFO] Waiting for initial data...
+2025/07/25 23:26:35 global_logger.go:96: [INFO] Found 1125 JSONL files total
+2025/07/25 23:26:41 global_logger.go:96: [INFO] Loaded 18655 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:26:41 global_logger.go:96: [INFO] Data loaded in 6.298s
+2025/07/25 23:26:41 global_logger.go:96: [INFO] Created 38 blocks in 0.005s
+2025/07/25 23:26:41 global_logger.go:96: [INFO] Analysis completed, returning 38 blocks
+2025/07/25 23:26:41 logger.go:83: [INFO] Starting interactive TUI mode
+2025/07/25 23:26:41 global_logger.go:96: [INFO] Data processing completed in 6.309s
+2025/07/25 23:26:42 global_logger.go:96: [INFO] Data processing completed in 0.003s
+2025/07/25 23:26:43 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:26:44 global_logger.go:96: [INFO] Data processing completed in 0.003s
+2025/07/25 23:26:45 logger.go:83: [INFO] Shutting down enhanced application
+2025/07/25 23:26:45 logger.go:83: [INFO] ClawCat enhanced application stopped
+2025/07/25 23:26:46 logger.go:90: [INFO] Using test data path: /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:26:46 logger.go:83: [INFO] Starting ClawCat enhanced application
+2025/07/25 23:26:46 logger.go:83: [INFO] Starting enhanced application components
+2025/07/25 23:26:46 logger.go:83: [INFO] Waiting for initial data...
+2025/07/25 23:26:46 global_logger.go:96: [INFO] Found 1125 JSONL files total
+2025/07/25 23:26:52 global_logger.go:96: [INFO] Loaded 18655 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:26:52 global_logger.go:96: [INFO] Data loaded in 6.174s
+2025/07/25 23:26:52 global_logger.go:96: [INFO] Created 38 blocks in 0.005s
+2025/07/25 23:26:52 global_logger.go:96: [INFO] Analysis completed, returning 38 blocks
+2025/07/25 23:26:52 logger.go:83: [INFO] Starting interactive TUI mode
+2025/07/25 23:26:52 logger.go:83: [INFO] Received shutdown signal
+2025/07/25 23:26:52 global_logger.go:96: [INFO] Data processing completed in 6.185s
+2025/07/25 23:26:53 global_logger.go:96: [INFO] Data processing completed in 0.003s
+2025/07/25 23:26:54 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:26:55 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:26:56 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:26:57 global_logger.go:96: [INFO] Found 1125 JSONL files total
+2025/07/25 23:27:00 logger.go:83: [INFO] Shutting down enhanced application
+2025/07/25 23:27:03 global_logger.go:96: [INFO] Loaded 18655 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:27:03 global_logger.go:96: [INFO] Data loaded in 5.963s
+2025/07/25 23:27:03 global_logger.go:96: [INFO] Created 38 blocks in 0.008s
+2025/07/25 23:27:03 global_logger.go:96: [INFO] Analysis completed, returning 38 blocks
+2025/07/25 23:27:10 logger.go:90: [INFO] Using test data path: /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:27:10 logger.go:83: [INFO] Starting ClawCat enhanced application
+2025/07/25 23:27:10 logger.go:83: [INFO] Starting enhanced application components
+2025/07/25 23:27:10 logger.go:83: [INFO] Waiting for initial data...
+2025/07/25 23:27:10 global_logger.go:96: [INFO] Found 1125 JSONL files total
+2025/07/25 23:27:16 global_logger.go:96: [INFO] Loaded 18654 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:27:16 global_logger.go:96: [INFO] Data loaded in 6.142s
+2025/07/25 23:27:16 global_logger.go:96: [INFO] Created 38 blocks in 0.006s
+2025/07/25 23:27:16 global_logger.go:96: [INFO] Analysis completed, returning 38 blocks
+2025/07/25 23:27:16 logger.go:83: [INFO] Starting interactive TUI mode
+2025/07/25 23:27:16 global_logger.go:96: [INFO] Data processing completed in 6.154s
+2025/07/25 23:27:17 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:27:18 global_logger.go:96: [INFO] Data processing completed in 0.004s
+2025/07/25 23:27:19 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:27:20 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:27:21 global_logger.go:96: [INFO] Found 1125 JSONL files total
+2025/07/25 23:27:27 global_logger.go:96: [INFO] Loaded 18651 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:27:27 global_logger.go:96: [INFO] Data loaded in 6.234s
+2025/07/25 23:27:27 global_logger.go:96: [INFO] Created 38 blocks in 0.005s
+2025/07/25 23:27:27 global_logger.go:96: [INFO] Analysis completed, returning 38 blocks
+2025/07/25 23:27:27 global_logger.go:96: [INFO] Data processing completed in 6.243s
+2025/07/25 23:27:27 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:27:28 global_logger.go:96: [INFO] Data processing completed in 0.003s
+2025/07/25 23:27:29 global_logger.go:96: [INFO] Data processing completed in 0.001s
+2025/07/25 23:27:30 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:27:31 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:27:32 global_logger.go:96: [INFO] Data processing completed in 0.002s
+2025/07/25 23:27:33 global_logger.go:96: [INFO] Found 1125 JSONL files total
+2025/07/25 23:27:37 logger.go:83: [INFO] Shutting down enhanced application
+2025/07/25 23:27:39 global_logger.go:96: [INFO] Loaded 18646 usage entries from /Users/penwyp/Dat/worktree/claude_data_snapshot/projects
+2025/07/25 23:27:39 global_logger.go:96: [INFO] Data loaded in 5.975s
+2025/07/25 23:27:39 global_logger.go:96: [INFO] Created 38 blocks in 0.006s
+2025/07/25 23:27:39 global_logger.go:96: [INFO] Analysis completed, returning 38 blocks
+2025/07/25 23:27:42 logger.go:83: [INFO] ClawCat enhanced application stopped
+2025/07/25 23:27:42 global_logger.go:96: [INFO] Data processing completed in 9.630s
+2025/07/25 23:27:44 logger.go:83: [INFO] ClawCat enhanced application stopped

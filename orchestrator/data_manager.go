@@ -9,6 +9,8 @@ import (
 	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/sessions"
 	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/ClawCat/cache"
+	"github.com/penwyp/ClawCat/config"
 )
 
 // DataManager manages data fetching and caching for monitoring
@@ -25,6 +27,10 @@ type DataManager struct {
 	// Error tracking
 	lastError              error
 	lastSuccessfulFetch    time.Time
+	
+	// Summary cache store
+	cacheStore             *cache.Store
+	summaryCacheConfig     config.SummaryCacheConfig
 }
 
 // NewDataManager creates a new data manager with cache and fetch settings
@@ -34,6 +40,30 @@ func NewDataManager(cacheTTL time.Duration, hoursBack int, dataPath string) *Dat
 		hoursBack: hoursBack,
 		dataPath:  dataPath,
 	}
+}
+
+// NewDataManagerWithConfig creates a new data manager with full configuration
+func NewDataManagerWithConfig(cacheTTL time.Duration, hoursBack int, dataPath string, cfg *config.Config) *DataManager {
+	dm := &DataManager{
+		cacheTTL:           cacheTTL,
+		hoursBack:          hoursBack,
+		dataPath:           dataPath,
+		summaryCacheConfig: cfg.Data.SummaryCache,
+	}
+	
+	// Initialize cache store if summary caching is enabled
+	if cfg.Data.SummaryCache.Enabled {
+		storeConfig := cache.StoreConfig{
+			MaxMemory:         cfg.Data.SummaryCache.MaxSize,
+			EnableMetrics:     true,
+			EnableCompression: false, // Disable compression for summaries for simplicity
+		}
+		dm.cacheStore = cache.NewStore(storeConfig)
+		logging.LogInfof("Summary cache enabled with threshold: %v, max size: %d bytes", 
+			cfg.Data.SummaryCache.Threshold, cfg.Data.SummaryCache.MaxSize)
+	}
+	
+	return dm
 }
 
 // GetData gets monitoring data with caching and error handling
@@ -142,12 +172,19 @@ func (dm *DataManager) isCacheValid() bool {
 func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 	_ = time.Now() // startTime was unused
 	
-	// Load usage entries
+	// Load usage entries with cache support
 	opts := fileio.LoadUsageEntriesOptions{
-		DataPath:   dm.dataPath,
-		HoursBack:  &dm.hoursBack,
-		Mode:       models.CostModeAuto,
-		IncludeRaw: true,
+		DataPath:           dm.dataPath,
+		HoursBack:          &dm.hoursBack,
+		Mode:               models.CostModeAuto,
+		IncludeRaw:         true,
+		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
+		CacheThreshold:     dm.summaryCacheConfig.Threshold,
+	}
+	
+	// Set cache store adapter if available
+	if dm.cacheStore != nil {
+		opts.CacheStore = fileio.NewStoreAdapter(dm.cacheStore)
 	}
 	
 	result, err := fileio.LoadUsageEntries(opts)
