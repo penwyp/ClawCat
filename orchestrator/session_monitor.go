@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/ClawCat/logging"
 )
 
 // SessionChangeType represents the type of session change
@@ -132,7 +133,7 @@ func (sm *SessionMonitor) notifySessionChange(eventType SessionChangeType, sessi
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Printf("Session callback panic: %v\n", r)
+					logging.LogErrorf("Session callback panic: %v", r)
 				}
 			}()
 			callback(string(eventType), sessionID, sessionData)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/ClawCat/logging"
 )
 
 // LoadUsageEntriesOptions configures the usage loading behavior
@@ -73,20 +74,20 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 
 	for i, filePath := range jsonlFiles {
 		if i < 5 || i%100 == 0 { // Log first 5 files and every 100th file
-			fmt.Printf("Processing file %d/%d: %s\n", i+1, len(jsonlFiles), filepath.Base(filePath))
+			logging.LogDebugf("Processing file %d/%d: %s", i+1, len(jsonlFiles), filepath.Base(filePath))
 		}
 		
 		entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
 		if err != nil {
 			if i < 5 { // Log errors for first 5 files
-				fmt.Printf("Error processing file %s: %v\n", filepath.Base(filePath), err)
+				logging.LogErrorf("Error processing file %s: %v", filepath.Base(filePath), err)
 			}
 			processingErrors = append(processingErrors, fmt.Sprintf("%s: %v", filePath, err))
 			continue
 		}
 		
 		if i < 5 { // Log successful processing for first 5 files
-			fmt.Printf("File %s processed: %d entries\n", filepath.Base(filePath), len(entries))
+			logging.LogDebugf("File %s processed: %d entries", filepath.Base(filePath), len(entries))
 		}
 		
 		allEntries = append(allEntries, entries...)
@@ -148,16 +149,16 @@ func LoadAllRawEntries(dataPath string) ([]map[string]interface{}, error) {
 func findJSONLFiles(dataPath string) ([]string, error) {
 	var jsonlFiles []string
 	
-	fmt.Printf("Searching for JSONL files in: %s\n", dataPath)
+	logging.LogDebugf("Searching for JSONL files in: %s", dataPath)
 	
 	err := filepath.Walk(dataPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Printf("Error accessing path %s: %v\n", path, err)
+			logging.LogWarnf("Error accessing path %s: %v", path, err)
 			return nil // Continue walking even if we can't access some files
 		}
 		
 		if !info.IsDir() && strings.HasSuffix(strings.ToLower(info.Name()), ".jsonl") {
-			fmt.Printf("Found JSONL file: %s\n", path)
+			logging.LogDebugf("Found JSONL file: %s", path)
 			jsonlFiles = append(jsonlFiles, path)
 		}
 		
@@ -168,7 +169,7 @@ func findJSONLFiles(dataPath string) ([]string, error) {
 		return nil, err
 	}
 	
-	fmt.Printf("Found %d JSONL files total\n", len(jsonlFiles))
+	logging.LogInfof("Found %d JSONL files total", len(jsonlFiles))
 	return jsonlFiles, nil
 }
 
@@ -204,13 +205,13 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 		var rawData map[string]interface{}
 		if err := json.Unmarshal(line, &rawData); err != nil {
 			if isDebugFile && lineNum <= 3 {
-				fmt.Printf("  JSON parse error line %d: %v\n", lineNum, err)
+				logging.LogDebugf("  JSON parse error line %d: %v", lineNum, err)
 			}
 			continue // Skip invalid JSON lines
 		}
 		
 		if isDebugFile && lineNum <= 3 {
-			fmt.Printf("  Line %d parsed successfully, type=%v\n", lineNum, rawData["type"])
+			logging.LogDebugf("  Line %d parsed successfully, type=%v", lineNum, rawData["type"])
 		}
 		
 		// Filter by timestamp if cutoff is specified
@@ -220,7 +221,7 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 					if timestamp.Before(*cutoffTime) {
 						skippedByTime++
 						if isDebugFile && lineNum <= 3 {
-							fmt.Printf("  Line %d skipped by time filter\n", lineNum)
+							logging.LogDebugf("  Line %d skipped by time filter", lineNum)
 						}
 						continue
 					}
@@ -233,7 +234,7 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 		if err != nil {
 			conversionErrors++
 			if isDebugFile && lineNum <= 3 {
-				fmt.Printf("  Line %d conversion error: %v\n", lineNum, err)
+				logging.LogDebugf("  Line %d conversion error: %v", lineNum, err)
 			}
 			continue // Skip entries that can't be converted
 		}
@@ -243,7 +244,7 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 		if processedHashes[entryHash] {
 			duplicates++
 			if isDebugFile && lineNum <= 3 {
-				fmt.Printf("  Line %d duplicate entry\n", lineNum)
+				logging.LogDebugf("  Line %d duplicate entry", lineNum)
 			}
 			continue
 		}
@@ -256,7 +257,7 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 		processedLines++
 		
 		if isDebugFile && lineNum <= 3 {
-			fmt.Printf("  Line %d successfully processed\n", lineNum)
+			logging.LogDebugf("  Line %d successfully processed", lineNum)
 		}
 		
 		if includeRaw {
@@ -269,7 +270,7 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 	}
 	
 	if isDebugFile {
-		fmt.Printf("  File summary: %d total lines, %d processed, %d skipped by time, %d conversion errors, %d duplicates\n",
+		logging.LogDebugf("  File summary: %d total lines, %d processed, %d skipped by time, %d conversion errors, %d duplicates",
 			lineNum, processedLines, skippedByTime, conversionErrors, duplicates)
 	}
 	

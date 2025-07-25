@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/internal"
+	"github.com/penwyp/ClawCat/logging"
 )
 
 var (
@@ -53,6 +54,9 @@ Examples:
 		}
 
 		// Configuration is validated by the validator in the config package
+		
+		// Initialize global logger
+		logging.InitGlobalLogger(cfg.App.LogLevel, cfg.App.LogFile)
 
 		// Create and run enhanced application
 		app, err := internal.NewEnhancedApplication(cfg)

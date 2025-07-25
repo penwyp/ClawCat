@@ -8,6 +8,7 @@ import (
 	"github.com/penwyp/ClawCat/fileio"
 	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/ClawCat/logging"
 )
 
 // DataManager manages data fetching and caching for monitoring
@@ -41,7 +42,7 @@ func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 	// Check cache validity
 	if !forceRefresh && dm.isCacheValid() {
 		cacheAge := time.Since(dm.cacheTimestamp)
-		fmt.Printf("Using cached data (age: %.1fs)\n", cacheAge.Seconds())
+		logging.LogDebugf("Using cached data (age: %.1fs)", cacheAge.Seconds())
 		result := dm.cache
 		dm.mu.RUnlock()
 		return result, nil
@@ -51,7 +52,7 @@ func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 	// Fetch fresh data with retries
 	maxRetries := 3
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		fmt.Printf("Fetching fresh usage data (attempt %d/%d)\n", attempt+1, maxRetries)
+		logging.LogDebugf("Fetching fresh usage data (attempt %d/%d)", attempt+1, maxRetries)
 		
 		data, err := dm.analyzeUsage()
 		if err != nil {
@@ -69,7 +70,7 @@ func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 			// All retries failed, check if we have cached data to fall back on
 			dm.mu.RLock()
 			if dm.cache != nil {
-				fmt.Println("Using cached data due to fetch error")
+				logging.LogWarn("Using cached data due to fetch error")
 				result := dm.cache
 				dm.mu.RUnlock()
 				return result, nil
@@ -151,25 +152,25 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 	
 	result, err := fileio.LoadUsageEntries(opts)
 	if err != nil {
-		fmt.Printf("Error loading usage entries from %s: %v\n", dm.dataPath, err)
+		logging.LogErrorf("Error loading usage entries from %s: %v", dm.dataPath, err)
 		return nil, fmt.Errorf("failed to load usage entries: %w", err)
 	}
 	
-	fmt.Printf("Loaded %d usage entries from %s\n", len(result.Entries), dm.dataPath)
+	logging.LogInfof("Loaded %d usage entries from %s", len(result.Entries), dm.dataPath)
 	if len(result.Entries) == 0 {
-		fmt.Printf("No usage entries found in %s\n", dm.dataPath)
+		logging.LogWarnf("No usage entries found in %s", dm.dataPath)
 		return nil, fmt.Errorf("no usage entries found")
 	}
 	
 	loadTime := result.Metadata.LoadDuration
-	fmt.Printf("Data loaded in %.3fs\n", loadTime.Seconds())
+	logging.LogInfof("Data loaded in %.3fs", loadTime.Seconds())
 	
 	// Transform entries to blocks using SessionAnalyzer
 	transformStart := time.Now()
 	analyzer := sessions.NewSessionAnalyzer(5) // 5-hour sessions
 	blocks := analyzer.TransformToBlocks(result.Entries)
 	transformTime := time.Since(transformStart)
-	fmt.Printf("Created %d blocks in %.3fs\n", len(blocks), transformTime.Seconds())
+	logging.LogInfof("Created %d blocks in %.3fs", len(blocks), transformTime.Seconds())
 	
 	// Detect limits if we have raw entries
 	var limitsDetected int
@@ -215,7 +216,7 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 		Metadata: metadata,
 	}
 	
-	fmt.Printf("Analysis completed, returning %d blocks\n", len(blocks))
+	logging.LogInfof("Analysis completed, returning %d blocks", len(blocks))
 	return analysisResult, nil
 }
 

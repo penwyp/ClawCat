@@ -169,8 +169,8 @@ func (el *ErrorLogger) LogFatal(panicErr *PanicError) {
 	// 立即写入（不经过缓冲区）
 	for _, writer := range el.writers {
 		if err := writer.Write(entry); err != nil {
-			// 写入失败，记录到标准错误输出
-			fmt.Fprintf(os.Stderr, "Failed to write error log: %v\n", err)
+			// 写入失败 - 无法记录到文件，静默失败以避免控制台输出
+			// Last resort error reporting is disabled to prevent console output
 		}
 	}
 }
@@ -390,12 +390,13 @@ func NewConsoleLogWriter() *ConsoleLogWriter {
 
 // Write 写入单个日志条目
 func (clw *ConsoleLogWriter) Write(entry *ErrorLogEntry) error {
-	data, err := clw.encoder.Encode(entry)
+	_, err := clw.encoder.Encode(entry)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "%s\n", data)
+	// Console output disabled to prevent logs to stderr
+	// data would be written to os.Stderr but is suppressed
 	return nil
 }
 

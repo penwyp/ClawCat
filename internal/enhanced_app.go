@@ -236,15 +236,15 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 		}
 	}()
 	
-	fmt.Printf("=== DATA UPDATE CALLBACK ===\n")
-	fmt.Printf("Received %d blocks from orchestrator\n", len(data.Data.Blocks))
+	ea.logger.Debug("=== DATA UPDATE CALLBACK ===")
+	ea.logger.Debugf("Received %d blocks from orchestrator", len(data.Data.Blocks))
 	
 	// Update metrics calculator with new session blocks
 	ea.metricsCalc.UpdateSessionBlocks(data.Data.Blocks)
 	
 	// Calculate enhanced metrics
 	metrics := ea.metricsCalc.Calculate()
-	fmt.Printf("Calculated metrics - Current tokens: %d, Current cost: $%.4f\n", 
+	ea.logger.Debugf("Calculated metrics - Current tokens: %d, Current cost: $%.4f", 
 		metrics.CurrentTokens, metrics.CurrentCost)
 	
 	// Update UI if running interactively
@@ -252,17 +252,17 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 		// Convert the data to the format expected by the UI
 		sessions := ea.convertBlocksToSessions(data.Data.Blocks)
 		entries := ea.extractEntriesFromBlocks(data.Data.Blocks)
-		fmt.Printf("Updating UI with %d sessions and %d entries\n", len(sessions), len(entries))
+		ea.logger.Debugf("Updating UI with %d sessions and %d entries", len(sessions), len(entries))
 		ea.ui.UpdateData(sessions, entries)
 	} else {
-		fmt.Printf("UI is not running - skipping UI update\n")
+		ea.logger.Debug("UI is not running - skipping UI update")
 	}
 	
 	// Update application metrics
 	ea.updateApplicationMetrics(metrics)
 	
 	ea.logger.Debugf("Processed data update with %d blocks", len(data.Data.Blocks))
-	fmt.Printf("=== END DATA UPDATE ===\n")
+	ea.logger.Debug("=== END DATA UPDATE ===")
 }
 
 // onSessionChange handles session change events

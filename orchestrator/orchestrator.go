@@ -8,6 +8,7 @@ import (
 
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/ClawCat/logging"
 )
 
 // MonitoringData represents the data structure passed to callbacks
@@ -252,7 +253,7 @@ func (mo *MonitoringOrchestrator) fetchAndProcessData(forceRefresh bool) (*Monit
 	mo.notifyCallbacks(*monitoringData)
 	
 	elapsed := time.Since(startTime)
-	fmt.Printf("Data processing completed in %.3fs\n", elapsed.Seconds())
+	logging.LogInfof("Data processing completed in %.3fs", elapsed.Seconds())
 	
 	return monitoringData, nil
 }
@@ -276,7 +277,7 @@ func (mo *MonitoringOrchestrator) notifyCallbacks(data MonitoringData) {
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Printf("Callback panic: %v\n", r)
+					logging.LogErrorf("Callback panic: %v", r)
 				}
 			}()
 			callback(data)
