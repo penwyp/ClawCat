@@ -8,7 +8,6 @@ import (
 // RecoveryManager 恢复管理器
 type RecoveryManager struct {
 	strategies      map[ErrorType][]RecoveryStrategy
-	fallbackChain   []FallbackHandler
 	circuitBreaker  *CircuitBreaker
 	retryPolicy     *RetryPolicy
 	errorCollector  *ErrorCollector

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/penwyp/ClawCat/calculations"
@@ -11,7 +12,7 @@ import (
 // demonstrateProgressBars 展示进度条组件的功能
 func demonstrateProgressBars() {
 	fmt.Println("🐱 ClawCat Progress Bar Demo")
-	fmt.Println("=" * 50)
+	fmt.Println(strings.Repeat("=", 50))
 
 	// 1. 基础进度条演示
 	fmt.Println("\n1. Basic Progress Bar:")

@@ -26,7 +26,6 @@ type ErrorMetrics struct {
 	CircuitBreakerState *Gauge
 	DegradedMode        *Gauge
 
-	mu sync.RWMutex
 }
 
 // NewErrorMetrics 创建错误指标

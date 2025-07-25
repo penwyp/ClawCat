@@ -398,10 +398,6 @@ func TestCostCalculator_PrecisionAndRounding(t *testing.T) {
 	assert.Contains(t, costStr, "0.000018")
 }
 
-// Helper function to count decimal places
-func getCostDecimalPlaces(cost float64) string {
-	return fmt.Sprintf("%.6f", cost)
-}
 
 // Helper function needed for the test above
 

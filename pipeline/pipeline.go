@@ -34,7 +34,7 @@ type RealtimeUpdatePipeline struct {
 	isRunning     bool
 
 	// UI更新
-	metricsCalculator *calculations.RealtimeMetrics
+	metricsCalculator *calculations.MetricsCalculator
 	progressBar       *components.ProgressBar
 	statisticsTable   *components.StatisticsTable
 
@@ -265,8 +265,9 @@ func (rp *RealtimeUpdatePipeline) errorHandler() {
 		case err := <-rp.errorChannel:
 			rp.handleError(err)
 
-		case err := <-rp.fileWatcher.Errors():
-			rp.handleError(fmt.Errorf("file watcher: %w", err))
+		case event := <-rp.fileWatcher.Events():
+			// Process file event
+			rp.handleFileEvent(event)
 
 		case err := <-rp.streamReader.Errors():
 			rp.handleError(fmt.Errorf("stream reader: %w", err))
@@ -347,7 +348,7 @@ func (rp *RealtimeUpdatePipeline) handleBatchEvent(event BatchUpdateEvent) {
 	// 更新实时计算
 	if rp.metricsCalculator != nil {
 		for _, data := range event.Entries {
-			rp.metricsCalculator.AddUsageEntry(data.Entry)
+			rp.metricsCalculator.UpdateWithNewEntry(data.Entry)
 		}
 	}
 
@@ -387,12 +388,14 @@ func (rp *RealtimeUpdatePipeline) refreshUI() {
 	// 更新进度条
 	if rp.progressBar != nil {
 		// 这里可以根据实际需求更新进度
-		rp.progressBar.Update(float64(rp.metricsCalculator.CurrentTokens))
+		metrics := rp.metricsCalculator.Calculate()
+		rp.progressBar.Update(float64(metrics.CurrentTokens))
 	}
 
 	// 更新统计表格
 	if rp.statisticsTable != nil {
-		rp.statisticsTable.Update(rp.metricsCalculator)
+		metrics := rp.metricsCalculator.Calculate()
+		rp.statisticsTable.Update(metrics)
 	}
 
 	// 分发UI刷新事件
@@ -497,7 +500,7 @@ func (rp *RealtimeUpdatePipeline) registerEventHandlers() {
 // initializeUIComponents 初始化UI组件
 func (rp *RealtimeUpdatePipeline) initializeUIComponents() error {
 	// 初始化实时计算器
-	rp.metricsCalculator = calculations.NewRealtimeMetrics()
+	rp.metricsCalculator = calculations.NewMetricsCalculator(time.Now(), nil)
 
 	// 初始化进度条
 	rp.progressBar = components.NewProgressBar("Progress", 0, 100)

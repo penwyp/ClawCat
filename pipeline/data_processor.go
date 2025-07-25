@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -454,7 +455,7 @@ type JSONValidator struct{}
 
 func (jv *JSONValidator) Validate(data []byte) error {
 	var entry models.UsageEntry
-	if err := entry.UnmarshalJSON(data); err != nil {
+	if err := json.Unmarshal(data, &entry); err != nil {
 		return fmt.Errorf("invalid JSON format: %w", err)
 	}
 	return nil
@@ -476,7 +477,7 @@ type MetadataEnricher struct{}
 func (me *MetadataEnricher) Enrich(entry *models.UsageEntry) map[string]interface{} {
 	return map[string]interface{}{
 		"processing_timestamp": time.Now(),
-		"token_density":       float64(entry.TotalTokens) / math.Max(1, float64(len(entry.Content))),
+		"token_density":       float64(entry.TotalTokens) / math.Max(1, 100.0),
 		"cost_per_token":      entry.CostUSD / math.Max(0.001, float64(entry.TotalTokens)),
 	}
 }
@@ -498,8 +499,8 @@ func (cc *CostCalculator) Transform(entry *models.UsageEntry) error {
 	}
 
 	// 重新计算成本
-	inputCost := float64(entry.PromptTokens) * pricing.InputTokenPrice / 1000000
-	outputCost := float64(entry.CompletionTokens) * pricing.OutputTokenPrice / 1000000
+	inputCost := float64(entry.InputTokens) * pricing.InputTokenPrice / 1000000
+	outputCost := float64(entry.OutputTokens) * pricing.OutputTokenPrice / 1000000
 	entry.CostUSD = inputCost + outputCost
 
 	return nil

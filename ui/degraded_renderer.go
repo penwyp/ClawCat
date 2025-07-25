@@ -6,7 +6,6 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/sessions"
 )
 
@@ -280,7 +279,7 @@ func (dr *DegradedRenderer) RenderSessionList(sessions []*sessions.Session, mode
 				status = "active"
 			}
 			lines = append(lines, fmt.Sprintf("- %s (%s)", 
-				session.Name, status))
+				session.ID, status))
 		}
 		
 	case DegradedModeText, DegradedModeBasic:
@@ -300,10 +299,10 @@ func (dr *DegradedRenderer) RenderSessionList(sessions []*sessions.Session, mode
 			}
 			
 			startTime := session.StartTime.Format("15:04")
-			duration := formatDuration(session.GetDuration())
+			duration := formatDuration(session.EndTime.Sub(session.StartTime))
 			
 			lines = append(lines, fmt.Sprintf("%s %-20s %s (%s)", 
-				status, truncateString(session.Name, 20), startTime, duration))
+				status, truncateString(session.ID, 20), startTime, duration))
 		}
 		
 	case DegradedModeSafe:
@@ -311,7 +310,7 @@ func (dr *DegradedRenderer) RenderSessionList(sessions []*sessions.Session, mode
 		for _, session := range sessions {
 			if session.IsActive {
 				lines = append(lines, fmt.Sprintf("  %s - started %s", 
-					session.Name, session.StartTime.Format("15:04")))
+					session.ID, session.StartTime.Format("15:04")))
 			}
 		}
 		lines = append(lines, "")

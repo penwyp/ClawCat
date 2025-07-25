@@ -109,22 +109,3 @@ func (a *Application) stopCache(ctx context.Context) error {
 	return nil
 }
 
-// emergencyShutdown performs emergency shutdown without timeouts
-func (a *Application) emergencyShutdown() {
-	a.logger.Warn("Performing emergency shutdown")
-	
-	// Force stop all components immediately
-	if a.fileWatcher != nil {
-		_ = a.fileWatcher.Stop()
-	}
-	
-	if a.ui != nil {
-		_ = a.ui.Stop()
-	}
-	
-	if a.metrics != nil {
-		_ = a.metrics.Stop()
-	}
-	
-	a.logger.Warn("Emergency shutdown completed")
-}

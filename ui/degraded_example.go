@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/penwyp/ClawCat/errors"
-	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/sessions"
 )
 
@@ -127,19 +126,22 @@ func DemoDegradedRenderer() {
 	// 模拟会话数据
 	sessions := []*sessions.Session{
 		{
-			Name:      "Test Session 1",
+			ID:        "session_1",
 			IsActive:  true,
 			StartTime: time.Now().Add(-2 * time.Hour),
+			EndTime:   time.Now().Add(3 * time.Hour),
 		},
 		{
-			Name:      "Test Session 2",
+			ID:        "session_2",
 			IsActive:  false,
 			StartTime: time.Now().Add(-4 * time.Hour),
+			EndTime:   time.Now().Add(1 * time.Hour),
 		},
 		{
-			Name:      "Long Session Name That Needs Truncation",
+			ID:        "session_3",
 			IsActive:  true,
 			StartTime: time.Now().Add(-30 * time.Minute),
+			EndTime:   time.Now().Add(4*time.Hour + 30*time.Minute),
 		},
 	}
 

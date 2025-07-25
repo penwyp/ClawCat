@@ -68,7 +68,7 @@ type DispatcherStats struct {
 	LastEventTime     time.Time        `json:"last_event_time"`
 	ActiveWorkers     int32            `json:"active_workers"`
 	QueueSize         int32            `json:"queue_size"`
-	HandlerStats      map[string]int64 `json:"handler_stats"`
+	HandlerStats      map[string]*int64 `json:"handler_stats"`
 }
 
 // MiddlewareFunc 中间件函数
@@ -85,7 +85,7 @@ func NewEventDispatcher(config DispatcherConfig) *EventDispatcher {
 		config:       config,
 		stats:        &DispatcherStats{
 			StartTime:    time.Now(),
-			HandlerStats: make(map[string]int64),
+			HandlerStats: make(map[string]*int64),
 		},
 		ctx:    ctx,
 		cancel: cancel,
@@ -109,7 +109,8 @@ func (ed *EventDispatcher) RegisterHandler(eventType reflect.Type, handler Event
 	// 初始化处理器统计
 	handlerName := ed.getHandlerName(handler)
 	if ed.config.EnableMetrics {
-		ed.stats.HandlerStats[handlerName] = 0
+		var count int64
+		ed.stats.HandlerStats[handlerName] = &count
 	}
 
 	log.Printf("Registered handler %s for event type %s", handlerName, eventType.String())
@@ -459,9 +460,10 @@ func (ed *EventDispatcher) GetStats() DispatcherStats {
 	}
 
 	// 复制处理器统计
-	stats.HandlerStats = make(map[string]int64)
-	for name, count := range ed.stats.HandlerStats {
-		stats.HandlerStats[name] = atomic.LoadInt64(&count)
+	stats.HandlerStats = make(map[string]*int64)
+	for name, countPtr := range ed.stats.HandlerStats {
+		value := atomic.LoadInt64(countPtr)
+		stats.HandlerStats[name] = &value
 	}
 
 	return stats

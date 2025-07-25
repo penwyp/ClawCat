@@ -17,11 +17,6 @@ func formatNumber(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-// formatFloat 格式化浮点数
-func formatFloat(f float64, precision int) string {
-	format := fmt.Sprintf("%%.%df", precision)
-	return fmt.Sprintf(format, f)
-}
 
 // formatCurrency 格式化货币
 func formatCurrency(amount float64) string {

@@ -83,7 +83,6 @@ func (f *FileAccessRecovery) createDefaultFile(context *ErrorContext) error {
 
 // JSONParseRecovery JSON 解析错误恢复
 type JSONParseRecovery struct {
-	validator     *JSONValidator
 	repair        *JSONRepair
 	skipCorrupted bool
 }

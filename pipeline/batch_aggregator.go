@@ -21,7 +21,6 @@ type BatchAggregator struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	mu             sync.RWMutex
-	flushTimer     *time.Timer
 	isRunning      bool
 	wg             sync.WaitGroup
 }
