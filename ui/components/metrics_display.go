@@ -3,7 +3,6 @@ package components
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/penwyp/ClawCat/calculations"
@@ -348,42 +347,6 @@ func (md *MetricsDisplay) getStyles() Styles {
 
 // Helper functions
 
-// formatNumber 格式化数字显示
-func formatNumber(n int) string {
-	if n < 1000 {
-		return fmt.Sprintf("%d", n)
-	}
-	if n < 1000000 {
-		return fmt.Sprintf("%.1fK", float64(n)/1000)
-	}
-	return fmt.Sprintf("%.1fM", float64(n)/1000000)
-}
-
-// formatDuration 格式化时间显示
-func formatDuration(d time.Duration) string {
-	if d <= 0 {
-		return "0m"
-	}
-
-	hours := int(d.Hours())
-	minutes := int(d.Minutes()) % 60
-
-	if hours > 0 {
-		return fmt.Sprintf("%dh%dm", hours, minutes)
-	}
-	return fmt.Sprintf("%dm", minutes)
-}
-
-// truncateString 截断字符串
-func truncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	if maxLen <= 3 {
-		return s[:maxLen]
-	}
-	return s[:maxLen-3] + "..."
-}
 
 // RenderCompact 渲染紧凑版本的指标显示
 func (md *MetricsDisplay) RenderCompact() string {
