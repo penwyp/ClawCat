@@ -1,0 +1,332 @@
+package ui
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/penwyp/ClawCat/calculations"
+	"github.com/penwyp/ClawCat/ui/components"
+)
+
+// EnhancedDashboardView 增强的 Dashboard 视图，包含进度条
+type EnhancedDashboardView struct {
+	stats           Statistics
+	metrics         *calculations.RealtimeMetrics
+	progressSection *components.ProgressSection
+	limits          components.Limits
+	width           int
+	height          int
+	config          Config
+	styles          Styles
+}
+
+// NewEnhancedDashboardView 创建增强的 Dashboard
+func NewEnhancedDashboardView(config Config) *EnhancedDashboardView {
+	return &EnhancedDashboardView{
+		config:          config,
+		styles:          NewStyles(GetThemeByName(config.Theme)),
+		progressSection: components.NewProgressSection(0),
+		limits:          getLimitsFromConfig(config),
+	}
+}
+
+// Init 初始化增强的 dashboard 视图
+func (d *EnhancedDashboardView) Init() tea.Cmd {
+	return nil
+}
+
+// Update 处理增强 dashboard 的消息
+func (d *EnhancedDashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	return d, nil
+}
+
+// View 渲染增强的 Dashboard
+func (d *EnhancedDashboardView) View() string {
+	if d.width == 0 || d.height == 0 {
+		return "Enhanced Dashboard loading..."
+	}
+
+	// 更新进度条宽度
+	if d.progressSection != nil {
+		d.progressSection.SetWidth(d.width - 4)
+	}
+
+	// 渲染各个部分
+	header := d.renderHeader()
+	progress := d.renderProgressSection()
+	metrics := d.renderMetrics()
+	charts := d.renderCharts()
+	footer := d.renderFooter()
+
+	// 组合所有部分
+	sections := []string{header}
+	
+	if progress != "" {
+		sections = append(sections, progress)
+	}
+	
+	sections = append(sections, metrics, charts, footer)
+
+	content := strings.Join(sections, "\n\n")
+
+	return d.styles.Content.
+		Width(d.width - 4).
+		Height(d.height - 4).
+		Render(content)
+}
+
+// UpdateStats 更新 dashboard 统计数据
+func (d *EnhancedDashboardView) UpdateStats(stats Statistics) {
+	d.stats = stats
+}
+
+// UpdateMetrics 更新实时指标和进度条
+func (d *EnhancedDashboardView) UpdateMetrics(metrics *calculations.RealtimeMetrics) {
+	d.metrics = metrics
+	if d.progressSection != nil && metrics != nil {
+		d.progressSection.Update(metrics, d.limits)
+	}
+}
+
+// Resize 更新 dashboard 尺寸
+func (d *EnhancedDashboardView) Resize(width, height int) {
+	d.width = width
+	d.height = height
+	if d.progressSection != nil {
+		d.progressSection.SetWidth(width - 4)
+	}
+}
+
+// UpdateConfig 更新 dashboard 配置
+func (d *EnhancedDashboardView) UpdateConfig(config Config) {
+	d.config = config
+	d.styles = NewStyles(GetThemeByName(config.Theme))
+	d.limits = getLimitsFromConfig(config)
+}
+
+// renderHeader 渲染 dashboard 头部
+func (d *EnhancedDashboardView) renderHeader() string {
+	title := d.styles.Title.Render("🐱 ClawCat Enhanced Dashboard")
+	subtitle := d.styles.Subtitle.Render(
+		fmt.Sprintf("Last updated: %s", time.Now().Format("15:04:05")),
+	)
+
+	return strings.Join([]string{title, subtitle}, "\n")
+}
+
+// renderProgressSection 渲染进度条区域
+func (d *EnhancedDashboardView) renderProgressSection() string {
+	if d.progressSection == nil || d.metrics == nil {
+		return d.styles.Loading.Render("⏳ Waiting for session data...")
+	}
+
+	return d.progressSection.Render()
+}
+
+// renderMetrics 渲染关键指标卡片
+func (d *EnhancedDashboardView) renderMetrics() string {
+	// 活跃会话卡片
+	activeCard := d.renderMetricCard(
+		"Active Sessions",
+		fmt.Sprintf("%d", d.stats.ActiveSessions),
+		d.styles.Success,
+	)
+
+	// 总 tokens 卡片
+	tokensCard := d.renderMetricCard(
+		"Total Tokens",
+		d.formatNumber(d.stats.TotalTokens),
+		d.styles.Info,
+	)
+
+	// 总成本卡片
+	costCard := d.renderMetricCard(
+		"Total Cost",
+		fmt.Sprintf("$%.2f", d.stats.TotalCost),
+		d.styles.Warning,
+	)
+
+	// 燃烧率卡片 - 增强显示
+	burnRateCard := d.renderBurnRateCard()
+
+	// 横向排列卡片
+	return d.arrangeInRow([]string{
+		activeCard,
+		tokensCard,
+		costCard,
+		burnRateCard,
+	})
+}
+
+// renderBurnRateCard 渲染增强的燃烧率卡片
+func (d *EnhancedDashboardView) renderBurnRateCard() string {
+	var burnRateText, statusStyle string
+	
+	if d.metrics != nil {
+		burnRate := d.metrics.BurnRate
+		if burnRate > 200 {
+			statusStyle = "🔥 High"
+			burnRateText = fmt.Sprintf("%.1f tok/min", burnRate)
+		} else if burnRate > 100 {
+			statusStyle = "⚡ Medium"
+			burnRateText = fmt.Sprintf("%.1f tok/min", burnRate)
+		} else {
+			statusStyle = "✅ Normal"
+			burnRateText = fmt.Sprintf("%.1f tok/min", burnRate)
+		}
+	} else {
+		statusStyle = "📊 Calculating"
+		burnRateText = fmt.Sprintf("%.1f tok/hr", d.stats.CurrentBurnRate)
+	}
+
+	// 根据燃烧率选择颜色
+	var style lipgloss.Style
+	if strings.Contains(statusStyle, "High") {
+		style = d.styles.Error
+	} else if strings.Contains(statusStyle, "Medium") {
+		style = d.styles.Warning
+	} else {
+		style = d.styles.Success
+	}
+
+	cardTitle := d.styles.DashboardLabel().Render("Burn Rate")
+	cardValue := style.Render(burnRateText)
+	cardStatus := d.styles.Muted.Render(statusStyle)
+
+	content := strings.Join([]string{cardTitle, cardValue, cardStatus}, "\n")
+	return d.styles.DashboardCard().Render(content)
+}
+
+// renderCharts 渲染 dashboard 图表
+func (d *EnhancedDashboardView) renderCharts() string {
+	// 使用进度条状态
+	usageInfo := d.renderUsageInfo()
+
+	// 时间重置信息
+	resetInfo := d.renderResetInfo()
+
+	return strings.Join([]string{usageInfo, resetInfo}, "\n\n")
+}
+
+// renderUsageInfo 渲染使用情况信息
+func (d *EnhancedDashboardView) renderUsageInfo() string {
+	title := d.styles.Subtitle.Render("Resource Usage Status")
+
+	var statusInfo string
+	if d.progressSection != nil {
+		summary := d.progressSection.GetSummary()
+		worstStatus := d.progressSection.GetWorstStatus()
+
+		var statusStyle lipgloss.Style
+		var statusIcon string
+		switch worstStatus {
+		case "critical":
+			statusStyle = d.styles.Error
+			statusIcon = "🚨"
+		case "warning":
+			statusStyle = d.styles.Warning
+			statusIcon = "⚠️"
+		case "moderate":
+			statusStyle = d.styles.Info
+			statusIcon = "📊"
+		default:
+			statusStyle = d.styles.Success
+			statusIcon = "✅"
+		}
+
+		statusInfo = statusStyle.Render(fmt.Sprintf("%s %s", statusIcon, summary))
+	} else {
+		progressWidth := d.width - 20
+		if progressWidth < 20 {
+			progressWidth = 20
+		}
+
+		progress := d.styles.ProgressStyle(d.stats.PlanUsage, progressWidth)
+		percentage := fmt.Sprintf("%.1f%%", d.stats.PlanUsage)
+		statusInfo = strings.Join([]string{progress, percentage}, "\n")
+	}
+
+	return strings.Join([]string{title, statusInfo}, "\n")
+}
+
+// renderFooter 渲染 dashboard 页脚
+func (d *EnhancedDashboardView) renderFooter() string {
+	status := fmt.Sprintf(
+		"Sessions: %d | Top Model: %s | Avg Cost: $%.2f",
+		d.stats.SessionCount,
+		d.stats.TopModel,
+		d.stats.AverageCost,
+	)
+
+	// 添加进度条状态摘要
+	if d.progressSection != nil && d.progressSection.HasCriticalStatus() {
+		status += " | ⚠️ Critical usage levels detected"
+	}
+
+	return d.styles.Footer.Render(status)
+}
+
+// renderResetInfo 渲染重置时间信息
+func (d *EnhancedDashboardView) renderResetInfo() string {
+	title := d.styles.Subtitle.Render("Time to Reset")
+
+	days := int(d.stats.TimeToReset.Hours() / 24)
+	hours := int(d.stats.TimeToReset.Hours()) % 24
+
+	timeText := fmt.Sprintf("%dd %dh", days, hours)
+
+	return strings.Join([]string{
+		title,
+		d.styles.Normal.Render(timeText),
+	}, "\n")
+}
+
+// renderMetricCard 渲染单个指标卡片
+func (d *EnhancedDashboardView) renderMetricCard(title, value string, style lipgloss.Style) string {
+	cardTitle := d.styles.DashboardLabel().Render(title)
+	cardValue := style.Copy().Render(value)
+
+	content := strings.Join([]string{cardTitle, cardValue}, "\n")
+
+	return d.styles.DashboardCard().Render(content)
+}
+
+// arrangeInRow 水平排列多个元素
+func (d *EnhancedDashboardView) arrangeInRow(elements []string) string {
+	return lipgloss.JoinHorizontal(lipgloss.Top, elements...)
+}
+
+// formatNumber 格式化大数字显示
+func (d *EnhancedDashboardView) formatNumber(n int64) string {
+	if n >= 1000000 {
+		return fmt.Sprintf("%.1fM", float64(n)/1000000)
+	} else if n >= 1000 {
+		return fmt.Sprintf("%.1fK", float64(n)/1000)
+	}
+	return fmt.Sprintf("%d", n)
+}
+
+// getLimitsFromConfig 从配置获取限制值
+func getLimitsFromConfig(config Config) components.Limits {
+	// 这里暂时使用默认值，实际应该从配置中读取
+	return components.Limits{
+		TokenLimit: 1000000, // 1M tokens
+		CostLimit:  18.00,   // $18 Pro plan default
+	}
+}
+
+// HasProgressData 检查是否有进度数据
+func (d *EnhancedDashboardView) HasProgressData() bool {
+	return d.metrics != nil
+}
+
+// GetProgressSummary 获取进度摘要
+func (d *EnhancedDashboardView) GetProgressSummary() string {
+	if d.progressSection != nil {
+		return d.progressSection.GetSummary()
+	}
+	return "No progress data available"
+}

@@ -464,3 +464,12 @@ func GetThemeByName(name string) Theme {
 func GetAvailableThemes() []string {
 	return []string{"dark", "light", "high-contrast"}
 }
+
+// Additional styles for progress components
+func (s Styles) Box() lipgloss.Style {
+	return s.Border.Copy()
+}
+
+func (s Styles) SectionTitle() lipgloss.Style {
+	return s.Subtitle.Copy().Bold(true)
+}
