@@ -220,7 +220,7 @@ func (av *AggregationView) Update(msg tea.Msg) (*AggregationView, tea.Cmd) {
 // View 渲染视图
 func (av *AggregationView) View() string {
 	if av.width == 0 || av.height == 0 {
-		return av.styles.Faint.Render("Loading aggregation view...")
+		return av.styles.Faint().Render("Loading aggregation view...")
 	}
 
 	if av.loading {
@@ -290,7 +290,7 @@ func (av *AggregationView) renderViewSelector() string {
 	for i, v := range views {
 		style := av.styles.Button
 		if v.Type == av.viewType {
-			style = av.styles.ButtonActive
+			style = av.styles.ButtonActive()
 		}
 		buttons[i] = style.Render(v.Label)
 	}
@@ -301,7 +301,7 @@ func (av *AggregationView) renderViewSelector() string {
 // renderContent 渲染主要内容
 func (av *AggregationView) renderContent() string {
 	if len(av.data) == 0 {
-		return av.styles.Faint.Render("No data available for the selected period")
+		return av.styles.Faint().Render("No data available for the selected period")
 	}
 
 	// 根据屏幕宽度决定布局
@@ -313,7 +313,7 @@ func (av *AggregationView) renderContent() string {
 		if av.showChart {
 			chart = av.chart.Render(av.width/2 - 2)
 		} else {
-			chart = av.styles.Faint.Render("Chart hidden (press 'c' to show)")
+			chart = av.styles.Faint().Render("Chart hidden (press 'c' to show)")
 		}
 		
 		return lipgloss.JoinHorizontal(lipgloss.Top, table, "  ", chart)
@@ -345,7 +345,7 @@ func (av *AggregationView) renderSummary() string {
 		av.renderSummaryCard("Peak Day", summary.peakDay, av.styles.Normal),
 	}
 
-	return av.styles.Box.Render(
+	return av.styles.Box().Render(
 		lipgloss.JoinHorizontal(lipgloss.Center, cards...),
 	)
 }
@@ -357,7 +357,7 @@ func (av *AggregationView) renderSummaryCard(title, value string, style lipgloss
 		style.Copy().Faint(true).Render(value),
 	)
 	
-	return av.styles.Card.
+	return av.styles.Card().
 		Width(av.width/4 - 2).
 		Render(card)
 }
@@ -373,7 +373,7 @@ func (av *AggregationView) renderHelp() string {
 		"q: quit",
 	}
 
-	return av.styles.Help.Render(strings.Join(helpItems, " • "))
+	return av.styles.Help().Render(strings.Join(helpItems, " • "))
 }
 
 // renderLoading 渲染加载状态
@@ -579,7 +579,7 @@ func generateMockAggregationData() []calculations.AggregatedData {
 				Min:     0.5,
 				Max:     float64(3 + i),
 			},
-			Models: map[string]calculations.ModelStats{
+			Models: map[string]calculations.AggregationModelStats{
 				"claude-3-opus": {
 					Count:  5 + i,
 					Tokens: 3000 + i*600,
