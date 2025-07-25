@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -410,7 +409,6 @@ func (eh *ErrorHandler) IsUIDegraded() bool {
 
 // countRecentUIErrors 计算最近 UI 错误数量
 func (eh *ErrorHandler) countRecentUIErrors(duration time.Duration) int {
-	cutoff := time.Now().Add(-duration)
 	count := 0
 	
 	eh.bufferMu.RLock()

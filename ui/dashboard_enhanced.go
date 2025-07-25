@@ -12,12 +12,13 @@ import (
 	"github.com/penwyp/ClawCat/ui/components"
 )
 
-// EnhancedDashboardView 增强的 Dashboard 视图，包含进度条和限额显示
+// EnhancedDashboardView 增强的 Dashboard 视图，包含进度条、限额显示和统计表格
 type EnhancedDashboardView struct {
 	stats           Statistics
 	metrics         *calculations.RealtimeMetrics
 	progressSection *components.ProgressSection
 	limitDisplay    *components.LimitDisplay
+	statisticsTable *components.StatisticsTable
 	limitManager    *limits.LimitManager
 	limits          components.Limits
 	width           int
@@ -35,6 +36,7 @@ func NewEnhancedDashboardView(config Config) *EnhancedDashboardView {
 		styles:          NewStyles(GetThemeByName(config.Theme)),
 		progressSection: components.NewProgressSection(0),
 		limitDisplay:    limitDisplay,
+		statisticsTable: components.NewStatisticsTable(0),
 		limits:          getLimitsFromConfig(config),
 	}
 }
@@ -65,6 +67,7 @@ func (d *EnhancedDashboardView) View() string {
 	limits := d.renderLimitsSection()
 	progress := d.renderProgressSection()
 	metrics := d.renderMetrics()
+	statistics := d.renderStatisticsSection()
 	charts := d.renderCharts()
 	footer := d.renderFooter()
 
@@ -79,7 +82,13 @@ func (d *EnhancedDashboardView) View() string {
 		sections = append(sections, progress)
 	}
 	
-	sections = append(sections, metrics, charts, footer)
+	sections = append(sections, metrics)
+	
+	if statistics != "" {
+		sections = append(sections, statistics)
+	}
+	
+	sections = append(sections, charts, footer)
 
 	content := strings.Join(sections, "\n\n")
 
@@ -99,6 +108,9 @@ func (d *EnhancedDashboardView) UpdateMetrics(metrics *calculations.RealtimeMetr
 	d.metrics = metrics
 	if d.progressSection != nil && metrics != nil {
 		d.progressSection.Update(metrics, d.limits)
+	}
+	if d.statisticsTable != nil && metrics != nil {
+		d.statisticsTable.Update(metrics)
 	}
 }
 
@@ -120,6 +132,9 @@ func (d *EnhancedDashboardView) Resize(width, height int) {
 	}
 	if d.limitDisplay != nil {
 		d.limitDisplay.SetWidth(width - 4)
+	}
+	if d.statisticsTable != nil {
+		d.statisticsTable.SetWidth(width - 4)
 	}
 }
 
@@ -166,6 +181,15 @@ func (d *EnhancedDashboardView) renderProgressSection() string {
 	}
 
 	return d.progressSection.Render()
+}
+
+// renderStatisticsSection 渲染统计表格区域
+func (d *EnhancedDashboardView) renderStatisticsSection() string {
+	if d.statisticsTable == nil || d.metrics == nil {
+		return ""
+	}
+
+	return d.statisticsTable.Render()
 }
 
 // renderMetrics 渲染关键指标卡片

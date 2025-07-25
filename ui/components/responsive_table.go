@@ -115,7 +115,7 @@ func (rt *ResponsiveTable) calculateVisibleColumns() {
 
 // Render 渲染表格
 func (rt *ResponsiveTable) Render() string {
-	if len(rt.rows) == 0 {
+	if len(rt.rows) == 0 || len(rt.columns) == 0 {
 		return "No data available"
 	}
 
