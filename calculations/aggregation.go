@@ -2,6 +2,7 @@ package calculations
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"sync"
 	"time"
@@ -26,7 +27,7 @@ type AggregatedData struct {
 	Entries   int                    `json:"entries"`
 	Tokens    TokenStats             `json:"tokens"`
 	Cost      CostStats              `json:"cost"`
-	Models    map[string]ModelStats  `json:"models"`
+	Models    map[string]AggregationModelStats  `json:"models"`
 	Sessions  []SessionSummary       `json:"sessions"`
 	Patterns  UsagePattern           `json:"patterns"`
 }
@@ -60,8 +61,8 @@ type CostStats struct {
 	Breakdown map[string]float64 `json:"breakdown"` // 按模型分解
 }
 
-// ModelStats 模型使用统计
-type ModelStats struct {
+// AggregationModelStats 模型使用统计（聚合专用）
+type AggregationModelStats struct {
 	Count  int     `json:"count"`
 	Tokens int     `json:"tokens"`
 	Cost   float64 `json:"cost"`
@@ -127,8 +128,8 @@ type CacheEntry struct {
 // NewAggregationEngine 创建聚合引擎
 func NewAggregationEngine(entries []models.UsageEntry, cfg *config.Config) *AggregationEngine {
 	timezone := time.Local
-	if cfg != nil && cfg.Timezone != "" {
-		if tz, err := time.LoadLocation(cfg.Timezone); err == nil {
+	if cfg != nil && cfg.App.Timezone != "" {
+		if tz, err := time.LoadLocation(cfg.App.Timezone); err == nil {
 			timezone = tz
 		}
 	}
@@ -256,14 +257,14 @@ func (ae *AggregationEngine) calculateStats(entries []models.UsageEntry, periodK
 	if len(entries) == 0 {
 		return AggregatedData{
 			Period: ae.parsePeriod(periodKey, view),
-			Models: make(map[string]ModelStats),
+			Models: make(map[string]AggregationModelStats),
 		}
 	}
 
 	data := AggregatedData{
 		Period:  ae.parsePeriod(periodKey, view),
 		Entries: len(entries),
-		Models:  make(map[string]ModelStats),
+		Models:  make(map[string]AggregationModelStats),
 	}
 
 	// 初始化统计
@@ -544,7 +545,7 @@ func (ae *AggregationEngine) calculateStdDev(values []float64, mean float64) flo
 		diff := v - mean
 		sumSquares += diff * diff
 	}
-	return fmt.Sprintf("%.2f", sumSquares/float64(len(values)-1))
+	return math.Sqrt(sumSquares / float64(len(values)-1))
 }
 
 // getAnomalySeverity 获取异常严重程度

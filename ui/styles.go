@@ -473,3 +473,22 @@ func (s Styles) Box() lipgloss.Style {
 func (s Styles) SectionTitle() lipgloss.Style {
 	return s.Subtitle.Copy().Bold(true)
 }
+
+func (s Styles) Card() lipgloss.Style {
+	return s.Panel.Copy().
+		Padding(1).
+		Margin(0, 1)
+}
+
+func (s Styles) ButtonActive() lipgloss.Style {
+	return s.ButtonFocus.Copy()
+}
+
+func (s Styles) Faint() lipgloss.Style {
+	return s.Muted.Copy()
+}
+
+func (s Styles) Help() lipgloss.Style {
+	return s.Footer.Copy().
+		Foreground(s.Muted.GetForeground())
+}

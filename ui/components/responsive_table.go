@@ -265,3 +265,14 @@ func (rt *ResponsiveTable) Clear() {
 func (rt *ResponsiveTable) SetStyles(styles TableStyles) {
 	rt.styles = styles
 }
+
+// truncateString 截断字符串
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	if maxLen <= 3 {
+		return s[:maxLen]
+	}
+	return s[:maxLen-3] + "..."
+}
