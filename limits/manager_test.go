@@ -371,43 +371,9 @@ func TestCalculateTimeToReset(t *testing.T) {
 	}
 }
 
-func TestShouldTriggerWarning(t *testing.T) {
-	cfg := &config.Config{
-		Subscription: config.SubscriptionConfig{
-			Plan: "pro",
-		},
-	}
-
-	lm, err := NewLimitManager(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create limit manager: %v", err)
-	}
-
-	warningLevel := WarningLevel{
-		Threshold: 75,
-		Severity:  SeverityInfo,
-		Message:   "Test warning",
-	}
-
-	// First trigger should return true
-	if !lm.shouldTriggerWarning(warningLevel) {
-		t.Error("First warning should trigger")
-	}
-
-	// Mark as triggered
-	lm.warningHistory[SeverityInfo] = time.Now()
-
-	// Should not trigger again immediately
-	if lm.shouldTriggerWarning(warningLevel) {
-		t.Error("Warning should not trigger again immediately")
-	}
-
-	// Should trigger after cooldown
-	lm.warningHistory[SeverityInfo] = time.Now().Add(-3 * time.Hour)
-	if !lm.shouldTriggerWarning(warningLevel) {
-		t.Error("Warning should trigger after cooldown")
-	}
-}
+// TestShouldTriggerWarning has been removed as the shouldTriggerWarning method
+// has been inlined into CheckUsage to avoid deadlock issues.
+// The warning trigger logic is now tested through the integration tests.
 
 func TestConcurrentUsage(t *testing.T) {
 	cfg := &config.Config{

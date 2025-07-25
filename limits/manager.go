@@ -25,19 +25,38 @@ type LimitManager struct {
 // NewLimitManager 创建限额管理器
 func NewLimitManager(cfg *config.Config) (*LimitManager, error) {
 	planType := PlanType(cfg.Subscription.Plan)
-	plan, ok := GetPlanByType(planType)
-
-	if !ok {
-		if planType == PlanCustom {
-			// 创建自定义计划
-			customLimit := cfg.Subscription.CustomCostLimit
-			if customLimit <= 0 {
-				return nil, fmt.Errorf("custom plan requires a positive cost limit")
-			}
-			plan = CreateCustomPlan(customLimit)
-		} else {
-			return nil, fmt.Errorf("unknown plan type: %s", planType)
+	
+	// 处理自定义计划
+	if planType == PlanCustom {
+		customLimit := cfg.Subscription.CustomCostLimit
+		if customLimit <= 0 {
+			return nil, fmt.Errorf("custom plan requires a positive cost limit")
 		}
+		plan := CreateCustomPlan(customLimit)
+		lm := &LimitManager{
+			plan:           plan,
+			config:         cfg,
+			notifier:       NewNotifier(cfg),
+			warningHistory: make(map[Severity]time.Time),
+			p90Calculator:  NewP90Calculator(),
+			usage: Usage{
+				StartTime: time.Now(),
+			},
+		}
+		
+		// 加载历史使用数据
+		if err := lm.loadHistoricalUsage(); err != nil {
+			// 非致命错误，记录日志但继续
+			fmt.Printf("Warning: Failed to load historical usage: %v\n", err)
+		}
+		
+		return lm, nil
+	}
+	
+	// 处理标准计划
+	plan, ok := GetPlanByType(planType)
+	if !ok {
+		return nil, fmt.Errorf("unknown plan type: %s", planType)
 	}
 
 	lm := &LimitManager{
@@ -57,21 +76,13 @@ func NewLimitManager(cfg *config.Config) (*LimitManager, error) {
 		fmt.Printf("Warning: Failed to load historical usage: %v\n", err)
 	}
 
-	// 如果是自定义计划且没有设置限额，计算 P90 限额
-	if planType == PlanCustom && plan.CostLimit <= 0 {
-		if limit, err := lm.CalculateP90Limit(); err == nil {
-			lm.plan.CostLimit = limit
-		}
-	}
-
 	return lm, nil
 }
 
 // CheckUsage 检查使用情况
 func (lm *LimitManager) CheckUsage(entry models.UsageEntry) (*LimitStatus, error) {
 	lm.mu.Lock()
-	defer lm.mu.Unlock()
-
+	
 	// 更新使用量
 	lm.usage.Tokens += int64(entry.TotalTokens)
 	lm.usage.Cost += entry.CostUSD
@@ -102,9 +113,35 @@ func (lm *LimitManager) CheckUsage(entry models.UsageEntry) (*LimitStatus, error
 	}
 
 	status.WarningLevel = currentWarningLevel
+	
+	// 在释放锁之前检查是否应该触发警告
+	shouldTrigger := false
+	if currentWarningLevel != nil {
+		// 内部检查，不需要额外的锁
+		lastTriggered, exists := lm.warningHistory[currentWarningLevel.Severity]
+		if !exists {
+			shouldTrigger = true
+		} else {
+			// 避免频繁警告，每个级别至少间隔一定时间
+			cooldown := time.Hour
+			switch currentWarningLevel.Severity {
+			case SeverityCritical:
+				cooldown = 15 * time.Minute
+			case SeverityError:
+				cooldown = 30 * time.Minute
+			case SeverityWarning:
+				cooldown = time.Hour
+			case SeverityInfo:
+				cooldown = 2 * time.Hour
+			}
+			shouldTrigger = time.Since(lastTriggered) > cooldown
+		}
+	}
+	
+	lm.mu.Unlock()
 
-	// 触发警告动作
-	if currentWarningLevel != nil && lm.shouldTriggerWarning(*currentWarningLevel) {
+	// 触发警告动作（在锁外执行）
+	if currentWarningLevel != nil && shouldTrigger {
 		go lm.triggerWarningActions(*currentWarningLevel, status)
 	}
 
@@ -252,32 +289,12 @@ func (lm *LimitManager) GetRecommendations() []string {
 	return recommendations
 }
 
-// shouldTriggerWarning 判断是否应该触发警告
-func (lm *LimitManager) shouldTriggerWarning(level WarningLevel) bool {
-	lastTriggered, exists := lm.warningHistory[level.Severity]
-	if !exists {
-		return true
-	}
-
-	// 避免频繁警告，每个级别至少间隔一定时间
-	cooldown := time.Hour
-	switch level.Severity {
-	case SeverityCritical:
-		cooldown = 15 * time.Minute
-	case SeverityError:
-		cooldown = 30 * time.Minute
-	case SeverityWarning:
-		cooldown = time.Hour
-	case SeverityInfo:
-		cooldown = 2 * time.Hour
-	}
-
-	return time.Since(lastTriggered) > cooldown
-}
 
 // triggerWarningActions 触发警告动作
 func (lm *LimitManager) triggerWarningActions(level WarningLevel, status *LimitStatus) {
+	lm.mu.Lock()
 	lm.warningHistory[level.Severity] = time.Now()
+	lm.mu.Unlock()
 
 	for _, action := range level.Actions {
 		switch action.Type {
