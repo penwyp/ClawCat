@@ -301,22 +301,17 @@ func (l *Logger) AddOutput(output Output) {
 	l.outputs = append(l.outputs, output)
 }
 
-// InitGlobalLogger initializes the global logger instance
-func InitGlobalLogger(logLevel, logFile string) {
-	InitGlobalLoggerWithDebug(logLevel, logFile, false)
-}
-
-// InitGlobalLoggerWithDebug initializes the global logger instance with debug mode support
-func InitGlobalLoggerWithDebug(logLevel, logFile string, debugToConsole bool) {
+// InitLogger initializes the global logger instance with debug mode support
+func InitLogger(logLevel, logFile string, debugToConsole bool) {
 	loggerOnce.Do(func() {
 		globalLogger = NewLoggerWithDebug(logLevel, logFile, debugToConsole)
 	})
 }
 
-// GetGlobalLogger returns the global logger instance
-func GetGlobalLogger() LoggerInterface {
+// GetLogger returns the global logger instance
+func GetLogger() LoggerInterface {
 	if globalLogger == nil {
-		panic("Global logger not initialized. Call InitGlobalLogger first.")
+		panic("Global logger not initialized. Call InitLogger first.")
 	}
 	return globalLogger
 }
