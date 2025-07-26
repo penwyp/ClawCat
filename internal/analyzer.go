@@ -47,14 +47,13 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			cacheDir = filepath.Join(homeDir, cacheDir[2:])
 		}
 
-		// Use BadgerDB cache for better concurrent performance
-		persistPath := filepath.Join(cacheDir, "badger_summaries")
-		badgerCache, err := cache.NewBadgerSummaryCache(persistPath)
+		// Use file-based cache with memory preloading
+		fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
 		if err != nil {
-			logging.LogErrorf("Failed to create BadgerDB cache: %v", err)
+			logging.LogErrorf("Failed to create file-based cache: %v", err)
 			// Cache is disabled on error
 		} else {
-			cacheStore = badgerCache
+			cacheStore = fileCache
 		}
 	}
 

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -17,6 +16,131 @@ import (
 	"github.com/penwyp/claudecat/logging"
 	"github.com/penwyp/claudecat/models"
 )
+
+// findJSONLFiles discovers all JSONL files in the given path
+func findJSONLFiles(dataPath string) ([]string, error) {
+	return DiscoverFiles(dataPath)
+}
+
+// hasAssistantMessages checks if a file contains assistant messages
+func hasAssistantMessages(filePath string) bool {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineCount := 0
+
+	// Check first 50 lines for assistant messages
+	for scanner.Scan() && lineCount < 50 {
+		line := scanner.Text()
+		lineCount++
+
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		var data map[string]interface{}
+		if err := sonic.Unmarshal([]byte(line), &data); err != nil {
+			continue
+		}
+
+		// Check if this is an assistant message with usage data
+		if typeStr, ok := data["type"].(string); ok && typeStr == "assistant" {
+			if message, ok := data["message"].(map[string]interface{}); ok {
+				if usage, ok := message["usage"].(map[string]interface{}); ok {
+					// Check if usage has any tokens
+					for _, field := range []string{"input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens"} {
+						if val, ok := usage[field]; ok {
+							if tokens, ok := val.(float64); ok && tokens > 0 {
+								return true
+							}
+							}
+						}
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+// extractUsageEntry extracts usage entry from JSON data
+func extractUsageEntry(data map[string]interface{}) (models.UsageEntry, bool) {
+	var entry models.UsageEntry
+	var hasUsage bool
+
+	// Extract timestamp
+	if timestampStr, ok := data["timestamp"].(string); ok {
+		if ts, err := time.Parse(time.RFC3339, timestampStr); err == nil {
+			entry.Timestamp = ts
+		} else {
+			return entry, false
+		}
+	} else {
+		return entry, false
+	}
+
+	// Handle different message types
+	typeStr, _ := data["type"].(string)
+
+	if typeStr == "assistant" {
+		// Claude Code session format
+		if message, ok := data["message"].(map[string]interface{}); ok {
+			// Extract model
+			if model, ok := message["model"].(string); ok {
+				entry.Model = model
+			}
+
+			// Extract usage
+			if usage, ok := message["usage"].(map[string]interface{}); ok {
+				if val, ok := usage["input_tokens"]; ok {
+					entry.InputTokens = int(val.(float64))
+					hasUsage = true
+				}
+				if val, ok := usage["output_tokens"]; ok {
+					entry.OutputTokens = int(val.(float64))
+					hasUsage = true
+				}
+				if val, ok := usage["cache_creation_input_tokens"]; ok {
+					entry.CacheCreationTokens = int(val.(float64))
+				}
+				if val, ok := usage["cache_read_input_tokens"]; ok {
+					entry.CacheReadTokens = int(val.(float64))
+				}
+			}
+		}
+	} else if typeStr == "message" {
+		// Direct API format
+		if model, ok := data["model"].(string); ok {
+			entry.Model = model
+		}
+
+		if usage, ok := data["usage"].(map[string]interface{}); ok {
+			if val, ok := usage["input_tokens"]; ok {
+				entry.InputTokens = int(val.(float64))
+				hasUsage = true
+			}
+			if val, ok := usage["output_tokens"]; ok {
+				entry.OutputTokens = int(val.(float64))
+				hasUsage = true
+			}
+			if val, ok := usage["cache_creation_tokens"]; ok {
+				entry.CacheCreationTokens = int(val.(float64))
+			}
+			if val, ok := usage["cache_read_tokens"]; ok {
+				entry.CacheReadTokens = int(val.(float64))
+			}
+		}
+	}
+
+	// Calculate total tokens
+	entry.TotalTokens = entry.InputTokens + entry.OutputTokens + entry.CacheCreationTokens + entry.CacheReadTokens
+
+	return entry, hasUsage
+}
 
 // LoadUsageEntriesOptions configures the usage loading behavior
 type LoadUsageEntriesOptions struct {
@@ -67,7 +191,6 @@ type CachePerformanceStats struct {
 }
 
 // LoadUsageEntries loads and converts JSONL files to UsageEntry objects
-// This is equivalent to Claude Monitor's load_usage_entries() function
 func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, error) {
 	startTime := time.Now()
 
@@ -131,8 +254,6 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 		}
 	} else {
 		// Use sequential loading for small file counts
-		var processedHashes = make(map[string]bool) // For deduplication
-
 		// Calculate cutoff time if specified
 		var cutoffTime *time.Time
 		if opts.HoursBack != nil {
@@ -145,7 +266,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 				logging.LogDebugf("Processing file %d/%d: %s", i+1, len(jsonlFiles), filepath.Base(filePath))
 			}
 
-			entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheWithReason(filePath, opts, cutoffTime, processedHashes)
+			entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheWithReason(filePath, opts, cutoffTime)
 			if err != nil {
 				if i < 5 { // Log errors for first 5 files
 					logging.LogErrorf("Error processing file %s: %v", filepath.Base(filePath), err)
@@ -186,7 +307,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 
 	// Batch write summaries if we have any
 	if len(summariesToCache) > 0 && opts.EnableSummaryCache && opts.CacheStore != nil {
-		if batcher, ok := opts.CacheStore.(*cache.BadgerSummaryCache); ok {
+		if batcher, ok := opts.CacheStore.(interface{ BatchSet([]*cache.FileSummary) error }); ok {
 			if err := batcher.BatchSet(summariesToCache); err != nil {
 				logging.LogWarnf("Failed to batch write %d summaries: %v", len(summariesToCache), err)
 			} else {
@@ -202,28 +323,22 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 		}
 	}
 
-	loadDuration := time.Since(startTime)
-
-	// Calculate cache statistics
-	cacheStats := &CachePerformanceStats{
-		Hits:                cacheHits,
-		Misses:              cacheMisses,
-		NewFiles:            cacheMissReasons["new_file"],
-		ModifiedFiles:       cacheMissReasons["modified_file"],
-		NoAssistantMessages: cacheMissReasons["no_assistant_messages"],
-		OtherMisses:         cacheMissReasons["other"],
-	}
-	if cacheHits+cacheMisses > 0 {
-		cacheStats.HitRate = float64(cacheHits) / float64(cacheHits+cacheMisses)
+	// Calculate cache hit rate
+	hitRate := float64(0)
+	if totalRequests := cacheHits + cacheMisses; totalRequests > 0 {
+		hitRate = float64(cacheHits) / float64(totalRequests)
 	}
 
+	// Log cache performance
 	if opts.EnableSummaryCache && opts.CacheStore != nil {
-		logging.LogInfof("Cache performance: %d hits, %d misses (%.1f%% hit rate)",
-			cacheHits, cacheMisses, cacheStats.HitRate*100)
+		logging.LogInfof("Cache performance: hits=%d, misses=%d (rate=%.1f%%)",
+			cacheHits, cacheMisses, hitRate*100)
 		if cacheMisses > 0 {
-			logging.LogInfof("Cache miss reasons: %d new files, %d modified, %d no assistant messages, %d other",
-				cacheMissReasons["new_file"], cacheMissReasons["modified_file"],
-				cacheMissReasons["no_assistant_messages"], cacheMissReasons["other"])
+			logging.LogDebugf("Cache miss reasons: new=%d, modified=%d, no_assistant=%d, other=%d",
+				cacheMissReasons["new_file"],
+				cacheMissReasons["modified_file"],
+				cacheMissReasons["no_assistant_messages"],
+				cacheMissReasons["other"])
 		}
 	}
 
@@ -233,129 +348,41 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 		Metadata: LoadMetadata{
 			FilesProcessed:   len(jsonlFiles),
 			EntriesLoaded:    len(allEntries),
-			LoadDuration:     loadDuration,
+			LoadDuration:     time.Since(startTime),
 			ProcessingErrors: processingErrors,
 			CacheMissReasons: cacheMissReasons,
-			CacheStats:       cacheStats,
+			CacheStats: &CachePerformanceStats{
+				Hits:                cacheHits,
+				Misses:              cacheMisses,
+				HitRate:             hitRate,
+				NewFiles:            cacheMissReasons["new_file"],
+				ModifiedFiles:       cacheMissReasons["modified_file"],
+				NoAssistantMessages: cacheMissReasons["no_assistant_messages"],
+				OtherMisses:         cacheMissReasons["other"],
+			},
 		},
+	}
+
+	logging.LogInfof("Loaded %d entries from %d files in %v",
+		len(allEntries), len(jsonlFiles), time.Since(startTime))
+
+	if len(processingErrors) > 0 {
+		logging.LogWarnf("Encountered %d errors during processing", len(processingErrors))
+		for i, err := range processingErrors {
+			if i < 5 { // Only log first 5 errors
+				logging.LogDebugf("Error %d: %s", i+1, err)
+			}
+		}
+		if len(processingErrors) > 5 {
+			logging.LogDebugf("... and %d more errors", len(processingErrors)-5)
+		}
 	}
 
 	return result, nil
 }
 
-// LoadAllRawEntries loads all raw JSONL entries without processing
-func LoadAllRawEntries(dataPath string) ([]map[string]interface{}, error) {
-	if dataPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		dataPath = filepath.Join(homeDir, ".claude", "projects")
-	}
-
-	jsonlFiles, err := findJSONLFiles(dataPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find JSONL files: %w", err)
-	}
-
-	var allRawEntries []map[string]interface{}
-
-	for _, filePath := range jsonlFiles {
-		rawEntries, err := loadRawEntriesFromFile(filePath)
-		if err != nil {
-			continue // Skip files with errors
-		}
-		allRawEntries = append(allRawEntries, rawEntries...)
-	}
-
-	return allRawEntries, nil
-}
-
-// findJSONLFiles finds all .jsonl files in the data directory
-func findJSONLFiles(dataPath string) ([]string, error) {
-	var jsonlFiles []string
-
-	logging.LogDebugf("Searching for JSONL files in: %s", dataPath)
-
-	err := filepath.Walk(dataPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			logging.LogWarnf("Error accessing path %s: %v", path, err)
-			return nil // Continue walking even if we can't access some files
-		}
-
-		if !info.IsDir() && strings.HasSuffix(strings.ToLower(info.Name()), ".jsonl") {
-			jsonlFiles = append(jsonlFiles, path)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	logging.LogInfof("Found %d JSONL files total", len(jsonlFiles))
-	return jsonlFiles, nil
-}
-
-// hasAssistantMessages quickly checks if a file contains assistant messages with usage data
-// Uses simple string matching to avoid JSON parsing overhead
-func hasAssistantMessages(filePath string) bool {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return false
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // Same buffer size as main processing
-
-	// Check only the first few lines for efficiency
-	for i := 0; i < 5 && scanner.Scan(); i++ {
-		line := scanner.Text()
-		// Quick string matching - look for assistant messages with usage data
-		if strings.Contains(line, `"type":"assistant"`) &&
-			(strings.Contains(line, `"usage"`) || strings.Contains(line, `"input_tokens"`)) {
-			return true
-		}
-		// Also check for legacy format (no type field but has usage)
-		if !strings.Contains(line, `"type":`) &&
-			strings.Contains(line, `"usage"`) &&
-			strings.Contains(line, `"input_tokens"`) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// processSingleFileWithCache processes a single JSONL file with caching support
-func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes map[string]bool) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
-	// This is a wrapper for compatibility - it uses a regular map
-	return processSingleFileWithCacheInternal(filePath, opts, cutoffTime, processedHashes, nil)
-}
-
 // processSingleFileWithCacheWithReason processes a single JSONL file with caching support and returns cache miss reason
-func processSingleFileWithCacheWithReason(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes map[string]bool) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
-	// This is a wrapper that tracks cache miss reasons
-	entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheInternalWithReason(filePath, opts, cutoffTime, processedHashes, nil)
-	return entries, rawEntries, fromCache, missReason, err, summary
-}
-
-// processSingleFileWithCacheConcurrent processes a single JSONL file with caching support using sync.Map
-func processSingleFileWithCacheConcurrent(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
-	// This version uses sync.Map for concurrent access
-	return processSingleFileWithCacheInternal(filePath, opts, cutoffTime, nil, processedHashes)
-}
-
-// processSingleFileWithCacheConcurrentWithReason processes a single JSONL file with caching support using sync.Map and tracks cache miss reasons
-func processSingleFileWithCacheConcurrentWithReason(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
-	// This version uses sync.Map and tracks cache miss reasons
-	return processSingleFileWithCacheInternalWithReason(filePath, opts, cutoffTime, nil, processedHashes)
-}
-
-// processSingleFileWithCacheInternalWithReason is the internal implementation that supports both map types and tracks cache miss reasons
-func processSingleFileWithCacheInternalWithReason(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
+func processSingleFileWithCacheWithReason(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
 	// Get absolute path for cache key
 	absPath, absErr := filepath.Abs(filePath)
 	if absErr != nil {
@@ -370,13 +397,8 @@ func processSingleFileWithCacheInternalWithReason(filePath string, opts LoadUsag
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
 			// File doesn't exist, fall back to normal processing
-			if regularMap != nil {
-				entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
-				return entries, rawEntries, false, "new_file", err, nil
-			} else {
-				entries, rawEntries, err := processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
-				return entries, rawEntries, false, "new_file", err, nil
-			}
+			entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, opts.IncludeRaw)
+			return entries, rawEntries, false, "new_file", err, nil
 		}
 
 		// Check cache first before reading file contents
@@ -388,21 +410,8 @@ func processSingleFileWithCacheInternalWithReason(filePath string, opts LoadUsag
 					// This file has no assistant messages, return empty results
 					return []models.UsageEntry{}, nil, true, "", nil, nil
 				}
-
 				// Normal cache hit with data
-				// Merge processed hashes to avoid duplicates
-				if regularMap != nil {
-					cachedSummary.MergeHashes(regularMap)
-				} else {
-					// For sync.Map, we need to merge differently
-					for hash := range cachedSummary.ProcessedHashes {
-						syncMap.Store(hash, true)
-					}
-				}
-
-				// Create entries from summary, but filter out duplicates
-				entries := createEntriesFromSummaryWithDedup(cachedSummary, cutoffTime, regularMap, syncMap)
-
+				entries := createEntriesFromSummary(cachedSummary, cutoffTime)
 				return entries, nil, true, "", nil, nil
 			} else {
 				// File has been modified, invalidate cache
@@ -436,16 +445,7 @@ func processSingleFileWithCacheInternalWithReason(filePath string, opts LoadUsag
 	}
 
 	// Cache miss or caching disabled, process normally
-	var entries []models.UsageEntry
-	var rawEntries []map[string]interface{}
-	var err error
-
-	if regularMap != nil {
-		entries, rawEntries, err = processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
-	} else {
-		entries, rawEntries, err = processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
-	}
-
+	entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, opts.IncludeRaw)
 	if err != nil {
 		return entries, rawEntries, false, missReason, err, nil
 	}
@@ -453,161 +453,17 @@ func processSingleFileWithCacheInternalWithReason(filePath string, opts LoadUsag
 	// If caching is enabled and we successfully processed the file, create and cache summary
 	// Skip caching if in watch mode (TUI) to avoid frequent writes
 	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 && !opts.IsWatchMode {
-		// Create summary with the appropriate hash map
-		if regularMap != nil {
-			summary = createSummaryFromEntries(absPath, filePath, entries, regularMap)
-		} else {
-			// For sync.Map, we need to convert to regular map for storage
-			tempMap := make(map[string]bool)
-			syncMap.Range(func(key, value interface{}) bool {
-				if hash, ok := key.(string); ok {
-					tempMap[hash] = true
-				}
-				return true
-			})
-			summary = createSummaryFromEntries(absPath, filePath, entries, tempMap)
+		// Get file info if we don't have it yet
+		if fileInfo, err := os.Stat(filePath); err == nil {
+			summary = createSummaryFromEntries(absPath, filePath, entries, fileInfo)
 		}
-		if summary != nil {
-			if err := opts.CacheStore.SetFileSummary(summary); err != nil {
-				logging.LogWarnf("Failed to cache summary for %s: %v", filepath.Base(filePath), err)
-			} else {
-				logging.LogDebugf("Cached summary for %s", filepath.Base(filePath))
-			}
-		}
-	} else if opts.IsWatchMode && opts.EnableSummaryCache {
-		logging.LogDebugf("Skipping cache write for %s (watch mode)", filepath.Base(filePath))
 	}
 
 	return entries, rawEntries, false, missReason, nil, summary
 }
 
-// processSingleFileWithCacheInternal is the internal implementation that supports both map types
-func processSingleFileWithCacheInternal(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
-	// Get absolute path for cache key
-	absPath, absErr := filepath.Abs(filePath)
-	if absErr != nil {
-		absPath = filePath // fallback to relative path
-	}
-	
-	var summary *cache.FileSummary // Declare for this function too
-
-	// Check if caching is enabled
-	if opts.EnableSummaryCache && opts.CacheStore != nil {
-		// Quick pre-check: if file doesn't contain assistant messages, skip caching entirely
-		if !hasAssistantMessages(filePath) {
-			// Process directly without cache operations, avoiding unnecessary debug logs
-			if regularMap != nil {
-				entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
-				return entries, rawEntries, false, err
-			} else {
-				entries, rawEntries, err := processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
-				return entries, rawEntries, false, err
-			}
-		}
-
-		// Get file info
-		fileInfo, err := os.Stat(filePath)
-		if err != nil {
-			// File doesn't exist, fall back to normal processing
-			if regularMap != nil {
-				entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
-				return entries, rawEntries, false, err
-			} else {
-				entries, rawEntries, err := processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
-				return entries, rawEntries, false, err
-			}
-		}
-
-		// Check if we have a cached summary
-		if summary, err := opts.CacheStore.GetFileSummary(absPath); err == nil {
-			// Check if cache is still valid based on file mtime and size
-			if !summary.IsExpired(fileInfo.ModTime(), fileInfo.Size()) {
-				// Use cached summary
-				// Cache hits are common, no need to log them
-
-				// Merge processed hashes to avoid duplicates
-				if regularMap != nil {
-					summary.MergeHashes(regularMap)
-				} else {
-					// For sync.Map, we need to merge differently
-					for hash := range summary.ProcessedHashes {
-						syncMap.Store(hash, true)
-					}
-				}
-
-				// Create entries from summary, but filter out duplicates
-				entries := createEntriesFromSummaryWithDedup(summary, cutoffTime, regularMap, syncMap)
-
-				return entries, nil, true, nil
-			} else {
-				// File has been modified, invalidate cache
-				logging.LogDebugf("Cache invalidated for %s: file modified (old mtime: %v, new mtime: %v, old size: %d, new size: %d)",
-					filepath.Base(filePath), summary.ModTime, fileInfo.ModTime(), summary.FileSize, fileInfo.Size())
-				opts.CacheStore.InvalidateFileSummary(absPath)
-			}
-		}
-	}
-
-	// Cache miss or caching disabled, process normally
-	var entries []models.UsageEntry
-	var rawEntries []map[string]interface{}
-	var err error
-
-	if regularMap != nil {
-		entries, rawEntries, err = processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
-	} else {
-		entries, rawEntries, err = processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
-	}
-
-	if err != nil {
-		return entries, rawEntries, false, err
-	}
-
-	// If caching is enabled and we successfully processed the file, create and cache summary
-	// Skip caching if in watch mode (TUI) to avoid frequent writes
-	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 && !opts.IsWatchMode {
-		// Create summary with the appropriate hash map
-		if regularMap != nil {
-			summary = createSummaryFromEntries(absPath, filePath, entries, regularMap)
-		} else {
-			// For sync.Map, we need to convert to regular map for storage
-			tempMap := make(map[string]bool)
-			syncMap.Range(func(key, value interface{}) bool {
-				if hash, ok := key.(string); ok {
-					tempMap[hash] = true
-				}
-				return true
-			})
-			summary = createSummaryFromEntries(absPath, filePath, entries, tempMap)
-		}
-		if summary != nil {
-			if err := opts.CacheStore.SetFileSummary(summary); err != nil {
-				logging.LogWarnf("Failed to cache summary for %s: %v", filepath.Base(filePath), err)
-			} else {
-				logging.LogDebugf("Cached summary for %s", filepath.Base(filePath))
-			}
-		}
-	} else if opts.IsWatchMode && opts.EnableSummaryCache {
-		logging.LogDebugf("Skipping cache write for %s (watch mode)", filepath.Base(filePath))
-	}
-
-	return entries, rawEntries, false, nil
-}
-
 // processSingleFile processes a single JSONL file
-func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.Time, processedHashes map[string]bool, includeRaw bool) ([]models.UsageEntry, []map[string]interface{}, error) {
-	// This is a wrapper for compatibility
-	return processSingleFileInternal(filePath, mode, cutoffTime, processedHashes, nil, includeRaw)
-}
-
-// processSingleFileConcurrent processes a single JSONL file with sync.Map for concurrent access
-func processSingleFileConcurrent(filePath string, mode models.CostMode, cutoffTime *time.Time, processedHashes *sync.Map, includeRaw bool) ([]models.UsageEntry, []map[string]interface{}, error) {
-	// This version uses sync.Map
-	return processSingleFileInternal(filePath, mode, cutoffTime, nil, processedHashes, includeRaw)
-}
-
-// processSingleFileInternal is the actual implementation supporting both map types
-func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map, includeRaw bool) ([]models.UsageEntry, []map[string]interface{}, error) {
+func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.Time, includeRaw bool) ([]models.UsageEntry, []map[string]interface{}, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open file: %w", err)
@@ -616,286 +472,72 @@ func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime
 
 	var entries []models.UsageEntry
 	var rawEntries []map[string]interface{}
-
+	
 	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 200*1024*1024) // 64KB initial, 1MB max
+	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024) // 10MB max line size
 
-	lineNum := 0
+	lineNumber := 0
 	processedLines := 0
-	skippedByTime := 0
-	conversionErrors := 0
-	duplicates := 0
+	skippedLines := 0
 
 	for scanner.Scan() {
-		lineNum++
-		line := scanner.Bytes()
-
-		if len(line) == 0 {
+		lineNumber++
+		line := scanner.Text()
+		
+		// Skip empty lines
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 
-		var rawData map[string]interface{}
-		if err := sonic.Unmarshal(line, &rawData); err != nil {
-			continue // Skip invalid JSON lines
-		}
-
-		// Filter by timestamp if cutoff is specified
-		if cutoffTime != nil {
-			if timestampStr, ok := rawData["timestamp"].(string); ok {
-				if timestamp, err := time.Parse(time.RFC3339, timestampStr); err == nil {
-					if timestamp.Before(*cutoffTime) {
-						skippedByTime++
-						continue
-					}
-				}
-			}
-		}
-
-		// Convert to UsageEntry
-		entry, err := convertRawToUsageEntry(rawData, mode)
-		if err != nil {
-			conversionErrors++
-			continue // Skip entries that can't be converted
-		}
-
-		// Deduplicate based on content hash
-		entryHash := generateEntryHash(entry)
-
-		// Check for duplicate using the appropriate map type
-		isDuplicate := false
-		if regularMap != nil {
-			if regularMap[entryHash] {
-				isDuplicate = true
-			} else {
-				regularMap[entryHash] = true
-			}
-		} else {
-			// For sync.Map, use LoadOrStore for atomic check-and-set
-			_, loaded := syncMap.LoadOrStore(entryHash, true)
-			isDuplicate = loaded
-		}
-
-		if isDuplicate {
-			duplicates++
+		// Parse JSON
+		var data map[string]interface{}
+		if err := sonic.Unmarshal([]byte(line), &data); err != nil {
+			logging.LogDebugf("Skipping invalid JSON at line %d in %s: %v", lineNumber, filepath.Base(filePath), err)
+			skippedLines++
 			continue
 		}
+
+		// Include raw data if requested
+		if includeRaw {
+			rawEntries = append(rawEntries, data)
+		}
+
+		// Extract usage entry
+		entry, hasUsage := extractUsageEntry(data)
+		if !hasUsage {
+			continue
+		}
+
+		// Apply time filter if specified
+		if cutoffTime != nil && entry.Timestamp.Before(*cutoffTime) {
+			continue
+		}
+
+		// Calculate cost based on mode
+		pricing := models.GetPricing(entry.Model)
+		entry.CostUSD = entry.CalculateCost(pricing)
 
 		// Normalize model name
 		entry.NormalizeModel()
 
 		entries = append(entries, entry)
 		processedLines++
-
-		if includeRaw {
-			rawEntries = append(rawEntries, rawData)
-		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return entries, rawEntries, fmt.Errorf("scanner error: %w", err)
+		return nil, nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	if lineNumber > 0 && skippedLines > 0 {
+		logging.LogDebugf("File %s: processed %d/%d lines, skipped %d invalid lines",
+			filepath.Base(filePath), processedLines, lineNumber, skippedLines)
 	}
 
 	return entries, rawEntries, nil
 }
 
-// loadRawEntriesFromFile loads raw entries from a single file
-func loadRawEntriesFromFile(filePath string) ([]map[string]interface{}, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
-	}
-	defer file.Close()
-
-	var rawEntries []map[string]interface{}
-	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			continue
-		}
-
-		var rawData map[string]interface{}
-		if err := sonic.Unmarshal(line, &rawData); err != nil {
-			continue
-		}
-
-		rawEntries = append(rawEntries, rawData)
-	}
-
-	return rawEntries, scanner.Err()
-}
-
-// convertRawToUsageEntry converts raw JSON data to a UsageEntry
-func convertRawToUsageEntry(rawData map[string]interface{}, mode models.CostMode) (models.UsageEntry, error) {
-	var entry models.UsageEntry
-
-	// Try to unmarshal into ConversationLog struct first
-	jsonBytes, err := sonic.Marshal(rawData)
-	if err != nil {
-		return entry, fmt.Errorf("failed to re-marshal raw data: %w", err)
-	}
-
-	var convLog models.ConversationLog
-	if err := sonic.Unmarshal(jsonBytes, &convLog); err != nil {
-		// If it fails, fall back to legacy format parsing
-		return convertLegacyFormat(rawData, mode)
-	}
-
-	// Check if this is actually a ConversationLog format (has type field)
-	if convLog.Type == "" {
-		// No type field, treat as legacy format
-		return convertLegacyFormat(rawData, mode)
-	}
-
-	// Only process assistant messages for usage data
-	if convLog.Type != "assistant" {
-		return entry, fmt.Errorf("not an assistant message")
-	}
-
-	// Extract timestamp
-	if convLog.Timestamp != "" {
-		timestamp, err := time.Parse(time.RFC3339, convLog.Timestamp)
-		if err != nil {
-			return entry, fmt.Errorf("invalid timestamp format: %w", err)
-		}
-		entry.Timestamp = timestamp
-	} else {
-		return entry, fmt.Errorf("missing timestamp")
-	}
-
-	// Extract model and usage data from message
-	if convLog.Message.Model == "" {
-		return entry, fmt.Errorf("missing model in message")
-	}
-	entry.Model = convLog.Message.Model
-
-	// Extract usage data
-	usage := convLog.Message.Usage
-	entry.InputTokens = usage.InputTokens
-	entry.OutputTokens = usage.OutputTokens
-	entry.CacheCreationTokens = usage.CacheCreationInputTokens
-	entry.CacheReadTokens = usage.CacheReadInputTokens
-
-	// Extract IDs
-	entry.MessageID = convLog.Message.Id
-	entry.RequestID = convLog.RequestId
-	entry.SessionID = convLog.SessionId
-
-	// Calculate total tokens
-	entry.TotalTokens = entry.CalculateTotalTokens()
-
-	// Calculate cost based on mode
-	switch mode {
-	case models.CostModeCalculated, models.CostModeAuto:
-		pricing := models.GetPricing(entry.Model)
-		entry.CostUSD = entry.CalculateCost(pricing)
-	case models.CostModeCached:
-		// For cached mode, still calculate (no cached cost in ConversationLog)
-		pricing := models.GetPricing(entry.Model)
-		entry.CostUSD = entry.CalculateCost(pricing)
-	}
-
-	// Validate the entry
-	if err := entry.Validate(); err != nil {
-		return entry, fmt.Errorf("entry validation failed: %w", err)
-	}
-
-	return entry, nil
-}
-
-// convertLegacyFormat handles the legacy format parsing
-func convertLegacyFormat(rawData map[string]interface{}, mode models.CostMode) (models.UsageEntry, error) {
-	var entry models.UsageEntry
-
-	// Extract timestamp
-	if timestampStr, ok := rawData["timestamp"].(string); ok {
-		if timestamp, err := time.Parse(time.RFC3339, timestampStr); err == nil {
-			entry.Timestamp = timestamp
-		} else {
-			return entry, fmt.Errorf("invalid timestamp format")
-		}
-	} else {
-		return entry, fmt.Errorf("missing timestamp")
-	}
-
-	// Extract model
-	if model, ok := rawData["model"].(string); ok {
-		entry.Model = model
-	} else {
-		return entry, fmt.Errorf("missing model")
-	}
-
-	// Extract usage data
-	if usageData, ok := rawData["usage"].(map[string]interface{}); ok {
-		if inputTokens, ok := usageData["input_tokens"].(float64); ok {
-			entry.InputTokens = int(inputTokens)
-		}
-		if outputTokens, ok := usageData["output_tokens"].(float64); ok {
-			entry.OutputTokens = int(outputTokens)
-		}
-		if cacheCreationTokens, ok := usageData["cache_creation_tokens"].(float64); ok {
-			entry.CacheCreationTokens = int(cacheCreationTokens)
-		}
-		if cacheReadTokens, ok := usageData["cache_read_tokens"].(float64); ok {
-			entry.CacheReadTokens = int(cacheReadTokens)
-		}
-	}
-
-	// Extract IDs if available
-	if messageID, ok := rawData["message_id"].(string); ok {
-		entry.MessageID = messageID
-	}
-	if requestID, ok := rawData["request_id"].(string); ok {
-		entry.RequestID = requestID
-	}
-
-	// Calculate total tokens
-	entry.TotalTokens = entry.CalculateTotalTokens()
-
-	// Calculate cost based on mode
-	switch mode {
-	case models.CostModeCalculated, models.CostModeAuto:
-		pricing := models.GetPricing(entry.Model)
-		entry.CostUSD = entry.CalculateCost(pricing)
-	case models.CostModeCached:
-		if costUSD, ok := rawData["cost_usd"].(float64); ok {
-			entry.CostUSD = costUSD
-		} else {
-			// Fallback to calculation if cached cost not available
-			pricing := models.GetPricing(entry.Model)
-			entry.CostUSD = entry.CalculateCost(pricing)
-		}
-	}
-
-	// Validate the entry
-	if err := entry.Validate(); err != nil {
-		return entry, fmt.Errorf("entry validation failed: %w", err)
-	}
-
-	return entry, nil
-}
-
-// generateEntryHash generates a hash for deduplication
-func generateEntryHash(entry models.UsageEntry) string {
-	hashData := fmt.Sprintf("%s-%s-%d-%d-%d-%d",
-		entry.Timestamp.Format(time.RFC3339),
-		entry.Model,
-		entry.InputTokens,
-		entry.OutputTokens,
-		entry.CacheCreationTokens,
-		entry.CacheReadTokens,
-	)
-
-	hash := md5.Sum([]byte(hashData))
-	return fmt.Sprintf("%x", hash)
-}
-
-// createEntriesFromSummary creates placeholder entries from a cached summary
-// Note: This is a simplified approach that creates aggregate entries for cache hits
-// createEntriesFromSummaryWithDedup creates entries from summary with deduplication
-func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) []models.UsageEntry {
+// createEntriesFromSummary creates entries from a cached summary
+func createEntriesFromSummary(summary *cache.FileSummary, cutoffTime *time.Time) []models.UsageEntry {
 	var entries []models.UsageEntry
 
 	// Use hourly buckets if available for better temporal granularity
@@ -917,10 +559,7 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 			// Create entries for each model in this hour
 			for _, modelStat := range hourBucket.ModelStats {
 				if modelStat.EntryCount > 0 {
-					// FIXED: Create individual synthetic entries to preserve granularity
-					// Instead of 1 aggregated entry, create EntryCount individual entries
-					// This preserves the expected entry count for analyze command
-
+					// Create individual synthetic entries to preserve granularity
 					// Calculate average values per entry
 					avgInputTokens := modelStat.InputTokens / modelStat.EntryCount
 					avgOutputTokens := modelStat.OutputTokens / modelStat.EntryCount
@@ -954,37 +593,19 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 							cacheReadTokens++
 						}
 
-						// Create individual synthetic entry
 						entry := models.UsageEntry{
-							Timestamp:           hourTime.Add(time.Duration(i) * time.Minute), // Spread across hour
+							Timestamp:           hourTime.Add(time.Duration(i) * time.Minute),
 							Model:               modelStat.Model,
 							InputTokens:         inputTokens,
-							OutputTokens:        outputTokens,
+							OutputTokens:          outputTokens,
 							CacheCreationTokens: cacheCreationTokens,
 							CacheReadTokens:     cacheReadTokens,
 							TotalTokens:         inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens,
 							CostUSD:             avgCostUSD,
-							MessageID:           fmt.Sprintf("cached_%s_%s_%s_%d", modelStat.Model, hourKey, summary.Checksum[:8], i),
 						}
 
 						entry.NormalizeModel()
-
-						// Check if this entry would be a duplicate
-						entryHash := generateEntryHash(entry)
-						isDuplicate := false
-
-						if regularMap != nil {
-							if regularMap[entryHash] {
-								isDuplicate = true
-							}
-						} else if syncMap != nil {
-							_, loaded := syncMap.Load(entryHash)
-							isDuplicate = loaded
-						}
-
-						if !isDuplicate {
-							entries = append(entries, entry)
-						}
+						entries = append(entries, entry)
 					}
 				}
 			}
@@ -1007,22 +628,19 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 			// Create entries for each model in this day
 			for _, modelStat := range dayBucket.ModelStats {
 				if modelStat.EntryCount > 0 {
-					// FIXED: Create individual synthetic entries to preserve granularity
-					// Calculate average values per entry
+					// Similar logic as hourly buckets
 					avgInputTokens := modelStat.InputTokens / modelStat.EntryCount
 					avgOutputTokens := modelStat.OutputTokens / modelStat.EntryCount
 					avgCacheCreationTokens := modelStat.CacheCreationTokens / modelStat.EntryCount
 					avgCacheReadTokens := modelStat.CacheReadTokens / modelStat.EntryCount
 					avgCostUSD := modelStat.TotalCost / float64(modelStat.EntryCount)
 
-					// Handle remainders to ensure totals match exactly
 					remainderInputTokens := modelStat.InputTokens % modelStat.EntryCount
 					remainderOutputTokens := modelStat.OutputTokens % modelStat.EntryCount
 					remainderCacheCreationTokens := modelStat.CacheCreationTokens % modelStat.EntryCount
 					remainderCacheReadTokens := modelStat.CacheReadTokens % modelStat.EntryCount
 
 					for i := 0; i < modelStat.EntryCount; i++ {
-						// Distribute tokens evenly, with remainders in the first entries
 						inputTokens := avgInputTokens
 						outputTokens := avgOutputTokens
 						cacheCreationTokens := avgCacheCreationTokens
@@ -1041,37 +659,19 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 							cacheReadTokens++
 						}
 
-						// Create individual synthetic entry
 						entry := models.UsageEntry{
-							Timestamp:           dayTime.Add(time.Duration(i) * time.Hour), // Spread across day
+							Timestamp:           dayTime.Add(time.Duration(i) * time.Hour),
 							Model:               modelStat.Model,
 							InputTokens:         inputTokens,
-							OutputTokens:        outputTokens,
+							OutputTokens:          outputTokens,
 							CacheCreationTokens: cacheCreationTokens,
 							CacheReadTokens:     cacheReadTokens,
 							TotalTokens:         inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens,
 							CostUSD:             avgCostUSD,
-							MessageID:           fmt.Sprintf("cached_%s_%s_%s_%d", modelStat.Model, dayKey, summary.Checksum[:8], i),
 						}
 
 						entry.NormalizeModel()
-
-						// Check if this entry would be a duplicate
-						entryHash := generateEntryHash(entry)
-						isDuplicate := false
-
-						if regularMap != nil {
-							if regularMap[entryHash] {
-								isDuplicate = true
-							}
-						} else if syncMap != nil {
-							_, loaded := syncMap.Load(entryHash)
-							isDuplicate = loaded
-						}
-
-						if !isDuplicate {
-							entries = append(entries, entry)
-						}
+						entries = append(entries, entry)
 					}
 				}
 			}
@@ -1080,37 +680,20 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 		// Fallback to old behavior if no temporal buckets (for backward compatibility)
 		for modelName, modelStat := range summary.ModelStats {
 			if modelStat.EntryCount > 0 {
-				// Create a representative entry for this model
+				// Create a single aggregated entry per model
 				entry := models.UsageEntry{
-					Timestamp:           summary.ProcessedAt, // Use processed time as timestamp
-					Model:               modelStat.Model,
+					Timestamp:           summary.ProcessedAt,
+					Model:               modelName,
 					InputTokens:         modelStat.InputTokens,
 					OutputTokens:        modelStat.OutputTokens,
 					CacheCreationTokens: modelStat.CacheCreationTokens,
 					CacheReadTokens:     modelStat.CacheReadTokens,
 					TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
 					CostUSD:             modelStat.TotalCost,
-					MessageID:           fmt.Sprintf("cached_%s_%d", modelName, summary.ProcessedAt.Unix()),
 				}
 
 				entry.NormalizeModel()
-
-				// Check if this entry would be a duplicate
-				entryHash := generateEntryHash(entry)
-				isDuplicate := false
-
-				if regularMap != nil {
-					if regularMap[entryHash] {
-						isDuplicate = true
-					}
-				} else if syncMap != nil {
-					_, loaded := syncMap.Load(entryHash)
-					isDuplicate = loaded
-				}
-
-				if !isDuplicate {
-					entries = append(entries, entry)
-				}
+				entries = append(entries, entry)
 			}
 		}
 	}
@@ -1118,67 +701,18 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 	return entries
 }
 
-// createEmptySummaryForFile creates a minimal FileSummary for files without assistant messages
-func createEmptySummaryForFile(absPath, relPath string) *cache.FileSummary {
-	// Get file info
-	fileInfo, err := os.Stat(relPath)
-	if err != nil {
-		return nil
-	}
-
-	// Initialize summary
-	summary := &cache.FileSummary{
-		Path:                   relPath,
-		AbsolutePath:           absPath,
-		ModTime:                fileInfo.ModTime(),
-		FileSize:               fileInfo.Size(),
-		EntryCount:             0,
-		ProcessedAt:            time.Now(),
-		ModelStats:             make(map[string]cache.ModelStat),
-		HourlyBuckets:          make(map[string]*cache.TemporalBucket),
-		DailyBuckets:           make(map[string]*cache.TemporalBucket),
-		ProcessedHashes:        make(map[string]bool),
-		HasNoAssistantMessages: true, // Mark this as a file without assistant messages
-		TotalCost:              0,
-		TotalTokens:            0,
-	}
-
-	// Calculate checksum (simple approach based on file mod time and size)
-	summary.Checksum = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s_%d_%d_empty",
-		absPath, fileInfo.ModTime().Unix(), fileInfo.Size()))))
-
-	return summary
-}
-
 // createSummaryFromEntries creates a FileSummary from processed entries
-func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEntry, processedHashes map[string]bool) *cache.FileSummary {
-	if len(entries) == 0 {
-		return nil
-	}
-
-	// Get file info
-	fileInfo, err := os.Stat(relPath)
-	if err != nil {
-		return nil
-	}
-
-	// Initialize summary
+func createSummaryFromEntries(absPath, filePath string, entries []models.UsageEntry, fileInfo os.FileInfo) *cache.FileSummary {
 	summary := &cache.FileSummary{
-		Path:            relPath,
-		AbsolutePath:    absPath,
-		ModTime:         fileInfo.ModTime(),
-		FileSize:        fileInfo.Size(),
-		EntryCount:      len(entries),
-		ProcessedAt:     time.Now(),
-		ModelStats:      make(map[string]cache.ModelStat),
-		HourlyBuckets:   make(map[string]*cache.TemporalBucket),
-		DailyBuckets:    make(map[string]*cache.TemporalBucket),
-		ProcessedHashes: make(map[string]bool),
-	}
-
-	// Copy processed hashes
-	for hash := range processedHashes {
-		summary.ProcessedHashes[hash] = true
+		Path:          filePath,
+		AbsolutePath:  absPath,
+		ModTime:       fileInfo.ModTime(),
+		FileSize:      fileInfo.Size(),
+		EntryCount:    len(entries),
+		ProcessedAt:   time.Now(),
+		ModelStats:    make(map[string]cache.ModelStat),
+		HourlyBuckets: make(map[string]*cache.TemporalBucket),
+		DailyBuckets:  make(map[string]*cache.TemporalBucket),
 	}
 
 	// Calculate checksum (simple approach based on file mod time and size)
@@ -1191,37 +725,31 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 	var startTime, endTime time.Time
 
 	for i, entry := range entries {
+		// Track time range
+		if i == 0 || entry.Timestamp.Before(startTime) {
+			startTime = entry.Timestamp
+		}
+		if i == 0 || entry.Timestamp.After(endTime) {
+			endTime = entry.Timestamp
+		}
+
+		// Update totals
 		totalCost += entry.CostUSD
 		totalTokens += entry.TotalTokens
 
-		// Track time range
-		if i == 0 {
-			startTime = entry.Timestamp
-			endTime = entry.Timestamp
-		} else {
-			if entry.Timestamp.Before(startTime) {
-				startTime = entry.Timestamp
-			}
-			if entry.Timestamp.After(endTime) {
-				endTime = entry.Timestamp
-			}
-		}
-
-		// Update model statistics
+		// Update model stats
 		modelStat, exists := summary.ModelStats[entry.Model]
 		if !exists {
 			modelStat = cache.ModelStat{
 				Model: entry.Model,
 			}
 		}
-
 		modelStat.EntryCount++
 		modelStat.TotalCost += entry.CostUSD
 		modelStat.InputTokens += entry.InputTokens
 		modelStat.OutputTokens += entry.OutputTokens
 		modelStat.CacheCreationTokens += entry.CacheCreationTokens
 		modelStat.CacheReadTokens += entry.CacheReadTokens
-
 		summary.ModelStats[entry.Model] = modelStat
 
 		// Update hourly bucket
@@ -1234,12 +762,11 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 			}
 			summary.HourlyBuckets[hourKey] = hourBucket
 		}
-
 		hourBucket.EntryCount++
 		hourBucket.TotalCost += entry.CostUSD
 		hourBucket.TotalTokens += entry.TotalTokens
 
-		// Update model stats within hourly bucket
+		// Update model stats within hour bucket
 		hourModelStat, exists := hourBucket.ModelStats[entry.Model]
 		if !exists {
 			hourModelStat = &cache.ModelStat{
@@ -1264,12 +791,11 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 			}
 			summary.DailyBuckets[dayKey] = dayBucket
 		}
-
 		dayBucket.EntryCount++
 		dayBucket.TotalCost += entry.CostUSD
 		dayBucket.TotalTokens += entry.TotalTokens
 
-		// Update model stats within daily bucket
+		// Update model stats within day bucket
 		dayModelStat, exists := dayBucket.ModelStats[entry.Model]
 		if !exists {
 			dayModelStat = &cache.ModelStat{
@@ -1287,6 +813,29 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 
 	summary.TotalCost = totalCost
 	summary.TotalTokens = totalTokens
+
+	return summary
+}
+
+// createEmptySummaryForFile creates a minimal FileSummary for files without assistant messages
+func createEmptySummaryForFile(absPath, filePath string) *cache.FileSummary {
+	fileInfo, _ := os.Stat(filePath)
+	summary := &cache.FileSummary{
+		Path:                   filePath,
+		AbsolutePath:           absPath,
+		ModTime:                fileInfo.ModTime(),
+		FileSize:               fileInfo.Size(),
+		EntryCount:             0,
+		ProcessedAt:            time.Now(),
+		ModelStats:             make(map[string]cache.ModelStat),
+		HourlyBuckets:          make(map[string]*cache.TemporalBucket),
+		DailyBuckets:           make(map[string]*cache.TemporalBucket),
+		HasNoAssistantMessages: true,
+	}
+
+	// Calculate checksum
+	summary.Checksum = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s_%d_%d",
+		absPath, fileInfo.ModTime().Unix(), fileInfo.Size()))))
 
 	return summary
 }

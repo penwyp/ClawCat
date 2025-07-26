@@ -80,9 +80,9 @@ Calculations (Metrics) → Cache (Storage) → UI (Display)
    - Progress bars, statistics tables, model distribution
    - Responsive terminal rendering
 
-6. **Cache** (`cache/`): Multi-layer caching system
-   - Memory, disk, and BadgerDB backends
-   - LRU eviction and sharding support
+6. **Cache** (`cache/`): File-based caching system with memory preloading
+   - Direct file storage for summaries
+   - Memory preloading for fast access
 
 ## Important Business Rules
 

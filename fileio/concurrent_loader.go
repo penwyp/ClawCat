@@ -70,9 +70,6 @@ func (cl *ConcurrentLoader) LoadFiles(ctx context.Context, files []string, opts 
 	fileChan := make(chan string, cl.bufferSize)
 	resultChan := make(chan FileResult, cl.bufferSize)
 
-	// Create a shared map for deduplication
-	processedHashes := &sync.Map{}
-
 	// Calculate cutoff time if specified
 	var cutoffTime *time.Time
 	if opts.HoursBack != nil {
@@ -87,7 +84,7 @@ func (cl *ConcurrentLoader) LoadFiles(ctx context.Context, files []string, opts 
 	for i := 0; i < cl.workerCount; i++ {
 		go func(workerID int) {
 			defer wg.Done()
-			cl.worker(ctx, workerID, fileChan, resultChan, opts, cutoffTime, processedHashes, progress, progressCallback)
+			cl.worker(ctx, workerID, fileChan, resultChan, opts, cutoffTime, progress, progressCallback)
 		}(i)
 	}
 
@@ -137,7 +134,6 @@ func (cl *ConcurrentLoader) worker(
 	resultChan chan<- FileResult,
 	opts LoadUsageEntriesOptions,
 	cutoffTime *time.Time,
-	processedHashes *sync.Map,
 	progress *LoadProgress,
 	progressCallback func(*LoadProgress),
 ) {
@@ -150,8 +146,8 @@ func (cl *ConcurrentLoader) worker(
 
 			startTime := time.Now()
 
-			// Process the file using the concurrent version that works directly with sync.Map
-			entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheConcurrentWithReason(filePath, opts, cutoffTime, processedHashes)
+			// Process the file
+			entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheWithReason(filePath, opts, cutoffTime)
 
 			// Create result
 			result := FileResult{

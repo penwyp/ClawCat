@@ -77,22 +77,18 @@ Examples:
 
 		// Reset cache if requested
 		if analyzeReset {
-			// Use BadgerDB cache for clearing
+			// Use file-based cache for clearing
 			cacheDir := cfg.Cache.Dir
 			if cacheDir[:2] == "~/" {
 				homeDir, _ := os.UserHomeDir()
 				cacheDir = filepath.Join(homeDir, cacheDir[2:])
 			}
-			persistPath := filepath.Join(cacheDir, "badger_summaries")
-			badgerCache, err := cache.NewBadgerSummaryCache(persistPath)
+			fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
 			if err != nil {
 				return fmt.Errorf("failed to open cache: %w", err)
 			}
-			if err := badgerCache.Clear(); err != nil {
+			if err := fileCache.Clear(); err != nil {
 				return fmt.Errorf("failed to clear cache: %w", err)
-			}
-			if err := badgerCache.Close(); err != nil {
-				logging.LogWarnf("Failed to close cache after clearing: %v", err)
 			}
 			logging.GetLogger().Info("Cache cleared successfully")
 		}

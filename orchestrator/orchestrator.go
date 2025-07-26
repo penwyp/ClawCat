@@ -93,13 +93,12 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 			homeDir, _ := os.UserHomeDir()
 			cacheDir = filepath.Join(homeDir, cacheDir[2:])
 		}
-		persistPath := filepath.Join(cacheDir, "badger_summaries")
-		badgerCache, err := cache.NewBadgerSummaryCache(persistPath)
+		fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
 		if err != nil {
-			logging.LogErrorf("Failed to create BadgerDB cache: %v", err)
+			logging.LogErrorf("Failed to create file-based cache: %v", err)
 			// Cache is disabled on error
 		} else {
-			dataManager.SetCacheStore(badgerCache, cfg.Data.SummaryCache)
+			dataManager.SetCacheStore(fileCache, cfg.Data.SummaryCache)
 		}
 	}
 

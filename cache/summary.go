@@ -18,7 +18,6 @@ type FileSummary struct {
 	DailyBuckets            map[string]*TemporalBucket      `json:"daily_buckets"`    // Day-level aggregations (key: "2006-01-02")
 	ProcessedAt             time.Time                       `json:"processed_at"`
 	Checksum                string                          `json:"checksum"`
-	ProcessedHashes         map[string]bool                 `json:"processed_hashes"` // For deduplication
 	HasNoAssistantMessages  bool                            `json:"has_no_assistant_messages"` // True if file has no assistant messages
 }
 
@@ -46,12 +45,4 @@ type ModelStat struct {
 // IsExpired checks if the summary is expired based on file modification time or size
 func (fs *FileSummary) IsExpired(currentModTime time.Time, currentSize int64) bool {
 	return !fs.ModTime.Equal(currentModTime) || fs.FileSize != currentSize
-}
-
-
-// MergeHashes merges processed hashes from summary into the target map
-func (fs *FileSummary) MergeHashes(target map[string]bool) {
-	for hash := range fs.ProcessedHashes {
-		target[hash] = true
-	}
 }
