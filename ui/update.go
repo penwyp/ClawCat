@@ -122,6 +122,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.monitor != nil {
 			m.monitor.UpdateBlocks(msg.Blocks)
 		}
+		if m.analytics != nil {
+			m.analytics.UpdateBlocks(msg.Blocks)
+		}
 		return m, nil
 
 	case ConfigUpdateMsg:
@@ -130,17 +133,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.styles = NewStyles(getThemeByName(msg.Config.Theme))
 
 		// Update all views with new config
-		if m.dashboard != nil {
-			m.dashboard.UpdateConfig(msg.Config)
-		}
-		if m.sessionList != nil {
-			m.sessionList.UpdateConfig(msg.Config)
+		if m.monitor != nil {
+			m.monitor.UpdateConfig(msg.Config)
 		}
 		if m.analytics != nil {
 			m.analytics.UpdateConfig(msg.Config)
-		}
-		if m.monitor != nil {
-			m.monitor.UpdateConfig(msg.Config)
 		}
 
 		return m, nil
@@ -190,28 +187,12 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 
-	case "?", "h":
-		m.SwitchView(ViewHelp)
-		return m, nil
-
 	case "tab":
 		m.NextView()
 		return m, nil
 
-	case "1", "d":
-		m.SwitchView(ViewDashboard)
-		return m, nil
-
-	case "2", "s":
-		m.SwitchView(ViewSessions)
-		return m, nil
-
-	case "3", "a":
+	case "1", "a":
 		m.SwitchView(ViewAnalytics)
-		return m, nil
-
-	case "4", "m":
-		m.SwitchView(ViewMonitor)
 		return m, nil
 
 	case "r", "f5":
@@ -224,17 +205,10 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// View-specific key bindings
 	switch m.view {
-	case ViewDashboard:
-		if m.dashboard != nil {
-			updatedView, viewCmd := m.dashboard.Update(msg)
-			m.dashboard = updatedView.(*EnhancedDashboardView)
-			cmd = viewCmd
-		}
-
-	case ViewSessions:
-		if m.sessionList != nil {
-			updatedView, viewCmd := m.sessionList.Update(msg)
-			m.sessionList = updatedView.(*SessionListView)
+	case ViewMonitor:
+		if m.monitor != nil {
+			updatedView, viewCmd := m.monitor.Update(msg)
+			m.monitor = updatedView.(*MonitorView)
 			cmd = viewCmd
 		}
 
@@ -242,20 +216,6 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.analytics != nil {
 			updatedView, viewCmd := m.analytics.Update(msg)
 			m.analytics = updatedView.(*AnalyticsView)
-			cmd = viewCmd
-		}
-
-	case ViewHelp:
-		if m.help != nil {
-			updatedView, viewCmd := m.help.Update(msg)
-			m.help = updatedView.(*HelpView)
-			cmd = viewCmd
-		}
-
-	case ViewMonitor:
-		if m.monitor != nil {
-			updatedView, viewCmd := m.monitor.Update(msg)
-			m.monitor = updatedView.(*MonitorView)
 			cmd = viewCmd
 		}
 	}
@@ -273,19 +233,10 @@ func (m Model) handleViewUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Update current view
 	switch m.view {
-	case ViewDashboard:
-		if m.dashboard != nil {
-			updatedView, viewCmd := m.dashboard.Update(msg)
-			m.dashboard = updatedView.(*EnhancedDashboardView)
-			cmd = tea.Batch(spinnerCmd, viewCmd)
-		} else {
-			cmd = spinnerCmd
-		}
-
-	case ViewSessions:
-		if m.sessionList != nil {
-			updatedView, viewCmd := m.sessionList.Update(msg)
-			m.sessionList = updatedView.(*SessionListView)
+	case ViewMonitor:
+		if m.monitor != nil {
+			updatedView, viewCmd := m.monitor.Update(msg)
+			m.monitor = updatedView.(*MonitorView)
 			cmd = tea.Batch(spinnerCmd, viewCmd)
 		} else {
 			cmd = spinnerCmd
@@ -295,24 +246,6 @@ func (m Model) handleViewUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.analytics != nil {
 			updatedView, viewCmd := m.analytics.Update(msg)
 			m.analytics = updatedView.(*AnalyticsView)
-			cmd = tea.Batch(spinnerCmd, viewCmd)
-		} else {
-			cmd = spinnerCmd
-		}
-
-	case ViewHelp:
-		if m.help != nil {
-			updatedView, viewCmd := m.help.Update(msg)
-			m.help = updatedView.(*HelpView)
-			cmd = tea.Batch(spinnerCmd, viewCmd)
-		} else {
-			cmd = spinnerCmd
-		}
-
-	case ViewMonitor:
-		if m.monitor != nil {
-			updatedView, viewCmd := m.monitor.Update(msg)
-			m.monitor = updatedView.(*MonitorView)
 			cmd = tea.Batch(spinnerCmd, viewCmd)
 		} else {
 			cmd = spinnerCmd
@@ -336,37 +269,19 @@ func (m Model) View() string {
 		return m.renderStreamingView()
 	}
 
-	// Render current view (legacy fullscreen mode)
+	// Render current view
 	switch m.view {
-	case ViewDashboard:
-		if m.dashboard != nil {
-			return m.dashboard.View()
+	case ViewMonitor:
+		if m.monitor != nil {
+			return m.monitor.View()
 		}
-		return m.renderEmptyView("Dashboard")
-
-	case ViewSessions:
-		if m.sessionList != nil {
-			return m.sessionList.View()
-		}
-		return m.renderEmptyView("Sessions")
+		return m.renderEmptyView("Monitor")
 
 	case ViewAnalytics:
 		if m.analytics != nil {
 			return m.analytics.View()
 		}
 		return m.renderEmptyView("Analytics")
-
-	case ViewHelp:
-		if m.help != nil {
-			return m.help.View()
-		}
-		return m.renderEmptyView("Help")
-
-	case ViewMonitor:
-		if m.monitor != nil {
-			return m.monitor.View()
-		}
-		return m.renderEmptyView("Monitor")
 
 	default:
 		return m.renderEmptyView("Unknown")
@@ -381,32 +296,21 @@ func (m Model) renderStreamingView() string {
 
 	// Choose display format based on view
 	switch m.view {
-	case ViewDashboard:
-		// Show header with inline summary
-		header := m.streamDisplay.RenderHeader()
-		return header
-
-	case ViewAnalytics:
-		// Show detailed report
-		return m.streamDisplay.RenderDetailedReport()
-
-	case ViewSessions:
-		// Show inline summary with session info
-		summary := m.streamDisplay.RenderInlineSummary()
-		sessionInfo := m.renderSessionSummary()
-		return summary + "\n" + sessionInfo
-
-	case ViewHelp:
-		return m.renderStreamingHelp()
-
 	case ViewMonitor:
 		if m.monitor != nil {
 			return m.monitor.View()
 		}
 		return "Monitor view loading..."
 
+	case ViewAnalytics:
+		// Show detailed report
+		return m.streamDisplay.RenderDetailedReport()
+
 	default:
-		// Default to compact header
+		// Default to monitor view
+		if m.monitor != nil {
+			return m.monitor.View()
+		}
 		return m.streamDisplay.RenderHeader()
 	}
 }
@@ -427,15 +331,6 @@ func (m Model) renderSessionSummary() string {
 	return fmt.Sprintf("Sessions: %d total, %d active", len(m.sessions), active)
 }
 
-// renderStreamingHelp renders help for streaming mode
-func (m Model) renderStreamingHelp() string {
-	return `claudecat Streaming Mode - Keyboard Shortcuts:
-  q/Ctrl+C: Quit
-  1/d: Dashboard view    2/s: Sessions view    3/a: Analytics view    4/m: Monitor view
-  r/F5: Refresh data     Tab: Next view        h/?: Help
-  
-This is non-fullscreen mode - output streams inline with your terminal.`
-}
 
 // renderLoading renders the loading screen
 func (m Model) renderLoading() string {

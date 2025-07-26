@@ -15,12 +15,9 @@ import (
 type ViewType int
 
 const (
-	ViewDashboard ViewType = iota
-	ViewSessions
-	ViewAnalytics
-	ViewHelp
-	ViewMonitor  // New monitor view
-	ViewCount    // Keep track of total views
+	ViewMonitor ViewType = iota  // Default view
+	ViewAnalytics                // Combined view (monitor + analytics)
+	ViewCount                    // Keep track of total views
 )
 
 // Model represents the application state
@@ -43,11 +40,8 @@ type Model struct {
 	streamingMode bool // New: enables non-fullscreen streaming mode
 
 	// Components
-	dashboard     *EnhancedDashboardView
-	sessionList   *SessionListView
-	analytics     *AnalyticsView
-	help          *HelpView
 	monitor       *MonitorView
+	analytics     *AnalyticsView
 	streamDisplay *components.StreamingDisplay
 
 	// Utilities
@@ -79,28 +73,20 @@ func NewModel(cfg Config) Model {
 
 	m := Model{
 		config:        cfg,
-		view:          ViewDashboard,
+		view:          ViewMonitor, // Default to monitor view
 		ready:         true, // Set ready to true initially to avoid stuck loading
 		loading:       true,
 		keys:          DefaultKeyMap(),
 		styles:        NewStyles(DefaultTheme()),
 		spinner:       s,
 		lastUpdate:    time.Now(),
-		streamingMode: false, // Disable streaming mode for full dashboard display
+		streamingMode: false, // Disable streaming mode for full display
 	}
 
 	// Initialize views
-	m.dashboard = NewEnhancedDashboardView(cfg)
-	m.sessionList = NewSessionListView()
-	m.analytics = NewAnalyticsView()
-	m.help = NewHelpView()
 	m.monitor = NewMonitorView(cfg)
+	m.analytics = NewAnalyticsView()
 	m.streamDisplay = components.NewStreamingDisplay()
-	
-	// Set initial view based on config
-	if cfg.ViewMode == "monitor" {
-		m.view = ViewMonitor
-	}
 
 	return m
 }
@@ -129,23 +115,17 @@ func (m *Model) UpdateSessions(sessions []*sessions.Session) {
 	m.updateStatistics()
 
 	// Update individual views
-	if m.dashboard != nil {
-		m.dashboard.UpdateStats(m.stats)
-		// Also update metrics if available
-		if m.realtimeMetrics != nil {
-			m.dashboard.UpdateMetrics(m.realtimeMetrics)
-		}
-	}
-	if m.sessionList != nil {
-		m.sessionList.UpdateSessions(sessions)
-	}
-	if m.analytics != nil {
-		m.analytics.UpdateData(sessions, m.entries)
-	}
 	if m.monitor != nil {
 		m.monitor.UpdateStats(m.stats)
 		if m.realtimeMetrics != nil {
 			m.monitor.UpdateMetrics(m.realtimeMetrics)
+		}
+	}
+	if m.analytics != nil {
+		m.analytics.UpdateData(sessions, m.entries)
+		m.analytics.UpdateStats(m.stats)
+		if m.realtimeMetrics != nil {
+			m.analytics.UpdateMetrics(m.realtimeMetrics)
 		}
 	}
 
@@ -172,6 +152,10 @@ func (m *Model) UpdateEntries(entries []models.UsageEntry) {
 		if m.monitor != nil {
 			m.monitor.UpdateBlocks(m.blocks)
 		}
+		// Also update analytics view with blocks
+		if m.analytics != nil {
+			m.analytics.UpdateBlocks(m.blocks)
+		}
 	}
 
 	m.lastUpdate = time.Now()
@@ -188,14 +172,14 @@ func (m *Model) UpdateRealtimeMetrics(metrics *calculations.RealtimeMetrics) {
 		m.streamDisplay.SetWidth(m.width)
 	}
 
-	// Update dashboard with metrics
-	if m.dashboard != nil && metrics != nil {
-		m.dashboard.UpdateMetrics(metrics)
-	}
-
 	// Update monitor view with metrics
 	if m.monitor != nil && metrics != nil {
 		m.monitor.UpdateMetrics(metrics)
+	}
+
+	// Update analytics view with metrics
+	if m.analytics != nil && metrics != nil {
+		m.analytics.UpdateMetrics(metrics)
 	}
 
 	m.lastUpdate = time.Now()
@@ -289,31 +273,26 @@ func (m *Model) SwitchView(view ViewType) {
 
 // NextView switches to the next view
 func (m *Model) NextView() {
-	m.view = (m.view + 1) % (ViewCount - 1) // Exclude ViewCount itself
+	if m.view == ViewMonitor {
+		m.view = ViewAnalytics
+	} else {
+		m.view = ViewMonitor
+	}
 }
 
 // PrevView switches to the previous view
 func (m *Model) PrevView() {
-	if m.view == 0 {
-		m.view = ViewCount - 2 // Last valid view
-	} else {
-		m.view--
-	}
+	// Same as NextView since we only have 2 views
+	m.NextView()
 }
 
 // GetCurrentView returns the current view name
 func (m Model) GetCurrentView() string {
 	switch m.view {
-	case ViewDashboard:
-		return "Dashboard"
-	case ViewSessions:
-		return "Sessions"
-	case ViewAnalytics:
-		return "Analytics"
-	case ViewHelp:
-		return "Help"
 	case ViewMonitor:
 		return "Monitor"
+	case ViewAnalytics:
+		return "Analytics"
 	default:
 		return "Unknown"
 	}
@@ -345,20 +324,11 @@ func (m *Model) Resize(width, height int) {
 	m.height = height
 
 	// Update all views with new dimensions
-	if m.dashboard != nil {
-		m.dashboard.Resize(width, height)
-	}
-	if m.sessionList != nil {
-		m.sessionList.Resize(width, height)
+	if m.monitor != nil {
+		m.monitor.Resize(width, height)
 	}
 	if m.analytics != nil {
 		m.analytics.Resize(width, height)
-	}
-	if m.help != nil {
-		m.help.Resize(width, height)
-	}
-	if m.monitor != nil {
-		m.monitor.Resize(width, height)
 	}
 	if m.streamDisplay != nil {
 		m.streamDisplay.SetWidth(width)

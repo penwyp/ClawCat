@@ -5,24 +5,29 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/penwyp/claudecat/calculations"
 	"github.com/penwyp/claudecat/models"
 	"github.com/penwyp/claudecat/sessions"
 )
 
-// AnalyticsView represents the analytics view
+// AnalyticsView represents the analytics view (combined monitor + analytics)
 type AnalyticsView struct {
-	sessions []*sessions.Session
-	entries  []models.UsageEntry
-	width    int
-	height   int
-	config   Config
-	styles   Styles
+	sessions     []*sessions.Session
+	entries      []models.UsageEntry
+	blocks       []models.SessionBlock
+	monitor      *MonitorView  // Embedded monitor view
+	width        int
+	height       int
+	config       Config
+	styles       Styles
+	metrics      *calculations.RealtimeMetrics
 }
 
 // NewAnalyticsView creates a new analytics view
 func NewAnalyticsView() *AnalyticsView {
 	return &AnalyticsView{
-		styles: NewStyles(DefaultTheme()),
+		styles:  NewStyles(DefaultTheme()),
+		monitor: NewMonitorView(Config{}), // Create embedded monitor view
 	}
 }
 
@@ -37,32 +42,69 @@ func (a *AnalyticsView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return a, nil
 }
 
-// View renders the analytics view
+// View renders the analytics view (combined monitor + analytics)
 func (a *AnalyticsView) View() string {
 	if a.width == 0 || a.height == 0 {
 		return "Analytics loading..."
 	}
 
-	header := a.renderHeader()
-	charts := a.renderCharts()
-	stats := a.renderStats()
+	// Calculate height distribution (60% monitor, 40% analytics)
+	monitorHeight := int(float64(a.height) * 0.6)
+	analyticsHeight := a.height - monitorHeight - 2 // -2 for separator
 
-	content := strings.Join([]string{
-		header,
-		charts,
-		stats,
-	}, "\n\n")
+	// Get monitor view content
+	monitorContent := ""
+	if a.monitor != nil {
+		a.monitor.Resize(a.width, monitorHeight)
+		monitorContent = a.monitor.View()
+	}
 
-	return a.styles.Content.
-		Width(a.width - 4).
-		Height(a.height - 4).
-		Render(content)
+	// Create separator
+	separator := strings.Repeat("─", a.width)
+
+	// Get analytics content
+	analyticsContent := a.renderAnalyticsSection(analyticsHeight)
+
+	// Combine both views
+	return strings.Join([]string{
+		monitorContent,
+		separator,
+		analyticsContent,
+	}, "\n")
 }
 
 // UpdateData updates the analytics with new data
 func (a *AnalyticsView) UpdateData(sessions []*sessions.Session, entries []models.UsageEntry) {
 	a.sessions = sessions
 	a.entries = entries
+	
+	// Also update monitor view if we have blocks
+	if a.monitor != nil && len(a.blocks) > 0 {
+		a.monitor.UpdateBlocks(a.blocks)
+	}
+}
+
+// UpdateBlocks updates session blocks for the embedded monitor view
+func (a *AnalyticsView) UpdateBlocks(blocks []models.SessionBlock) {
+	a.blocks = blocks
+	if a.monitor != nil {
+		a.monitor.UpdateBlocks(blocks)
+	}
+}
+
+// UpdateMetrics updates realtime metrics for the embedded monitor view
+func (a *AnalyticsView) UpdateMetrics(metrics *calculations.RealtimeMetrics) {
+	a.metrics = metrics
+	if a.monitor != nil {
+		a.monitor.UpdateMetrics(metrics)
+	}
+}
+
+// UpdateStats updates statistics for the embedded monitor view
+func (a *AnalyticsView) UpdateStats(stats Statistics) {
+	if a.monitor != nil {
+		a.monitor.UpdateStats(stats)
+	}
 }
 
 // Resize updates the view dimensions
@@ -75,11 +117,37 @@ func (a *AnalyticsView) Resize(width, height int) {
 func (a *AnalyticsView) UpdateConfig(config Config) {
 	a.config = config
 	a.styles = NewStyles(GetThemeByName(config.Theme))
+	
+	// Also update monitor view config
+	if a.monitor != nil {
+		a.monitor.UpdateConfig(config)
+	}
+}
+
+// renderAnalyticsSection renders the analytics portion of the combined view
+func (a *AnalyticsView) renderAnalyticsSection(height int) string {
+	header := a.renderHeader()
+	charts := a.renderCharts()
+	stats := a.renderStats()
+
+	content := strings.Join([]string{
+		header,
+		charts,
+		stats,
+	}, "\n\n")
+
+	// Limit content to available height
+	lines := strings.Split(content, "\n")
+	if len(lines) > height {
+		lines = lines[:height]
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // renderHeader renders the analytics header
 func (a *AnalyticsView) renderHeader() string {
-	title := a.styles.Title.Render("Analytics")
+	title := a.styles.Title.Render("Analytics Section")
 	subtitle := a.styles.Subtitle.Render(
 		fmt.Sprintf("Analyzing %d sessions and %d entries",
 			len(a.sessions), len(a.entries)),
