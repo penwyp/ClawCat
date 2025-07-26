@@ -33,12 +33,12 @@ func (sa *StoreAdapter) GetFileSummary(absolutePath string) (*FileSummary, error
 		ProcessedAt:     cacheSummary.ProcessedAt,
 		Checksum:        cacheSummary.Checksum,
 		ProcessedHashes: cacheSummary.ProcessedHashes,
-		ModelStats:      make(map[string]ModelStat),
+		ModelStats:      make(map[string]FileSummaryModelStat),
 	}
 
 	// Convert model stats
 	for model, cacheStat := range cacheSummary.ModelStats {
-		summary.ModelStats[model] = ModelStat{
+		summary.ModelStats[model] = FileSummaryModelStat{
 			Model:               cacheStat.Model,
 			EntryCount:          cacheStat.EntryCount,
 			TotalCost:           cacheStat.TotalCost,

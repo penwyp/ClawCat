@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"sync"
-	"time"
 )
 
 const (

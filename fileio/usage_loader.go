@@ -46,13 +46,14 @@ type FileSummary struct {
 	EntryCount      int
 	TotalCost       float64
 	TotalTokens     int
-	ModelStats      map[string]ModelStat
+	ModelStats      map[string]FileSummaryModelStat
 	ProcessedAt     time.Time
 	Checksum        string
 	ProcessedHashes map[string]bool
 }
 
-type ModelStat struct {
+// FileSummaryModelStat is used for file summary caching with additional fields
+type FileSummaryModelStat struct {
 	Model               string
 	EntryCount          int
 	TotalCost           float64
@@ -61,6 +62,7 @@ type ModelStat struct {
 	CacheCreationTokens int
 	CacheReadTokens     int
 }
+
 
 // LoadUsageEntriesResult contains the loaded data
 type LoadUsageEntriesResult struct {
@@ -542,6 +544,84 @@ func loadRawEntriesFromFile(filePath string) ([]map[string]interface{}, error) {
 func convertRawToUsageEntry(rawData map[string]interface{}, mode models.CostMode) (models.UsageEntry, error) {
 	var entry models.UsageEntry
 
+	// Try to unmarshal into ConversationLog struct first
+	jsonBytes, err := sonic.Marshal(rawData)
+	if err != nil {
+		return entry, fmt.Errorf("failed to re-marshal raw data: %w", err)
+	}
+
+	var convLog models.ConversationLog
+	if err := sonic.Unmarshal(jsonBytes, &convLog); err != nil {
+		// If it fails, fall back to legacy format parsing
+		return convertLegacyFormat(rawData, mode)
+	}
+
+	// Check if this is actually a ConversationLog format (has type field)
+	if convLog.Type == "" {
+		// No type field, treat as legacy format
+		return convertLegacyFormat(rawData, mode)
+	}
+
+	// Only process assistant messages for usage data
+	if convLog.Type != "assistant" {
+		return entry, fmt.Errorf("not an assistant message")
+	}
+
+	// Extract timestamp
+	if convLog.Timestamp != "" {
+		timestamp, err := time.Parse(time.RFC3339, convLog.Timestamp)
+		if err != nil {
+			return entry, fmt.Errorf("invalid timestamp format: %w", err)
+		}
+		entry.Timestamp = timestamp
+	} else {
+		return entry, fmt.Errorf("missing timestamp")
+	}
+
+	// Extract model and usage data from message
+	if convLog.Message.Model == "" {
+		return entry, fmt.Errorf("missing model in message")
+	}
+	entry.Model = convLog.Message.Model
+
+	// Extract usage data
+	usage := convLog.Message.Usage
+	entry.InputTokens = usage.InputTokens
+	entry.OutputTokens = usage.OutputTokens
+	entry.CacheCreationTokens = usage.CacheCreationInputTokens
+	entry.CacheReadTokens = usage.CacheReadInputTokens
+
+	// Extract IDs
+	entry.MessageID = convLog.Message.Id
+	entry.RequestID = convLog.RequestId
+	entry.SessionID = convLog.SessionId
+
+	// Calculate total tokens
+	entry.TotalTokens = entry.CalculateTotalTokens()
+
+	// Calculate cost based on mode
+	switch mode {
+	case models.CostModeCalculated, models.CostModeAuto:
+		pricing := models.GetPricing(entry.Model)
+		entry.CostUSD = entry.CalculateCost(pricing)
+	case models.CostModeCached:
+		// For cached mode, still calculate (no cached cost in ConversationLog)
+		pricing := models.GetPricing(entry.Model)
+		entry.CostUSD = entry.CalculateCost(pricing)
+	}
+
+	// Validate the entry
+	if err := entry.Validate(); err != nil {
+		return entry, fmt.Errorf("entry validation failed: %w", err)
+	}
+
+	return entry, nil
+}
+
+// convertLegacyFormat handles the legacy format parsing
+func convertLegacyFormat(rawData map[string]interface{}, mode models.CostMode) (models.UsageEntry, error) {
+	var entry models.UsageEntry
+
 	// Extract timestamp
 	if timestampStr, ok := rawData["timestamp"].(string); ok {
 		if timestamp, err := time.Parse(time.RFC3339, timestampStr); err == nil {
@@ -553,91 +633,35 @@ func convertRawToUsageEntry(rawData map[string]interface{}, mode models.CostMode
 		return entry, fmt.Errorf("missing timestamp")
 	}
 
-	// Check if this is a Claude Code entry (has 'type' field)
-	entryType, hasType := rawData["type"].(string)
-	if hasType {
-		// Only process assistant messages for usage data
-		if entryType != "assistant" {
-			return entry, fmt.Errorf("not an assistant message")
-		}
-
-		// Extract message data for Claude Code format
-		if messageData, ok := rawData["message"].(map[string]interface{}); ok {
-			// Extract model from message
-			if model, ok := messageData["model"].(string); ok {
-				entry.Model = model
-			} else {
-				return entry, fmt.Errorf("missing model in message")
-			}
-
-			// Extract usage data from message
-			if usageData, ok := messageData["usage"].(map[string]interface{}); ok {
-				if inputTokens, ok := usageData["input_tokens"].(float64); ok {
-					entry.InputTokens = int(inputTokens)
-				}
-				if outputTokens, ok := usageData["output_tokens"].(float64); ok {
-					entry.OutputTokens = int(outputTokens)
-				}
-				if cacheCreationTokens, ok := usageData["cache_creation_input_tokens"].(float64); ok {
-					entry.CacheCreationTokens = int(cacheCreationTokens)
-				}
-				if cacheReadTokens, ok := usageData["cache_read_input_tokens"].(float64); ok {
-					entry.CacheReadTokens = int(cacheReadTokens)
-				}
-			} else {
-				return entry, fmt.Errorf("missing usage data in message")
-			}
-
-			// Extract message ID from message
-			if messageID, ok := messageData["id"].(string); ok {
-				entry.MessageID = messageID
-			}
-		} else {
-			return entry, fmt.Errorf("missing message data")
-		}
-
-		// Extract request ID from top level
-		if requestID, ok := rawData["requestId"].(string); ok {
-			entry.RequestID = requestID
-		}
-
-		// Extract session ID
-		if sessionID, ok := rawData["sessionId"].(string); ok {
-			entry.SessionID = sessionID
-		}
-
+	// Extract model
+	if model, ok := rawData["model"].(string); ok {
+		entry.Model = model
 	} else {
-		// Legacy format support - direct usage data
-		// Extract model
-		if model, ok := rawData["model"].(string); ok {
-			entry.Model = model
-		} else {
-			return entry, fmt.Errorf("missing model")
-		}
+		return entry, fmt.Errorf("missing model")
+	}
 
-		// Extract usage data
-		if usageData, ok := rawData["usage"].(map[string]interface{}); ok {
-			if inputTokens, ok := usageData["input_tokens"].(float64); ok {
-				entry.InputTokens = int(inputTokens)
-			}
-			if outputTokens, ok := usageData["output_tokens"].(float64); ok {
-				entry.OutputTokens = int(outputTokens)
-			}
-			if cacheCreationTokens, ok := usageData["cache_creation_tokens"].(float64); ok {
-				entry.CacheCreationTokens = int(cacheCreationTokens)
-			}
-			if cacheReadTokens, ok := usageData["cache_read_tokens"].(float64); ok {
-				entry.CacheReadTokens = int(cacheReadTokens)
-			}
+	// Extract usage data
+	if usageData, ok := rawData["usage"].(map[string]interface{}); ok {
+		if inputTokens, ok := usageData["input_tokens"].(float64); ok {
+			entry.InputTokens = int(inputTokens)
 		}
+		if outputTokens, ok := usageData["output_tokens"].(float64); ok {
+			entry.OutputTokens = int(outputTokens)
+		}
+		if cacheCreationTokens, ok := usageData["cache_creation_tokens"].(float64); ok {
+			entry.CacheCreationTokens = int(cacheCreationTokens)
+		}
+		if cacheReadTokens, ok := usageData["cache_read_tokens"].(float64); ok {
+			entry.CacheReadTokens = int(cacheReadTokens)
+		}
+	}
 
-		// Extract IDs if available
-		if messageID, ok := rawData["message_id"].(string); ok {
-			entry.MessageID = messageID
-		}
-		if requestID, ok := rawData["request_id"].(string); ok {
-			entry.RequestID = requestID
-		}
+	// Extract IDs if available
+	if messageID, ok := rawData["message_id"].(string); ok {
+		entry.MessageID = messageID
+	}
+	if requestID, ok := rawData["request_id"].(string); ok {
+		entry.RequestID = requestID
 	}
 
 	// Calculate total tokens
@@ -778,7 +802,7 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		FileSize:        fileInfo.Size(),
 		EntryCount:      len(entries),
 		ProcessedAt:     time.Now(),
-		ModelStats:      make(map[string]ModelStat),
+		ModelStats:      make(map[string]FileSummaryModelStat),
 		ProcessedHashes: make(map[string]bool),
 	}
 
@@ -816,7 +840,7 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		// Update model statistics
 		modelStat, exists := summary.ModelStats[entry.Model]
 		if !exists {
-			modelStat = ModelStat{
+			modelStat = FileSummaryModelStat{
 				Model: entry.Model,
 			}
 		}
