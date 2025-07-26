@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
 )
 
@@ -207,6 +208,7 @@ func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
 		}
 	}
 
+	logging.LogDebugf("Cache miss (file summary): absolutePath=%s, key=%s", absolutePath, key)
 	return nil, fmt.Errorf("file summary not found in cache: %s", absolutePath)
 }
 

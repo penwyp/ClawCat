@@ -53,8 +53,15 @@ capabilities to help developers track their Claude API usage efficiently.`,
 			return fmt.Errorf("failed to apply command flags: %w", err)
 		}
 
+		// Apply debug flag if set from command line
+		if debug {
+			cfg.Debug.Enabled = true
+			// Set log level to debug when debug flag is enabled
+			cfg.App.LogLevel = "debug"
+		}
+
 		// Initialize global logger with debug mode support
-		logging.InitLogger(cfg.App.LogLevel, cfg.App.LogFile, debug)
+		logging.InitLogger(cfg.App.LogLevel, cfg.App.LogFile, cfg.Debug.Enabled)
 
 		// Create and run enhanced application
 		app, err := internal.NewEnhancedApplication(cfg)

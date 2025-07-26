@@ -98,6 +98,7 @@ func (dc *DiskCache) Get(key string) (interface{}, bool) {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		dc.stats.Misses++
 		dc.updateHitRate()
+		logging.LogDebugf("Cache miss (file not exists): key=%s, file=%s", key, filePath)
 		return nil, false
 	}
 
@@ -125,6 +126,7 @@ func (dc *DiskCache) Get(key string) (interface{}, bool) {
 		os.Remove(filePath)
 		dc.stats.Misses++
 		dc.updateHitRate()
+		logging.LogDebugf("Cache miss (expired): key=%s, file=%s, age=%v, ttl=%v", key, filePath, time.Since(item.CreatedAt), itemTTL)
 		return nil, false
 	}
 

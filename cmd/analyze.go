@@ -66,6 +66,8 @@ Examples:
 		// Apply debug flag if set from command line
 		if debug {
 			cfg.Debug.Enabled = true
+			// Set log level to debug when debug flag is enabled
+			cfg.App.LogLevel = "debug"
 		}
 
 		// Initialize global logger for usage_loader cache logging
