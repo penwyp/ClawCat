@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/fileio"
 	"github.com/penwyp/ClawCat/logging"
@@ -28,7 +27,7 @@ type DataManager struct {
 	lastSuccessfulFetch time.Time
 
 	// Summary cache store
-	cacheStore         *cache.SimpleSummaryCache
+	cacheStore         fileio.CacheStore
 	summaryCacheConfig config.SummaryCacheConfig
 }
 
@@ -41,7 +40,7 @@ func NewDataManager(hoursBack int, dataPath string) *DataManager {
 }
 
 // SetCacheStore sets the cache store for file summaries
-func (dm *DataManager) SetCacheStore(cacheStore *cache.SimpleSummaryCache, config config.SummaryCacheConfig) {
+func (dm *DataManager) SetCacheStore(cacheStore fileio.CacheStore, config config.SummaryCacheConfig) {
 	dm.mu.Lock()
 	defer dm.mu.Unlock()
 	dm.cacheStore = cacheStore

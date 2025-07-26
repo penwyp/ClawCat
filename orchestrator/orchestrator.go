@@ -86,16 +86,21 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 	dataManager := NewDataManager(192, dataPath) // 192 hours back
 	
 	// Set up cache if enabled
-	if cfg.Cache.Enabled {
+	if cfg.Cache.Enabled && cfg.Data.SummaryCache.Enabled {
 		// Expand cache directory path
 		cacheDir := cfg.Cache.Dir
 		if cacheDir[:2] == "~/" {
 			homeDir, _ := os.UserHomeDir()
 			cacheDir = filepath.Join(homeDir, cacheDir[2:])
 		}
-		persistPath := filepath.Join(cacheDir, "file_summaries.json")
-		cacheStore := cache.NewSimpleSummaryCache(persistPath)
-		dataManager.SetCacheStore(cacheStore, cfg.Data.SummaryCache)
+		persistPath := filepath.Join(cacheDir, "badger_summaries")
+		badgerCache, err := cache.NewBadgerSummaryCache(persistPath)
+		if err != nil {
+			logging.LogErrorf("Failed to create BadgerDB cache: %v", err)
+			// Cache is disabled on error
+		} else {
+			dataManager.SetCacheStore(badgerCache, cfg.Data.SummaryCache)
+		}
 	}
 
 	return &MonitoringOrchestrator{

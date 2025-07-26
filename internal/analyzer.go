@@ -38,17 +38,24 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 
 	logging.LogInfof("Starting analysis of %d paths: %v", len(paths), paths)
 
-	// Create simplified cache store if caching is enabled
+	// Create BadgerDB cache store if caching is enabled
 	var cacheStore fileio.CacheStore
-	if a.config.Cache.Enabled {
-		// Use simplified cache that loads all summaries into memory at startup
+	if a.config.Cache.Enabled && a.config.Data.SummaryCache.Enabled {
 		cacheDir := a.config.Cache.Dir
 		if cacheDir[:2] == "~/" {
 			homeDir, _ := os.UserHomeDir()
 			cacheDir = filepath.Join(homeDir, cacheDir[2:])
 		}
-		persistPath := filepath.Join(cacheDir, "file_summaries.json")
-		cacheStore = cache.NewSimpleSummaryCache(persistPath)
+		
+		// Use BadgerDB cache for better concurrent performance
+		persistPath := filepath.Join(cacheDir, "badger_summaries")
+		badgerCache, err := cache.NewBadgerSummaryCache(persistPath)
+		if err != nil {
+			logging.LogErrorf("Failed to create BadgerDB cache: %v", err)
+			// Cache is disabled on error
+		} else {
+			cacheStore = badgerCache
+		}
 	}
 
 	var allResults []models.AnalysisResult
