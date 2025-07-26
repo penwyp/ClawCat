@@ -6,19 +6,20 @@ import (
 
 // FileSummary represents a cached summary of a parsed usage file
 type FileSummary struct {
-	Path            string                          `json:"path"`
-	AbsolutePath    string                          `json:"absolute_path"`
-	ModTime         time.Time                       `json:"mod_time"`
-	FileSize        int64                           `json:"file_size"`
-	EntryCount      int                             `json:"entry_count"`
-	TotalCost       float64                         `json:"total_cost"`
-	TotalTokens     int                             `json:"total_tokens"`
-	ModelStats      map[string]ModelStat            `json:"model_stats"`
-	HourlyBuckets   map[string]*TemporalBucket      `json:"hourly_buckets"`   // Hour-level aggregations (key: "2006-01-02 15")
-	DailyBuckets    map[string]*TemporalBucket      `json:"daily_buckets"`    // Day-level aggregations (key: "2006-01-02")
-	ProcessedAt     time.Time                       `json:"processed_at"`
-	Checksum        string                          `json:"checksum"`
-	ProcessedHashes map[string]bool                 `json:"processed_hashes"` // For deduplication
+	Path                    string                          `json:"path"`
+	AbsolutePath            string                          `json:"absolute_path"`
+	ModTime                 time.Time                       `json:"mod_time"`
+	FileSize                int64                           `json:"file_size"`
+	EntryCount              int                             `json:"entry_count"`
+	TotalCost               float64                         `json:"total_cost"`
+	TotalTokens             int                             `json:"total_tokens"`
+	ModelStats              map[string]ModelStat            `json:"model_stats"`
+	HourlyBuckets           map[string]*TemporalBucket      `json:"hourly_buckets"`   // Hour-level aggregations (key: "2006-01-02 15")
+	DailyBuckets            map[string]*TemporalBucket      `json:"daily_buckets"`    // Day-level aggregations (key: "2006-01-02")
+	ProcessedAt             time.Time                       `json:"processed_at"`
+	Checksum                string                          `json:"checksum"`
+	ProcessedHashes         map[string]bool                 `json:"processed_hashes"` // For deduplication
+	HasNoAssistantMessages  bool                            `json:"has_no_assistant_messages"` // True if file has no assistant messages
 }
 
 

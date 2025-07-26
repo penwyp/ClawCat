@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/penwyp/claudecat/cache"
 	"github.com/penwyp/claudecat/logging"
 	"github.com/penwyp/claudecat/models"
 )
@@ -25,6 +26,8 @@ type FileResult struct {
 	Entries     []models.UsageEntry
 	RawEntries  []map[string]interface{}
 	FromCache   bool
+	MissReason  string                    // Reason for cache miss
+	Summary     *cache.FileSummary        // Summary to cache (if any)
 	Error       error
 	ProcessTime time.Duration
 }
@@ -148,7 +151,7 @@ func (cl *ConcurrentLoader) worker(
 			startTime := time.Now()
 
 			// Process the file using the concurrent version that works directly with sync.Map
-			entries, rawEntries, fromCache, err := processSingleFileWithCacheConcurrent(filePath, opts, cutoffTime, processedHashes)
+			entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheConcurrentWithReason(filePath, opts, cutoffTime, processedHashes)
 
 			// Create result
 			result := FileResult{
@@ -156,6 +159,8 @@ func (cl *ConcurrentLoader) worker(
 				Entries:     entries,
 				RawEntries:  rawEntries,
 				FromCache:   fromCache,
+				MissReason:  missReason,
+				Summary:     summary,
 				Error:       err,
 				ProcessTime: time.Since(startTime),
 			}

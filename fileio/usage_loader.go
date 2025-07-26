@@ -46,11 +46,24 @@ type LoadUsageEntriesResult struct {
 
 // LoadMetadata contains information about the loading process
 type LoadMetadata struct {
-	FilesProcessed   int           `json:"files_processed"`
-	EntriesLoaded    int           `json:"entries_loaded"`
-	EntriesFiltered  int           `json:"entries_filtered"`
-	LoadDuration     time.Duration `json:"load_duration"`
-	ProcessingErrors []string      `json:"processing_errors,omitempty"`
+	FilesProcessed   int                      `json:"files_processed"`
+	EntriesLoaded    int                      `json:"entries_loaded"`
+	EntriesFiltered  int                      `json:"entries_filtered"`
+	LoadDuration     time.Duration            `json:"load_duration"`
+	ProcessingErrors []string                 `json:"processing_errors,omitempty"`
+	CacheMissReasons map[string]int           `json:"cache_miss_reasons,omitempty"`
+	CacheStats       *CachePerformanceStats   `json:"cache_stats,omitempty"`
+}
+
+// CachePerformanceStats tracks cache performance metrics
+type CachePerformanceStats struct {
+	Hits                 int     `json:"hits"`
+	Misses               int     `json:"misses"`
+	HitRate              float64 `json:"hit_rate"`
+	NewFiles             int     `json:"new_files"`
+	ModifiedFiles        int     `json:"modified_files"`
+	NoAssistantMessages  int     `json:"no_assistant_messages"`
+	OtherMisses          int     `json:"other_misses"`
 }
 
 // LoadUsageEntries loads and converts JSONL files to UsageEntry objects
@@ -71,6 +84,13 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	var allRawEntries []map[string]interface{}
 	var processingErrors []string
 	var cacheHits, cacheMisses int
+	cacheMissReasons := map[string]int{
+		"new_file":             0,
+		"modified_file":        0,
+		"no_assistant_messages": 0,
+		"other":                0,
+	}
+	var summariesToCache []*cache.FileSummary // Collect summaries for batch writing
 
 	if useConcurrent {
 		// Use concurrent loader
@@ -92,13 +112,20 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 			processingErrors = append(processingErrors, err.Error())
 		}
 
-		// Calculate cache stats
+		// Calculate cache stats and collect summaries
 		for _, result := range results {
 			if result.Error == nil {
 				if result.FromCache {
 					cacheHits++
 				} else {
 					cacheMisses++
+					if result.MissReason != "" {
+						cacheMissReasons[result.MissReason]++
+					}
+				}
+				// Collect summary for batch writing
+				if result.Summary != nil {
+					summariesToCache = append(summariesToCache, result.Summary)
 				}
 			}
 		}
@@ -118,7 +145,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 				logging.LogDebugf("Processing file %d/%d: %s", i+1, len(jsonlFiles), filepath.Base(filePath))
 			}
 
-			entries, rawEntries, fromCache, err := processSingleFileWithCache(filePath, opts, cutoffTime, processedHashes)
+			entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheWithReason(filePath, opts, cutoffTime, processedHashes)
 			if err != nil {
 				if i < 5 { // Log errors for first 5 files
 					logging.LogErrorf("Error processing file %s: %v", filepath.Base(filePath), err)
@@ -131,6 +158,9 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 				cacheHits++
 			} else {
 				cacheMisses++
+				if missReason != "" {
+					cacheMissReasons[missReason]++
+				}
 			}
 
 			if i < 5 { // Log successful processing for first 5 files
@@ -141,6 +171,11 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 			if opts.IncludeRaw && rawEntries != nil {
 				allRawEntries = append(allRawEntries, rawEntries...)
 			}
+			
+			// Collect summary for batch writing
+			if summary != nil {
+				summariesToCache = append(summariesToCache, summary)
+			}
 		}
 	}
 
@@ -149,11 +184,47 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 		return allEntries[i].Timestamp.Before(allEntries[j].Timestamp)
 	})
 
+	// Batch write summaries if we have any
+	if len(summariesToCache) > 0 && opts.EnableSummaryCache && opts.CacheStore != nil {
+		if batcher, ok := opts.CacheStore.(*cache.BadgerSummaryCache); ok {
+			if err := batcher.BatchSet(summariesToCache); err != nil {
+				logging.LogWarnf("Failed to batch write %d summaries: %v", len(summariesToCache), err)
+			} else {
+				logging.LogDebugf("Batch wrote %d summaries to cache", len(summariesToCache))
+			}
+		} else {
+			// Fallback to individual writes if batch is not supported
+			for _, summary := range summariesToCache {
+				if err := opts.CacheStore.SetFileSummary(summary); err != nil {
+					logging.LogWarnf("Failed to cache summary for %s: %v", filepath.Base(summary.Path), err)
+				}
+			}
+		}
+	}
+
 	loadDuration := time.Since(startTime)
+
+	// Calculate cache statistics
+	cacheStats := &CachePerformanceStats{
+		Hits:                cacheHits,
+		Misses:              cacheMisses,
+		NewFiles:            cacheMissReasons["new_file"],
+		ModifiedFiles:       cacheMissReasons["modified_file"],
+		NoAssistantMessages: cacheMissReasons["no_assistant_messages"],
+		OtherMisses:         cacheMissReasons["other"],
+	}
+	if cacheHits+cacheMisses > 0 {
+		cacheStats.HitRate = float64(cacheHits) / float64(cacheHits+cacheMisses)
+	}
 
 	if opts.EnableSummaryCache && opts.CacheStore != nil {
 		logging.LogInfof("Cache performance: %d hits, %d misses (%.1f%% hit rate)",
-			cacheHits, cacheMisses, float64(cacheHits)/float64(cacheHits+cacheMisses)*100)
+			cacheHits, cacheMisses, cacheStats.HitRate*100)
+		if cacheMisses > 0 {
+			logging.LogInfof("Cache miss reasons: %d new files, %d modified, %d no assistant messages, %d other",
+				cacheMissReasons["new_file"], cacheMissReasons["modified_file"],
+				cacheMissReasons["no_assistant_messages"], cacheMissReasons["other"])
+		}
 	}
 
 	result := &LoadUsageEntriesResult{
@@ -164,6 +235,8 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 			EntriesLoaded:    len(allEntries),
 			LoadDuration:     loadDuration,
 			ProcessingErrors: processingErrors,
+			CacheMissReasons: cacheMissReasons,
+			CacheStats:       cacheStats,
 		},
 	}
 
@@ -262,10 +335,150 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 	return processSingleFileWithCacheInternal(filePath, opts, cutoffTime, processedHashes, nil)
 }
 
+// processSingleFileWithCacheWithReason processes a single JSONL file with caching support and returns cache miss reason
+func processSingleFileWithCacheWithReason(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes map[string]bool) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
+	// This is a wrapper that tracks cache miss reasons
+	entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheInternalWithReason(filePath, opts, cutoffTime, processedHashes, nil)
+	return entries, rawEntries, fromCache, missReason, err, summary
+}
+
 // processSingleFileWithCacheConcurrent processes a single JSONL file with caching support using sync.Map
 func processSingleFileWithCacheConcurrent(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
 	// This version uses sync.Map for concurrent access
 	return processSingleFileWithCacheInternal(filePath, opts, cutoffTime, nil, processedHashes)
+}
+
+// processSingleFileWithCacheConcurrentWithReason processes a single JSONL file with caching support using sync.Map and tracks cache miss reasons
+func processSingleFileWithCacheConcurrentWithReason(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
+	// This version uses sync.Map and tracks cache miss reasons
+	return processSingleFileWithCacheInternalWithReason(filePath, opts, cutoffTime, nil, processedHashes)
+}
+
+// processSingleFileWithCacheInternalWithReason is the internal implementation that supports both map types and tracks cache miss reasons
+func processSingleFileWithCacheInternalWithReason(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
+	// Get absolute path for cache key
+	absPath, absErr := filepath.Abs(filePath)
+	if absErr != nil {
+		absPath = filePath // fallback to relative path
+	}
+	
+	var summary *cache.FileSummary // Declare at the top for return
+
+	// Check if caching is enabled
+	if opts.EnableSummaryCache && opts.CacheStore != nil {
+		// Get file info first
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			// File doesn't exist, fall back to normal processing
+			if regularMap != nil {
+				entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
+				return entries, rawEntries, false, "new_file", err, nil
+			} else {
+				entries, rawEntries, err := processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
+				return entries, rawEntries, false, "new_file", err, nil
+			}
+		}
+
+		// Check cache first before reading file contents
+		if cachedSummary, err := opts.CacheStore.GetFileSummary(absPath); err == nil {
+			// Check if cache is still valid based on file mtime and size
+			if !cachedSummary.IsExpired(fileInfo.ModTime(), fileInfo.Size()) {
+				// Cache hit - check if this is a file without assistant messages
+				if cachedSummary.HasNoAssistantMessages {
+					// This file has no assistant messages, return empty results
+					return []models.UsageEntry{}, nil, true, "", nil, nil
+				}
+
+				// Normal cache hit with data
+				// Merge processed hashes to avoid duplicates
+				if regularMap != nil {
+					cachedSummary.MergeHashes(regularMap)
+				} else {
+					// For sync.Map, we need to merge differently
+					for hash := range cachedSummary.ProcessedHashes {
+						syncMap.Store(hash, true)
+					}
+				}
+
+				// Create entries from summary, but filter out duplicates
+				entries := createEntriesFromSummaryWithDedup(cachedSummary, cutoffTime, regularMap, syncMap)
+
+				return entries, nil, true, "", nil, nil
+			} else {
+				// File has been modified, invalidate cache
+				logging.LogDebugf("Cache miss for %s: file modified (old mtime: %v, new mtime: %v, old size: %d, new size: %d)",
+					filepath.Base(filePath), cachedSummary.ModTime, fileInfo.ModTime(), cachedSummary.FileSize, fileInfo.Size())
+				opts.CacheStore.InvalidateFileSummary(absPath)
+				// Continue to process the file and track as modified
+			}
+		} else {
+			// Cache miss - file not in cache
+			logging.LogDebugf("Cache miss for %s: not in cache", filepath.Base(filePath))
+		}
+
+		// Cache miss or expired - now check if file has assistant messages
+		if !hasAssistantMessages(filePath) {
+			// File has no assistant messages - create empty summary and cache it
+			summary = createEmptySummaryForFile(absPath, filePath)
+			// Return empty results
+			return []models.UsageEntry{}, nil, false, "no_assistant_messages", nil, summary
+		}
+	}
+
+	// Determine miss reason
+	missReason := "other"
+	if opts.EnableSummaryCache && opts.CacheStore != nil {
+		if _, err := opts.CacheStore.GetFileSummary(absPath); err != nil {
+			missReason = "new_file"
+		} else {
+			missReason = "modified_file"
+		}
+	}
+
+	// Cache miss or caching disabled, process normally
+	var entries []models.UsageEntry
+	var rawEntries []map[string]interface{}
+	var err error
+
+	if regularMap != nil {
+		entries, rawEntries, err = processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
+	} else {
+		entries, rawEntries, err = processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
+	}
+
+	if err != nil {
+		return entries, rawEntries, false, missReason, err, nil
+	}
+
+	// If caching is enabled and we successfully processed the file, create and cache summary
+	// Skip caching if in watch mode (TUI) to avoid frequent writes
+	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 && !opts.IsWatchMode {
+		// Create summary with the appropriate hash map
+		if regularMap != nil {
+			summary = createSummaryFromEntries(absPath, filePath, entries, regularMap)
+		} else {
+			// For sync.Map, we need to convert to regular map for storage
+			tempMap := make(map[string]bool)
+			syncMap.Range(func(key, value interface{}) bool {
+				if hash, ok := key.(string); ok {
+					tempMap[hash] = true
+				}
+				return true
+			})
+			summary = createSummaryFromEntries(absPath, filePath, entries, tempMap)
+		}
+		if summary != nil {
+			if err := opts.CacheStore.SetFileSummary(summary); err != nil {
+				logging.LogWarnf("Failed to cache summary for %s: %v", filepath.Base(filePath), err)
+			} else {
+				logging.LogDebugf("Cached summary for %s", filepath.Base(filePath))
+			}
+		}
+	} else if opts.IsWatchMode && opts.EnableSummaryCache {
+		logging.LogDebugf("Skipping cache write for %s (watch mode)", filepath.Base(filePath))
+	}
+
+	return entries, rawEntries, false, missReason, nil, summary
 }
 
 // processSingleFileWithCacheInternal is the internal implementation that supports both map types
@@ -275,6 +488,8 @@ func processSingleFileWithCacheInternal(filePath string, opts LoadUsageEntriesOp
 	if absErr != nil {
 		absPath = filePath // fallback to relative path
 	}
+	
+	var summary *cache.FileSummary // Declare for this function too
 
 	// Check if caching is enabled
 	if opts.EnableSummaryCache && opts.CacheStore != nil {
@@ -308,7 +523,7 @@ func processSingleFileWithCacheInternal(filePath string, opts LoadUsageEntriesOp
 			// Check if cache is still valid based on file mtime and size
 			if !summary.IsExpired(fileInfo.ModTime(), fileInfo.Size()) {
 				// Use cached summary
-				logging.LogDebugf("Cache hit: %s (mtime: %v, size: %d)", filepath.Base(filePath), fileInfo.ModTime(), fileInfo.Size())
+				// Cache hits are common, no need to log them
 
 				// Merge processed hashes to avoid duplicates
 				if regularMap != nil {
@@ -352,7 +567,6 @@ func processSingleFileWithCacheInternal(filePath string, opts LoadUsageEntriesOp
 	// Skip caching if in watch mode (TUI) to avoid frequent writes
 	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 && !opts.IsWatchMode {
 		// Create summary with the appropriate hash map
-		var summary *cache.FileSummary
 		if regularMap != nil {
 			summary = createSummaryFromEntries(absPath, filePath, entries, regularMap)
 		} else {
@@ -902,6 +1116,38 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 	}
 
 	return entries
+}
+
+// createEmptySummaryForFile creates a minimal FileSummary for files without assistant messages
+func createEmptySummaryForFile(absPath, relPath string) *cache.FileSummary {
+	// Get file info
+	fileInfo, err := os.Stat(relPath)
+	if err != nil {
+		return nil
+	}
+
+	// Initialize summary
+	summary := &cache.FileSummary{
+		Path:                   relPath,
+		AbsolutePath:           absPath,
+		ModTime:                fileInfo.ModTime(),
+		FileSize:               fileInfo.Size(),
+		EntryCount:             0,
+		ProcessedAt:            time.Now(),
+		ModelStats:             make(map[string]cache.ModelStat),
+		HourlyBuckets:          make(map[string]*cache.TemporalBucket),
+		DailyBuckets:           make(map[string]*cache.TemporalBucket),
+		ProcessedHashes:        make(map[string]bool),
+		HasNoAssistantMessages: true, // Mark this as a file without assistant messages
+		TotalCost:              0,
+		TotalTokens:            0,
+	}
+
+	// Calculate checksum (simple approach based on file mod time and size)
+	summary.Checksum = fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s_%d_%d_empty",
+		absPath, fileInfo.ModTime().Unix(), fileInfo.Size()))))
+
+	return summary
 }
 
 // createSummaryFromEntries creates a FileSummary from processed entries
