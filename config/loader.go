@@ -301,13 +301,13 @@ func (f *FlagSource) Priority() int {
 // Load loads configuration from command-line flags
 func (f *FlagSource) Load() (*Config, error) {
 	config := &Config{}
-	
+
 	// Handle flags that are bound to nested config fields
 	f.flags.VisitAll(func(flag *pflag.Flag) {
 		if !flag.Changed {
 			return
 		}
-		
+
 		switch flag.Name {
 		case "debug":
 			if val, err := f.flags.GetBool("debug"); err == nil {

@@ -62,7 +62,7 @@ Examples:
 		if err := applyAnalyzeFlags(cfg, args); err != nil {
 			return fmt.Errorf("failed to apply command flags: %w", err)
 		}
-		
+
 		// Apply debug flag if set from command line
 		if debug {
 			cfg.Debug.Enabled = true
@@ -74,7 +74,7 @@ Examples:
 		// Reset cache if requested
 		if analyzeReset {
 			storeConfig := cache.StoreConfig{
-				MaxFileSize:  50 * 1024 * 1024, // 50MB
+				MaxFileSize:  50 * 1024 * 1024,  // 50MB
 				MaxMemory:    100 * 1024 * 1024, // 100MB
 				FileCacheTTL: time.Hour,
 				CalcCacheTTL: time.Hour,
@@ -127,10 +127,10 @@ func init() {
 	// Sorting and limiting flags
 	analyzeCmd.Flags().StringVar(&analyzeSortBy, "sort-by", "timestamp", "sort by field (timestamp, cost, tokens, model)")
 	analyzeCmd.Flags().IntVar(&analyzeLimit, "limit", 0, "limit number of results (0 = no limit)")
-	
+
 	// Breakdown flag
 	analyzeCmd.Flags().BoolVarP(&analyzeBreakdown, "breakdown", "b", false, "Show per-model cost breakdown")
-	
+
 	// Reset flag
 	analyzeCmd.Flags().BoolVarP(&analyzeReset, "reset", "r", false, "Clear cache before analysis")
 
@@ -320,9 +320,9 @@ func applyBreakdownGrouping(results []models.AnalysisResult) []models.AnalysisRe
 		models map[string]*models.AnalysisResult
 		total  *models.AnalysisResult
 	}
-	
+
 	groups := make(map[string]*modelData)
-	
+
 	// First pass: group by time period and model
 	for _, result := range results {
 		var timeKey string
@@ -337,7 +337,7 @@ func applyBreakdownGrouping(results []models.AnalysisResult) []models.AnalysisRe
 		case "month":
 			timeKey = result.Timestamp.Format("2006-01")
 		}
-		
+
 		if groups[timeKey] == nil {
 			groups[timeKey] = &modelData{
 				models: make(map[string]*models.AnalysisResult),
@@ -348,7 +348,7 @@ func applyBreakdownGrouping(results []models.AnalysisResult) []models.AnalysisRe
 				},
 			}
 		}
-		
+
 		// Add to model-specific data
 		if groups[timeKey].models[result.Model] == nil {
 			groups[timeKey].models[result.Model] = &models.AnalysisResult{
@@ -357,7 +357,7 @@ func applyBreakdownGrouping(results []models.AnalysisResult) []models.AnalysisRe
 				Timestamp: result.Timestamp,
 			}
 		}
-		
+
 		modelResult := groups[timeKey].models[result.Model]
 		modelResult.InputTokens += result.InputTokens
 		modelResult.OutputTokens += result.OutputTokens
@@ -366,7 +366,7 @@ func applyBreakdownGrouping(results []models.AnalysisResult) []models.AnalysisRe
 		modelResult.TotalTokens += result.TotalTokens
 		modelResult.CostUSD += result.CostUSD
 		modelResult.Count++
-		
+
 		// Add to total
 		totalResult := groups[timeKey].total
 		totalResult.InputTokens += result.InputTokens
@@ -377,36 +377,36 @@ func applyBreakdownGrouping(results []models.AnalysisResult) []models.AnalysisRe
 		totalResult.CostUSD += result.CostUSD
 		totalResult.Count++
 	}
-	
+
 	// Second pass: flatten into results array
 	var aggregated []models.AnalysisResult
-	
+
 	// Sort time keys
 	var timeKeys []string
 	for key := range groups {
 		timeKeys = append(timeKeys, key)
 	}
 	sort.Strings(timeKeys)
-	
+
 	for _, timeKey := range timeKeys {
 		groupData := groups[timeKey]
-		
+
 		// Sort model names
 		var modelNames []string
 		for modelName := range groupData.models {
 			modelNames = append(modelNames, modelName)
 		}
 		sort.Strings(modelNames)
-		
+
 		// Add model-specific results
 		for _, modelName := range modelNames {
 			aggregated = append(aggregated, *groupData.models[modelName])
 		}
-		
+
 		// Add total row
 		aggregated = append(aggregated, *groupData.total)
 	}
-	
+
 	return aggregated
 }
 
@@ -476,7 +476,7 @@ func outputTable(results []models.AnalysisResult) error {
 			if analyzeBreakdown && i > 0 && results[i-1].Model == "TOTAL" && result.Model != "TOTAL" && i < len(results) {
 				fmt.Fprintln(w, "")
 			}
-			
+
 			fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t$%.4f\n",
 				result.GroupKey,
 				result.Model,
@@ -588,7 +588,7 @@ func outputSummary(results []models.AnalysisResult) error {
 		totalTokens += result.TotalTokens
 		totalCost += result.CostUSD
 		modelCounts[result.Model]++
-		
+
 		// Aggregate model stats for breakdown
 		stat := modelStats[result.Model]
 		stat.InputTokens += result.InputTokens
@@ -619,12 +619,12 @@ func outputSummary(results []models.AnalysisResult) error {
 	for model, count := range modelCounts {
 		fmt.Printf("  %s: %d entries\n", model, count)
 	}
-	
+
 	// Show per-model breakdown if requested
 	if analyzeBreakdown {
 		fmt.Printf("\nPer-Model Cost Breakdown:\n")
 		fmt.Printf("========================\n")
-		
+
 		// Sort models by cost (descending)
 		type modelBreakdown struct {
 			name  string
@@ -637,16 +637,16 @@ func outputSummary(results []models.AnalysisResult) error {
 				Cost                float64
 			}
 		}
-		
+
 		var breakdowns []modelBreakdown
 		for model, stats := range modelStats {
 			breakdowns = append(breakdowns, modelBreakdown{name: model, stats: stats})
 		}
-		
+
 		sort.Slice(breakdowns, func(i, j int) bool {
 			return breakdowns[i].stats.Cost > breakdowns[j].stats.Cost
 		})
-		
+
 		for _, b := range breakdowns {
 			fmt.Printf("\n%s:\n", b.name)
 			fmt.Printf("  Input Tokens: %d\n", b.stats.InputTokens)
@@ -680,4 +680,3 @@ func parseTimeString(timeStr string) (time.Time, error) {
 
 	return time.Time{}, fmt.Errorf("unable to parse time: %s", timeStr)
 }
-

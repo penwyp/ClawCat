@@ -83,7 +83,7 @@ func NewModel(cfg Config) Model {
 		styles:        NewStyles(DefaultTheme()),
 		spinner:       s,
 		lastUpdate:    time.Now(),
-		streamingMode: !cfg.CompactMode, // Enable streaming mode unless in compact mode
+		streamingMode: false, // Disable streaming mode for full dashboard display
 	}
 
 	// Initialize views

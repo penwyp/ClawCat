@@ -27,7 +27,7 @@ func NewAnalyzer(cfg *config.Config) (*Analyzer, error) {
 
 	// Use debug console logging if debug mode is enabled
 	debugToConsole := cfg.Debug.Enabled
-	
+
 	return &Analyzer{
 		config: cfg,
 		logger: logging.NewLoggerWithDebug(cfg.App.LogLevel, cfg.App.LogFile, debugToConsole),
@@ -62,8 +62,8 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 	var cacheStore fileio.CacheStore
 	if a.config.Data.SummaryCache.Enabled {
 		storeConfig := cache.StoreConfig{
-			MaxFileSize:  50 * 1024 * 1024, // 50MB
-			MaxMemory:    100 * 1024 * 1024, // 100MB
+			MaxFileSize:  50 * 1024 * 1024,  // 50MB
+			MaxMemory:    200 * 1024 * 1024, // 200MB
 			FileCacheTTL: time.Hour,
 			CalcCacheTTL: time.Hour,
 		}
@@ -104,9 +104,9 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			allResults = append(allResults, analysisResult)
 		}
 
-		a.logger.Infof("Processed %d entries from %s (files: %d, errors: %d)", 
-			result.Metadata.EntriesLoaded, path, 
-			result.Metadata.FilesProcessed, 
+		a.logger.Infof("Processed %d entries from %s (files: %d, errors: %d)",
+			result.Metadata.EntriesLoaded, path,
+			result.Metadata.FilesProcessed,
 			len(result.Metadata.ProcessingErrors))
 	}
 
@@ -122,7 +122,6 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 	a.logger.Infof("Analysis completed: %d results from %d paths", len(allResults), len(paths))
 	return allResults, nil
 }
-
 
 // generateSessionID generates a session ID based on timestamp
 func (a *Analyzer) generateSessionID(timestamp time.Time) string {

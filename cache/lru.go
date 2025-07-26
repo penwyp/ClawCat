@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/penwyp/ClawCat/logging"
 )
 
 // LRUCache implements a Least Recently Used eviction policy cache
@@ -278,6 +280,10 @@ func (c *LRUCache) removeFromList(item *lruItem) {
 }
 
 func (c *LRUCache) removeItem(item *lruItem) {
+	// Add debug logging for evicted items
+	logging.LogDebugf("Evicting cache item: key=%s, size=%d, age=%v, persistent=%v",
+		item.key, item.size, time.Since(item.createTime), item.persistent)
+
 	delete(c.items, item.key)
 	c.removeFromList(item)
 	c.size -= item.size
@@ -293,18 +299,15 @@ func (c *LRUCache) evictOldest() error {
 		return fmt.Errorf("cache is empty")
 	}
 
-	// Find the oldest non-persistent item
-	current := c.tail.prev
-	for current != c.head {
-		if !current.persistent {
-			c.removeItem(current)
-			c.stats.Evictions++
-			return nil
-		}
-		current = current.prev
+	// Evict the oldest item regardless of persistent flag
+	oldest := c.tail.prev
+	if oldest != c.head {
+		c.removeItem(oldest)
+		c.stats.Evictions++
+		return nil
 	}
 
-	return fmt.Errorf("no evictable items found")
+	return fmt.Errorf("no items to evict")
 }
 
 // estimateSize provides a rough size estimate for cache values

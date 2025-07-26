@@ -104,8 +104,8 @@ func NewLoggerWithDebug(levelStr string, logFile string, debugToConsole bool) *L
 	// Add appropriate output based on debug mode
 	if debugToConsole {
 		logger.AddOutput(NewConsoleOutput(os.Stderr, FormatText))
-	} 
-	
+	}
+
 	if logFile != "" {
 		fileOutput, err := NewFileOutput(logFile, FormatText)
 		if err != nil {
@@ -273,12 +273,12 @@ func (l *Logger) With(fields ...Field) LoggerInterface {
 func (l *Logger) WithContext(ctx context.Context) LoggerInterface {
 	// Extract common context values
 	fields := []Field{}
-	
+
 	// Add trace ID if present
 	if traceID := ctx.Value("trace_id"); traceID != nil {
 		fields = append(fields, Field{Key: "trace_id", Value: traceID})
 	}
-	
+
 	// Add user ID if present
 	if userID := ctx.Value("user_id"); userID != nil {
 		fields = append(fields, Field{Key: "user_id", Value: userID})
@@ -401,7 +401,7 @@ func (c *ConsoleOutput) Write(entry LogEntry) error {
 		// Text format
 		timestamp := entry.Timestamp.Format("2006/01/02 15:04:05")
 		output = fmt.Sprintf("%s [%s] %s", timestamp, entry.Level, entry.Message)
-		
+
 		// Add fields if any
 		if len(entry.Fields) > 0 {
 			fieldStrs := make([]string, 0, len(entry.Fields))
@@ -457,7 +457,7 @@ func (f *FileOutput) Write(entry LogEntry) error {
 		// Text format with caller info
 		timestamp := entry.Timestamp.Format("2006/01/02 15:04:05")
 		output = fmt.Sprintf("%s [%s] %s", timestamp, entry.Level, entry.Message)
-		
+
 		// Add fields if any
 		if len(entry.Fields) > 0 {
 			fieldStrs := make([]string, 0, len(entry.Fields))

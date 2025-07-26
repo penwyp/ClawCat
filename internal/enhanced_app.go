@@ -257,7 +257,7 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 		entries := ea.extractEntriesFromBlocks(data.Data.Blocks)
 		ea.logger.Infof("Updating UI with %d sessions and %d entries", len(sessions), len(entries))
 		ea.ui.UpdateData(sessions, entries)
-		
+
 		// Also send the metrics update
 		if metrics != nil {
 			// Convert enhanced metrics to realtime metrics for UI
@@ -265,7 +265,7 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 			if metrics.BurnRate != nil {
 				burnRate = metrics.BurnRate.TokensPerMinute
 			}
-			
+
 			realtimeMetrics := &calculations.RealtimeMetrics{
 				CurrentTokens: metrics.CurrentTokens,
 				CurrentCost:   metrics.CurrentCost,
@@ -365,7 +365,7 @@ func (ea *EnhancedApplication) getDataPath() string {
 		fmt.Sprintf("%s/.config/claude/projects", homeDir),
 		fmt.Sprintf("%s/Library/Application Support/claude/projects", homeDir),
 	}
-	
+
 	// Also check test data path for development/testing
 	testDataPath := "/Users/penwyp/Dat/worktree/claude_data_snapshot/projects"
 	if _, err := os.Stat(testDataPath); err == nil {
