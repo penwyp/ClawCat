@@ -429,25 +429,6 @@ func (ea *EnhancedApplication) reloadConfig() error {
 	return nil
 }
 
-// collectMetrics collects and exports metrics
-func (ea *EnhancedApplication) collectMetrics() {
-	defer ea.wg.Done()
-
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			if ea.metrics != nil {
-				ea.metrics.Export()
-			}
-
-		case <-ea.ctx.Done():
-			return
-		}
-	}
-}
 
 // shutdown performs application cleanup
 func (ea *EnhancedApplication) shutdown() error {

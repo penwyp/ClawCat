@@ -7,7 +7,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/calculations"
@@ -308,49 +307,6 @@ func (a *Application) reloadConfig() error {
 	return nil
 }
 
-// collectMetrics collects and exports metrics
-func (a *Application) collectMetrics() {
-	defer a.wg.Done()
-
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			a.updateMetrics()
-			if a.metrics != nil {
-				a.metrics.Export()
-			}
-
-		case <-a.ctx.Done():
-			return
-		}
-	}
-}
-
-// updateMetrics updates current metrics
-func (a *Application) updateMetrics() {
-	if a.metrics == nil {
-		return
-	}
-
-	// Update session metrics
-	sessions := a.manager.GetAllActiveSessions()
-	a.metrics.ActiveSessions = len(sessions)
-
-	// Calculate totals
-	var totalTokens int64
-	var totalCost float64
-
-	for _, session := range sessions {
-		totalTokens += int64(session.Stats.TotalTokens)
-		totalCost += session.Stats.TotalCost
-	}
-
-	a.metrics.TotalTokens = totalTokens
-	a.metrics.TotalCost = totalCost
-}
 
 // GetManager returns the session manager
 func (a *Application) GetManager() *sessions.Manager {

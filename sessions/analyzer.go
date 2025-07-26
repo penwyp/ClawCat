@@ -2,9 +2,7 @@ package sessions
 
 import (
 	"fmt"
-	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -381,27 +379,6 @@ func (sa *SessionAnalyzer) isOpusLimit(contentLower string) bool {
 	return false
 }
 
-// extractWaitTime extracts wait time from limit messages
-func (sa *SessionAnalyzer) extractWaitTime(content string, baseTime time.Time) (time.Time, int) {
-	// Look for patterns like "Try again in 3 hours" or "wait 120 minutes"
-	hourPattern := regexp.MustCompile(`(\d+)\s*hour`)
-	minutePattern := regexp.MustCompile(`(\d+)\s*minute`)
-
-	var waitMinutes int
-
-	if match := hourPattern.FindStringSubmatch(strings.ToLower(content)); len(match) > 1 {
-		if hours, err := strconv.Atoi(match[1]); err == nil {
-			waitMinutes = hours * 60
-		}
-	} else if match := minutePattern.FindStringSubmatch(strings.ToLower(content)); len(match) > 1 {
-		if minutes, err := strconv.Atoi(match[1]); err == nil {
-			waitMinutes = minutes
-		}
-	}
-
-	resetTime := baseTime.Add(time.Duration(waitMinutes) * time.Minute)
-	return resetTime, waitMinutes
-}
 
 // contains checks if a string slice contains a specific string
 func contains(slice []string, item string) bool {
