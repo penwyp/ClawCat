@@ -52,7 +52,6 @@ type FileSummary struct {
 	ProcessedHashes map[string]bool
 }
 
-
 type ModelStat struct {
 	Model               string
 	EntryCount          int
@@ -84,16 +83,6 @@ type LoadMetadata struct {
 func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, error) {
 	startTime := time.Now()
 
-	// Default data path if not provided
-	if opts.DataPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		opts.DataPath = filepath.Join(homeDir, ".claude", "projects")
-	}
-
-
 	// Find all JSONL files
 	jsonlFiles, err := findJSONLFiles(opts.DataPath)
 	if err != nil {
@@ -102,7 +91,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 
 	// Check if we should use concurrent loading
 	useConcurrent := len(jsonlFiles) > 10 // Use concurrent loading for more than 10 files
-	
+
 	var allEntries []models.UsageEntry
 	var allRawEntries []map[string]interface{}
 	var processingErrors []string
@@ -112,22 +101,22 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 		// Use concurrent loader
 		loader := NewConcurrentLoader(0) // Use default worker count
 		ctx := context.Background()
-		
+
 		// Load files concurrently with progress
 		results, err := loader.LoadFilesWithProgress(ctx, jsonlFiles, opts)
 		if err != nil {
 			return nil, fmt.Errorf("concurrent loading failed: %w", err)
 		}
-		
+
 		// Merge results
 		var mergeErrors []error
 		allEntries, allRawEntries, mergeErrors = MergeResults(results)
-		
+
 		// Convert errors to strings
 		for _, err := range mergeErrors {
 			processingErrors = append(processingErrors, err.Error())
 		}
-		
+
 		// Calculate cache stats
 		for _, result := range results {
 			if result.Error == nil {
@@ -141,7 +130,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	} else {
 		// Use sequential loading for small file counts
 		var processedHashes = make(map[string]bool) // For deduplication
-		
+
 		// Calculate cutoff time if specified
 		var cutoffTime *time.Time
 		if opts.HoursBack != nil {
@@ -277,14 +266,14 @@ func hasAssistantMessages(filePath string) bool {
 	for i := 0; i < 5 && scanner.Scan(); i++ {
 		line := scanner.Text()
 		// Quick string matching - look for assistant messages with usage data
-		if strings.Contains(line, `"type":"assistant"`) && 
-		   (strings.Contains(line, `"usage"`) || strings.Contains(line, `"input_tokens"`)) {
+		if strings.Contains(line, `"type":"assistant"`) &&
+			(strings.Contains(line, `"usage"`) || strings.Contains(line, `"input_tokens"`)) {
 			return true
 		}
 		// Also check for legacy format (no type field but has usage)
-		if !strings.Contains(line, `"type":`) && 
-		   strings.Contains(line, `"usage"`) &&
-		   strings.Contains(line, `"input_tokens"`) {
+		if !strings.Contains(line, `"type":`) &&
+			strings.Contains(line, `"usage"`) &&
+			strings.Contains(line, `"input_tokens"`) {
 			return true
 		}
 	}
@@ -373,13 +362,13 @@ func processSingleFileWithCacheInternal(filePath string, opts LoadUsageEntriesOp
 	var entries []models.UsageEntry
 	var rawEntries []map[string]interface{}
 	var err error
-	
+
 	if regularMap != nil {
 		entries, rawEntries, err = processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
 	} else {
 		entries, rawEntries, err = processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
 	}
-	
+
 	if err != nil {
 		return entries, rawEntries, false, err
 	}
@@ -408,7 +397,7 @@ func processSingleFileWithCacheInternal(filePath string, opts LoadUsageEntriesOp
 			} else {
 				logging.LogDebugf("Cached summary for %s", filepath.Base(filePath))
 			}
-		} 
+		}
 	} else if opts.IsWatchMode && opts.EnableSummaryCache {
 		logging.LogDebugf("Skipping cache write for %s (watch mode)", filepath.Base(filePath))
 	}
@@ -438,10 +427,9 @@ func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime
 
 	var entries []models.UsageEntry
 	var rawEntries []map[string]interface{}
-	isDebugFile := strings.Contains(filePath, "073a4655-bd12-402f-904c-7f1fb7d2a563") // Debug first file
 
 	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // 64KB initial, 1MB max
+	scanner.Buffer(make([]byte, 0, 64*1024), 200*1024*1024) // 64KB initial, 1MB max
 
 	lineNum := 0
 	processedLines := 0
@@ -459,14 +447,7 @@ func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime
 
 		var rawData map[string]interface{}
 		if err := sonic.Unmarshal(line, &rawData); err != nil {
-			if isDebugFile && lineNum <= 3 {
-				logging.LogDebugf("  JSON parse error line %d: %v", lineNum, err)
-			}
 			continue // Skip invalid JSON lines
-		}
-
-		if isDebugFile && lineNum <= 3 {
-			logging.LogDebugf("  Line %d parsed successfully, type=%v", lineNum, rawData["type"])
 		}
 
 		// Filter by timestamp if cutoff is specified
@@ -475,9 +456,6 @@ func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime
 				if timestamp, err := time.Parse(time.RFC3339, timestampStr); err == nil {
 					if timestamp.Before(*cutoffTime) {
 						skippedByTime++
-						if isDebugFile && lineNum <= 3 {
-							logging.LogDebugf("  Line %d skipped by time filter", lineNum)
-						}
 						continue
 					}
 				}
@@ -488,15 +466,12 @@ func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime
 		entry, err := convertRawToUsageEntry(rawData, mode)
 		if err != nil {
 			conversionErrors++
-			if isDebugFile && lineNum <= 3 {
-				logging.LogDebugf("  Line %d conversion error: %v", lineNum, err)
-			}
 			continue // Skip entries that can't be converted
 		}
 
 		// Deduplicate based on content hash
 		entryHash := generateEntryHash(entry)
-		
+
 		// Check for duplicate using the appropriate map type
 		isDuplicate := false
 		if regularMap != nil {
@@ -510,12 +485,9 @@ func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime
 			_, loaded := syncMap.LoadOrStore(entryHash, true)
 			isDuplicate = loaded
 		}
-		
+
 		if isDuplicate {
 			duplicates++
-			if isDebugFile && lineNum <= 3 {
-				logging.LogDebugf("  Line %d duplicate entry", lineNum)
-			}
 			continue
 		}
 
@@ -525,10 +497,6 @@ func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime
 		entries = append(entries, entry)
 		processedLines++
 
-		if isDebugFile && lineNum <= 3 {
-			logging.LogDebugf("  Line %d successfully processed", lineNum)
-		}
-
 		if includeRaw {
 			rawEntries = append(rawEntries, rawData)
 		}
@@ -536,11 +504,6 @@ func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime
 
 	if err := scanner.Err(); err != nil {
 		return entries, rawEntries, fmt.Errorf("scanner error: %w", err)
-	}
-
-	if isDebugFile {
-		logging.LogDebugf("  File summary: %d total lines, %d processed, %d skipped by time, %d conversion errors, %d duplicates",
-			lineNum, processedLines, skippedByTime, conversionErrors, duplicates)
 	}
 
 	return entries, rawEntries, nil
@@ -743,11 +706,11 @@ func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Ti
 			}
 
 			entry.NormalizeModel()
-			
+
 			// Check if this entry would be a duplicate
 			entryHash := generateEntryHash(entry)
 			isDuplicate := false
-			
+
 			if regularMap != nil {
 				if regularMap[entryHash] {
 					isDuplicate = true
@@ -756,7 +719,7 @@ func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Ti
 				_, loaded := syncMap.Load(entryHash)
 				isDuplicate = loaded
 			}
-			
+
 			if !isDuplicate {
 				entries = append(entries, entry)
 			}
@@ -873,7 +836,6 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 
 	return summary
 }
-
 
 // IsExpired checks if the summary is expired based on file modification time or size
 func (fs *FileSummary) IsExpired(currentModTime time.Time, currentSize int64) bool {

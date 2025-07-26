@@ -3,7 +3,6 @@ package internal
 import (
 	"fmt"
 	"github.com/penwyp/ClawCat/logging"
-	"os"
 	"sort"
 	"time"
 
@@ -32,26 +31,10 @@ func NewAnalyzer(cfg *config.Config) (*Analyzer, error) {
 // Analyze performs analysis on the specified data paths
 func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 	if len(paths) == 0 {
-		paths = a.config.Data.Paths
-	}
-
-	// If still no paths, use default path
-	if len(paths) == 0 {
-		homeDir, err := os.UserHomeDir()
-		if err == nil {
-			defaultPath := fmt.Sprintf("%s/.claude/projects", homeDir)
-			if _, err := os.Stat(defaultPath); err == nil {
-				paths = []string{defaultPath}
-				logging.GetLogger().Infof("Using default data path: %s", defaultPath)
-			}
-		}
-	}
-
-	if len(paths) == 0 {
 		return nil, fmt.Errorf("no data paths found - please specify paths as arguments (e.g., clawcat analyze ~/claude-logs) or ensure ~/.claude/projects exists")
 	}
 
-	logging.GetLogger().Infof("Starting analysis of %d paths: %v", len(paths), paths)
+	logging.LogInfof("Starting analysis of %d paths: %v", len(paths), paths)
 
 	// Create cache store if caching is enabled
 	var cacheStore fileio.CacheStore
@@ -79,7 +62,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 
 		result, err := fileio.LoadUsageEntries(opts)
 		if err != nil {
-			logging.GetLogger().Errorf("Failed to load usage entries from %s: %v", path, err)
+			logging.LogErrorf("Failed to load usage entries from %s: %v", path, err)
 			continue
 		}
 
@@ -100,7 +83,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			allResults = append(allResults, analysisResult)
 		}
 
-		logging.GetLogger().Infof("Processed %d entries from %s (files: %d, errors: %d)",
+		logging.LogInfof("Processed %d entries from %s (files: %d, errors: %d)",
 			result.Metadata.EntriesLoaded, path,
 			result.Metadata.FilesProcessed,
 			len(result.Metadata.ProcessingErrors))
@@ -115,7 +98,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 		return nil, fmt.Errorf("no usage data found in any of the specified paths: %v\n\nExpected data format:\n- JSONL files with usage data\n- Files should contain either 'type: message' with usage field, or 'type: assistant' with message.usage field\n- Check that the paths contain Claude conversation or API usage logs", paths)
 	}
 
-	logging.GetLogger().Infof("Analysis completed: %d results from %d paths", len(allResults), len(paths))
+	logging.LogInfof("Analysis completed: %d results from %d paths", len(allResults), len(paths))
 	return allResults, nil
 }
 

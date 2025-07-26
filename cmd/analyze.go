@@ -83,7 +83,7 @@ Examples:
 			if err := cacheStore.Clear(); err != nil {
 				return fmt.Errorf("failed to clear cache: %w", err)
 			}
-			fmt.Println("Cache cleared successfully")
+			logging.GetLogger().Info("Cache cleared successfully")
 		}
 
 		// Create analyzer
