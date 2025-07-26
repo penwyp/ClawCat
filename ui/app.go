@@ -20,12 +20,13 @@ type App struct {
 
 // Config holds UI configuration
 type Config struct {
-	RefreshRate   time.Duration
-	Theme         string
-	ShowSpinner   bool
-	CompactMode   bool
-	ChartHeight   int
-	TablePageSize int
+	RefreshRate      time.Duration
+	Theme            string
+	ShowSpinner      bool
+	CompactMode      bool
+	ChartHeight      int
+	TablePageSize    int
+	SubscriptionPlan string
 }
 
 // DefaultConfig returns the default UI configuration

@@ -55,7 +55,7 @@ Examples:
 		// Configuration is validated by the validator in the config package
 
 		// Initialize global logger with debug mode support
-		logging.InitGlobalLoggerWithDebug(cfg.App.LogLevel, cfg.App.LogFile, debug)
+		logging.InitLogger(cfg.App.LogLevel, cfg.App.LogFile, debug)
 
 		// Create and run enhanced application
 		app, err := internal.NewEnhancedApplication(cfg)

@@ -109,8 +109,8 @@ func (rp *RealtimeUpdatePipeline) Start() error {
 		return fmt.Errorf("pipeline is already running")
 	}
 
-	if logging.GetGlobalLogger() != nil {
-		logging.GetGlobalLogger().Info("Starting realtime update pipeline...")
+	if logging.GetLogger() != nil {
+		logging.GetLogger().Info("Starting realtime update pipeline...")
 	}
 
 	// 启动核心组件

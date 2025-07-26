@@ -53,6 +53,15 @@ func NewProgressSection(width int) *ProgressSection {
 
 // Update 更新进度条数据
 func (ps *ProgressSection) Update(metrics *calculations.RealtimeMetrics, limits Limits) {
+	// Check for nil metrics
+	if metrics == nil {
+		// Create empty progress bars
+		ps.TokenProgress = NewProgressBar("Token Usage", 0, float64(limits.TokenLimit))
+		ps.CostProgress = NewProgressBar("Cost Usage", 0, limits.CostLimit)
+		ps.TimeProgress = NewProgressBar("Time Elapsed", 0, 300) // 5 hours in minutes
+		return
+	}
+	
 	// 更新 Token 进度条
 	ps.TokenProgress = ps.createTokenProgress(metrics, limits)
 
@@ -110,7 +119,13 @@ func (ps *ProgressSection) createCostProgress(metrics *calculations.RealtimeMetr
 
 // createTimeProgress 创建时间进度条
 func (ps *ProgressSection) createTimeProgress(metrics *calculations.RealtimeMetrics) *ProgressBar {
-	elapsed := time.Since(metrics.SessionStart)
+	var elapsed time.Duration
+	if !metrics.SessionStart.IsZero() {
+		elapsed = time.Since(metrics.SessionStart)
+	} else {
+		// If session hasn't started, show 0 elapsed
+		elapsed = 0
+	}
 	total := 5 * time.Hour
 
 	pb := NewProgressBar(

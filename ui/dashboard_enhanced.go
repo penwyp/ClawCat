@@ -402,10 +402,51 @@ func (d *EnhancedDashboardView) formatNumber(n int64) string {
 
 // getLimitsFromConfig 从配置获取限制值
 func getLimitsFromConfig(config Config) components.Limits {
-	// 这里暂时使用默认值，实际应该从配置中读取
-	return components.Limits{
-		TokenLimit: 1000000, // 1M tokens
-		CostLimit:  18.00,   // $18 Pro plan default
+	// Default to Pro plan if not specified
+	plan := "pro"
+	if config.SubscriptionPlan != "" {
+		plan = strings.ToLower(config.SubscriptionPlan)
+	}
+	
+	// Map plan names to limits
+	switch plan {
+	case "free":
+		return components.Limits{
+			TokenLimit: 0,
+			CostLimit:  0.00,
+		}
+	case "pro":
+		return components.Limits{
+			TokenLimit: 1000000, // 1M tokens
+			CostLimit:  18.00,   // $18
+		}
+	case "max5", "max-5":
+		return components.Limits{
+			TokenLimit: 2000000, // 2M tokens
+			CostLimit:  35.00,   // $35
+		}
+	case "max20", "max-20":
+		return components.Limits{
+			TokenLimit: 8000000, // 8M tokens
+			CostLimit:  140.00,  // $140
+		}
+	case "custom":
+		// For custom plan, check if custom limits are provided
+		tokenLimit := 0
+		costLimit := 0.0
+		
+		// These would be read from config.CustomTokenLimit and config.CustomCostLimit
+		// For now, use default Pro limits
+		return components.Limits{
+			TokenLimit: 1000000,
+			CostLimit:  18.00,
+		}
+	default:
+		// Default to Pro plan
+		return components.Limits{
+			TokenLimit: 1000000,
+			CostLimit:  18.00,
+		}
 	}
 }
 

@@ -358,8 +358,8 @@ func (am *AlertManager) SendAlert(err *RecoverableError, context *ErrorContext) 
 		go func(ch AlertChannel) {
 			if err := ch.Send(alert); err != nil {
 				// 记录告警发送失败
-				if logging.GetGlobalLogger() != nil {
-					logging.GetGlobalLogger().Errorf("Failed to send alert: %v", err)
+				if logging.GetLogger() != nil {
+					logging.GetLogger().Errorf("Failed to send alert: %v", err)
 				}
 			}
 		}(channel)

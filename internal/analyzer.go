@@ -60,12 +60,17 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 
 	// Create cache store if caching is enabled
 	var cacheStore fileio.CacheStore
-	if a.config.Data.SummaryCache.Enabled {
+	if a.config.Cache.Enabled {
 		storeConfig := cache.StoreConfig{
-			MaxFileSize:  50 * 1024 * 1024,  // 50MB
-			MaxMemory:    200 * 1024 * 1024, // 200MB
-			FileCacheTTL: time.Hour,
-			CalcCacheTTL: time.Hour,
+			MaxFileSize:     50 * 1024 * 1024,               // 50MB
+			MaxMemory:       a.config.Cache.MaxMemory,       // From config
+			MaxDiskSize:     a.config.Cache.MaxDiskSize,     // From config
+			DiskCacheDir:    a.config.Cache.Dir,             // From config
+			FileCacheTTL:    5 * time.Minute,                // File cache TTL
+			CalcCacheTTL:    time.Hour,                      // Memory cache TTL
+			DiskCacheTTL:    a.config.Cache.TTL,             // Disk cache TTL from config
+			CleanupInterval: a.config.Cache.CleanupInterval, // Cleanup interval from config
+			EnableDiskCache: true,                           // Enable L2 disk cache
 		}
 		cacheStore = fileio.NewStoreAdapter(cache.NewStore(storeConfig))
 	}

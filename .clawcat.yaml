@@ -3,14 +3,13 @@
 
 # Application settings
 app:
-  debug: false
+  debug: true
   log_level: "info"
   
 # File paths
 paths:
   data_dir: "~/.claude"
   cache_dir: "~/.cache/clawcat"
-  config_dir: "~/.config/clawcat"
 
 # UI settings  
 ui:
@@ -20,7 +19,7 @@ ui:
 
 # Cache settings
 cache:
-  max_memory: "100MB"
+  max_memory: "200MB"
   eviction_policy: "lru"
   ttl: "1h"
 

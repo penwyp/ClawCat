@@ -118,15 +118,20 @@ func (ea *EnhancedApplication) Run() error {
 
 // bootstrap initializes all application components
 func (ea *EnhancedApplication) bootstrap() error {
-	// Initialize cache
+	// Initialize cache with configuration
 	ea.cache = cache.NewStore(cache.StoreConfig{
-		MaxFileSize:       10 * 1024 * 1024, // 10MB
-		MaxMemory:         50 * 1024 * 1024, // 50MB
-		FileCacheTTL:      24 * time.Hour,
-		CalcCacheTTL:      1 * time.Hour,
+		MaxFileSize:       10 * 1024 * 1024,                // 10MB
+		MaxMemory:         ea.config.Cache.MaxMemory,       // From config
+		MaxDiskSize:       ea.config.Cache.MaxDiskSize,     // From config
+		DiskCacheDir:      ea.config.Cache.Dir,             // From config
+		FileCacheTTL:      24 * time.Hour,                  // File cache TTL
+		CalcCacheTTL:      1 * time.Hour,                   // Memory cache TTL
+		DiskCacheTTL:      ea.config.Cache.TTL,             // Disk cache TTL from config
+		CleanupInterval:   ea.config.Cache.CleanupInterval, // Cleanup interval from config
 		CompressionLevel:  6,
 		EnableMetrics:     true,
 		EnableCompression: true,
+		EnableDiskCache:   ea.config.Cache.Enabled, // Enable disk cache from config
 	})
 
 	// Initialize metrics calculator
@@ -147,12 +152,13 @@ func (ea *EnhancedApplication) bootstrap() error {
 
 	// Initialize UI
 	uiConfig := ui.Config{
-		RefreshRate:   ea.config.UI.RefreshRate,
-		Theme:         ea.config.UI.Theme,
-		ShowSpinner:   true,
-		CompactMode:   ea.config.UI.CompactMode,
-		ChartHeight:   10,
-		TablePageSize: 20,
+		RefreshRate:      ea.config.UI.RefreshRate,
+		Theme:            ea.config.UI.Theme,
+		ShowSpinner:      true,
+		CompactMode:      ea.config.UI.CompactMode,
+		ChartHeight:      10,
+		TablePageSize:    20,
+		SubscriptionPlan: ea.config.Subscription.Plan,
 	}
 	ea.ui = ui.NewApp(uiConfig)
 
@@ -266,12 +272,22 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 				burnRate = metrics.BurnRate.TokensPerMinute
 			}
 
+			// Convert model distribution
+			modelDistribution := make(map[string]calculations.ModelMetrics)
+			for model, stats := range metrics.ModelDistribution {
+				modelDistribution[model] = calculations.ModelMetrics{
+					TokenCount: stats.TokenCount,
+					Cost:       stats.Cost,
+				}
+			}
+			
 			realtimeMetrics := &calculations.RealtimeMetrics{
-				CurrentTokens: metrics.CurrentTokens,
-				CurrentCost:   metrics.CurrentCost,
-				BurnRate:      burnRate,
-				SessionStart:  metrics.SessionStart,
-				SessionEnd:    metrics.SessionEnd,
+				CurrentTokens:     metrics.CurrentTokens,
+				CurrentCost:       metrics.CurrentCost,
+				BurnRate:          burnRate,
+				SessionStart:      metrics.SessionStart,
+				SessionEnd:        metrics.SessionEnd,
+				ModelDistribution: modelDistribution,
 			}
 			ea.ui.SendMessage(ui.RealtimeMetricsMsg{Metrics: realtimeMetrics})
 		}

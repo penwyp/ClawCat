@@ -12,7 +12,8 @@ import (
 // Store provides a unified cache store with multiple backends
 type Store struct {
 	fileCache  *FileCache
-	lruCache   *LRUCache
+	lruCache   *LRUCache  // L1: Memory cache
+	diskCache  *DiskCache // L2: Disk cache
 	memManager *MemoryManager
 	config     StoreConfig
 	mu         sync.RWMutex
@@ -22,17 +23,23 @@ type Store struct {
 type StoreConfig struct {
 	MaxFileSize       int64         `json:"max_file_size"`
 	MaxMemory         int64         `json:"max_memory"`
+	MaxDiskSize       int64         `json:"max_disk_size"`  // L2 disk cache size
+	DiskCacheDir      string        `json:"disk_cache_dir"` // Disk cache directory
 	FileCacheTTL      time.Duration `json:"file_cache_ttl"`
 	CalcCacheTTL      time.Duration `json:"calc_cache_ttl"`
+	DiskCacheTTL      time.Duration `json:"disk_cache_ttl"`   // Disk cache TTL
+	CleanupInterval   time.Duration `json:"cleanup_interval"` // Periodic cleanup interval
 	CompressionLevel  int           `json:"compression_level"`
 	EnableMetrics     bool          `json:"enable_metrics"`
 	EnableCompression bool          `json:"enable_compression"`
+	EnableDiskCache   bool          `json:"enable_disk_cache"` // Enable L2 disk cache
 }
 
 // StoreStats provides overall cache store statistics
 type StoreStats struct {
 	FileCache FileCacheStats   `json:"file_cache"`
 	LRUCache  CacheStats       `json:"lru_cache"`
+	DiskCache DiskCacheStats   `json:"disk_cache"`
 	Memory    StoreMemoryStats `json:"memory"`
 	Total     TotalStats       `json:"total"`
 }
@@ -60,13 +67,25 @@ func NewStore(config StoreConfig) *Store {
 		config.MaxFileSize = 50 * 1024 * 1024 // 50MB
 	}
 	if config.MaxMemory <= 0 {
-		config.MaxMemory = 100 * 1024 * 1024 // 100MB
+		config.MaxMemory = 200 * 1024 * 1024 // 200MB
+	}
+	if config.MaxDiskSize <= 0 {
+		config.MaxDiskSize = 1024 * 1024 * 1024 // 1GB
+	}
+	if config.DiskCacheDir == "" {
+		config.DiskCacheDir = "~/.cache/clawcat"
 	}
 	if config.FileCacheTTL <= 0 {
 		config.FileCacheTTL = 5 * time.Minute
 	}
 	if config.CalcCacheTTL <= 0 {
 		config.CalcCacheTTL = 1 * time.Minute
+	}
+	if config.DiskCacheTTL <= 0 {
+		config.DiskCacheTTL = 24 * time.Hour // 24 hours for disk cache
+	}
+	if config.CleanupInterval <= 0 {
+		config.CleanupInterval = time.Hour // Default cleanup every hour
 	}
 	if config.CompressionLevel <= 0 {
 		config.CompressionLevel = 6 // Default compression
@@ -76,6 +95,18 @@ func NewStore(config StoreConfig) *Store {
 	fileCache := NewFileCache(config.MaxFileSize)
 	lruCache := NewLRUCache(config.MaxMemory / 2) // Allocate half memory to general cache
 
+	// Create disk cache if enabled
+	var diskCache *DiskCache
+	if config.EnableDiskCache {
+		var err error
+		diskCache, err = NewDiskCache(config.DiskCacheDir, config.MaxDiskSize, config.DiskCacheTTL)
+		if err != nil {
+			// Log error but continue without disk cache
+			fmt.Printf("Warning: Failed to initialize disk cache: %v\n", err)
+			diskCache = nil
+		}
+	}
+
 	// Create memory manager
 	memManager := NewMemoryManager(config.MaxMemory)
 	_ = memManager.Register(lruCache)
@@ -83,8 +114,14 @@ func NewStore(config StoreConfig) *Store {
 	store := &Store{
 		fileCache:  fileCache,
 		lruCache:   lruCache,
+		diskCache:  diskCache,
 		memManager: memManager,
 		config:     config,
+	}
+
+	// Setup periodic cleanup if disk cache is enabled
+	if diskCache != nil && config.EnableDiskCache {
+		store.SetupPeriodicCleanup(config.CleanupInterval)
 	}
 
 	return store
@@ -145,26 +182,35 @@ func (s *Store) SetCalculation(key string, value interface{}) error {
 	return s.lruCache.Set(key, value)
 }
 
-// GetFileSummary retrieves a cached file summary
+// GetFileSummary retrieves a cached file summary using L1+L2 cache strategy
 func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	key := "summary:" + absolutePath
-	value, exists := s.lruCache.Get(key)
-	if !exists {
-		return nil, fmt.Errorf("file summary not found in cache: %s", absolutePath)
+
+	// L1: Check memory cache first
+	if value, exists := s.lruCache.Get(key); exists {
+		if summary, ok := value.(*FileSummary); ok {
+			return summary, nil
+		}
 	}
 
-	summary, ok := value.(*FileSummary)
-	if !ok {
-		return nil, fmt.Errorf("invalid cached summary type for: %s", absolutePath)
+	// L2: Check disk cache if enabled
+	if s.diskCache != nil {
+		if value, exists := s.diskCache.Get(key); exists {
+			if summary, ok := value.(*FileSummary); ok {
+				// Load into L1 cache for faster future access
+				_ = s.lruCache.Set(key, summary)
+				return summary, nil
+			}
+		}
 	}
 
-	return summary, nil
+	return nil, fmt.Errorf("file summary not found in cache: %s", absolutePath)
 }
 
-// SetFileSummary stores a file summary in persistent cache
+// SetFileSummary stores a file summary in L1+L2 cache
 func (s *Store) SetFileSummary(summary *FileSummary) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -174,27 +220,65 @@ func (s *Store) SetFileSummary(summary *FileSummary) error {
 	// Calculate size estimate for the summary
 	size := s.estimateFileSummarySize(summary)
 
-	// Store as persistent item (never expires, won't be evicted unless by LRU pressure)
-	return s.lruCache.SetWithOptions(key, summary, size, 0, true)
+	// Store in L1 (memory cache) with TTL but not persistent to allow eviction
+	if err := s.lruCache.SetWithOptions(key, summary, size, s.config.CalcCacheTTL, false); err != nil {
+		return fmt.Errorf("failed to store in L1 cache: %w", err)
+	}
+
+	// Store in L2 (disk cache) if enabled
+	if s.diskCache != nil {
+		if err := s.diskCache.Set(key, summary); err != nil {
+			// Don't fail if disk cache fails, just log the error
+			fmt.Printf("Warning: Failed to store in disk cache: %v\n", err)
+		}
+	}
+
+	return nil
 }
 
-// HasFileSummary checks if a file summary exists in cache
+// HasFileSummary checks if a file summary exists in L1 or L2 cache
 func (s *Store) HasFileSummary(absolutePath string) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	key := "summary:" + absolutePath
-	_, exists := s.lruCache.Get(key)
-	return exists
+
+	// Check L1 cache first
+	if _, exists := s.lruCache.Get(key); exists {
+		return true
+	}
+
+	// Check L2 cache if enabled
+	if s.diskCache != nil {
+		if _, exists := s.diskCache.Get(key); exists {
+			return true
+		}
+	}
+
+	return false
 }
 
-// InvalidateFileSummary removes a file summary from cache
+// InvalidateFileSummary removes a file summary from L1+L2 cache
 func (s *Store) InvalidateFileSummary(absolutePath string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	key := "summary:" + absolutePath
-	return s.lruCache.Delete(key)
+
+	// Remove from L1 cache
+	if err := s.lruCache.Delete(key); err != nil && err.Error() != "key not found" {
+		return fmt.Errorf("failed to delete from L1 cache: %w", err)
+	}
+
+	// Remove from L2 cache if enabled
+	if s.diskCache != nil {
+		if err := s.diskCache.Delete(key); err != nil {
+			// Don't fail if disk deletion fails, just log
+			fmt.Printf("Warning: Failed to delete from disk cache: %v\n", err)
+		}
+	}
+
+	return nil
 }
 
 // Preload loads multiple files into cache
@@ -258,6 +342,65 @@ func (s *Store) Clear() error {
 	return nil
 }
 
+// Cleanup performs maintenance on all cache layers
+func (s *Store) Cleanup() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Cleanup disk cache if enabled
+	if s.diskCache != nil {
+		if err := s.diskCache.Cleanup(); err != nil {
+			return fmt.Errorf("failed to cleanup disk cache: %w", err)
+		}
+	}
+
+	// Force garbage collection on memory caches
+	// This is already handled by the memory manager and LRU policies
+
+	return nil
+}
+
+// SetupPeriodicCleanup starts a background goroutine for periodic cache cleanup
+func (s *Store) SetupPeriodicCleanup(interval time.Duration) {
+	if interval <= 0 {
+		return
+	}
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.Cleanup(); err != nil {
+					fmt.Printf("Cache cleanup error: %v\n", err)
+				}
+			}
+		}
+	}()
+}
+
+// GetCacheInfo returns detailed cache information for debugging
+func (s *Store) GetCacheInfo() map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	info := map[string]interface{}{
+		"config": s.config,
+		"stats":  s.Stats(),
+	}
+
+	if s.diskCache != nil {
+		info["disk_cache_enabled"] = true
+		info["disk_cache_stats"] = s.diskCache.GetStats()
+	} else {
+		info["disk_cache_enabled"] = false
+	}
+
+	return info
+}
+
 // Stats returns comprehensive cache statistics
 func (s *Store) Stats() StoreStats {
 	s.mu.RLock()
@@ -267,10 +410,16 @@ func (s *Store) Stats() StoreStats {
 	lruCacheStats := s.lruCache.Stats()
 	memStats := s.memManager.Stats()
 
+	// Get disk cache stats if enabled
+	var diskCacheStats DiskCacheStats
+	if s.diskCache != nil {
+		diskCacheStats = s.diskCache.GetStats()
+	}
+
 	// Calculate total stats
-	totalHits := fileCacheStats.Hits + lruCacheStats.Hits
-	totalMisses := fileCacheStats.Misses + lruCacheStats.Misses
-	totalSize := fileCacheStats.Size + lruCacheStats.Size
+	totalHits := fileCacheStats.Hits + lruCacheStats.Hits + diskCacheStats.Hits
+	totalMisses := fileCacheStats.Misses + lruCacheStats.Misses + diskCacheStats.Misses
+	totalSize := fileCacheStats.Size + lruCacheStats.Size + diskCacheStats.Size
 	totalMemory := s.fileCache.MemoryUsage() + s.lruCache.MemoryUsage()
 
 	var overallHitRate float64
@@ -281,6 +430,7 @@ func (s *Store) Stats() StoreStats {
 	return StoreStats{
 		FileCache: fileCacheStats,
 		LRUCache:  lruCacheStats,
+		DiskCache: diskCacheStats,
 		Memory: StoreMemoryStats{
 			Used:       memStats.CurrentUsage,
 			Total:      memStats.MaxMemory,

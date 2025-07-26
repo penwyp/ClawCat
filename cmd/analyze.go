@@ -69,7 +69,7 @@ Examples:
 		}
 
 		// Initialize global logger for usage_loader cache logging
-		logging.InitGlobalLoggerWithDebug(cfg.App.LogLevel, "", cfg.Debug.Enabled)
+		logging.InitLogger(cfg.App.LogLevel, cfg.App.LogFile, cfg.Debug.Enabled)
 
 		// Reset cache if requested
 		if analyzeReset {

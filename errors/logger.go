@@ -106,8 +106,8 @@ func NewErrorLogger(config LogConfig) *ErrorLogger {
 
 	// Get the global logger or create a new one
 	var baseLogger logging.LoggerInterface
-	if logging.GetGlobalLogger() != nil {
-		baseLogger = logging.GetGlobalLogger()
+	if logging.GetLogger() != nil {
+		baseLogger = logging.GetLogger()
 	} else {
 		// Create a default logger if global logger not initialized
 		baseLogger = logging.NewLogger("error", config.OutputPath)
@@ -335,8 +335,8 @@ func NewFileLogWriter(path string) *FileLogWriter {
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		// Use global logger if available, otherwise silently fail
-		if logging.GetGlobalLogger() != nil {
-			logging.GetGlobalLogger().Errorf("Failed to open log file %s: %v", path, err)
+		if logging.GetLogger() != nil {
+			logging.GetLogger().Errorf("Failed to open log file %s: %v", path, err)
 		}
 		return nil
 	}

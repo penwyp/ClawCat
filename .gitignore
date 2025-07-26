@@ -33,3 +33,7 @@ go.work.sum
 bin
 ClawCat
 clawcat.log
+
+.idea
+.cursor
+.vscode
