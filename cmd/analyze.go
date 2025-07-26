@@ -557,6 +557,9 @@ func outputTableWithoutBreakdown(results []models.AnalysisResult) error {
 		table.addRow(row)
 	}
 
+	// Add summary row
+	addSummaryRow(table, dateGroups)
+
 	fmt.Print(table.render())
 	return nil
 }
@@ -636,10 +639,10 @@ func outputTableWithBreakdown(results []models.AnalysisResult) error {
 			modelList = append(modelList, model)
 		}
 
-		// Add main date row with aggregated data
+		// Add main date row with aggregated data (leave models column empty in breakdown mode)
 		row := []string{
 			date,
-			formatModels(modelList),
+			"", // Empty models column in breakdown mode
 			formatWithCommas(group.totalInputTokens),
 			formatWithCommas(group.totalOutputTokens),
 			formatWithCommas(group.totalCacheCreationTokens),
@@ -671,6 +674,9 @@ func outputTableWithBreakdown(results []models.AnalysisResult) error {
 			table.addRow(separatorRow)
 		}
 	}
+
+	// Add summary row for breakdown mode
+	addSummaryRowBreakdown(table, dateGroups)
 
 	fmt.Print(table.render())
 	return nil
@@ -921,6 +927,14 @@ func (tf *tableFormatter) addRow(row []string) {
 	tf.rows = append(tf.rows, row)
 }
 
+func (tf *tableFormatter) addSeparatorLine() {
+	separatorRow := make([]string, len(tf.headers))
+	for i := range separatorRow {
+		separatorRow[i] = "SEPARATOR"
+	}
+	tf.rows = append(tf.rows, separatorRow)
+}
+
 func (tf *tableFormatter) calculateWidths() {
 	// Initialize with header widths
 	for i, header := range tf.headers {
@@ -956,7 +970,11 @@ func (tf *tableFormatter) render() string {
 
 	// Data rows
 	for _, row := range tf.rows {
-		lines = append(lines, tf.renderRow(row))
+		if len(row) > 0 && row[0] == "SEPARATOR" {
+			lines = append(lines, tf.renderSeparator())
+		} else {
+			lines = append(lines, tf.renderRow(row))
+		}
 	}
 
 	// Bottom border
@@ -1114,4 +1132,78 @@ func getModelPriority(model string) int {
 	
 	// Other models (lowest priority)
 	return 4
+}
+
+// addSummaryRow adds a summary row to the table for non-breakdown mode
+func addSummaryRow(table *tableFormatter, dateGroups map[string]*dateGroup) {
+	var totalInput, totalOutput, totalCacheCreation, totalCacheRead, totalTokens int
+	var totalCost float64
+	var allModels = make(map[string]bool)
+
+	for _, group := range dateGroups {
+		totalInput += group.inputTokens
+		totalOutput += group.outputTokens
+		totalCacheCreation += group.cacheCreationTokens
+		totalCacheRead += group.cacheReadTokens
+		totalTokens += group.totalTokens
+		totalCost += group.costUSD
+		
+		for model := range group.models {
+			allModels[model] = true
+		}
+	}
+
+	// Convert models map to sorted slice
+	var modelList []string
+	for model := range allModels {
+		modelList = append(modelList, model)
+	}
+	sortModelsByPreference(modelList)
+
+	// Add separator line before TOTAL
+	table.addSeparatorLine()
+
+	// Add summary row
+	summaryRow := []string{
+		"TOTAL",
+		formatModels(modelList),
+		formatWithCommas(totalInput),
+		formatWithCommas(totalOutput),
+		formatWithCommas(totalCacheCreation),
+		formatWithCommas(totalCacheRead),
+		formatWithCommas(totalTokens),
+		formatCost(totalCost),
+	}
+	table.addRow(summaryRow)
+}
+
+// addSummaryRowBreakdown adds a summary row to the table for breakdown mode
+func addSummaryRowBreakdown(table *tableFormatter, dateGroups map[string]*dateGroupWithModels) {
+	var totalInput, totalOutput, totalCacheCreation, totalCacheRead, totalTokens int
+	var totalCost float64
+
+	for _, group := range dateGroups {
+		totalInput += group.totalInputTokens
+		totalOutput += group.totalOutputTokens
+		totalCacheCreation += group.totalCacheCreationTokens
+		totalCacheRead += group.totalCacheReadTokens
+		totalTokens += group.totalTotalTokens
+		totalCost += group.totalCostUSD
+	}
+
+	// Add separator line before TOTAL
+	table.addSeparatorLine()
+
+	// Add summary row (empty models column in breakdown mode)
+	summaryRow := []string{
+		"TOTAL",
+		"", // Empty models column in breakdown mode
+		formatWithCommas(totalInput),
+		formatWithCommas(totalOutput),
+		formatWithCommas(totalCacheCreation),
+		formatWithCommas(totalCacheRead),
+		formatWithCommas(totalTokens),
+		formatCost(totalCost),
+	}
+	table.addRow(summaryRow)
 }
