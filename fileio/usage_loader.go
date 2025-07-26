@@ -2,6 +2,7 @@ package fileio
 
 import (
 	"bufio"
+	"context"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -101,53 +102,89 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 		opts.CacheThreshold = time.Hour
 	}
 
-	// Calculate cutoff time if specified
-	var cutoffTime *time.Time
-	if opts.HoursBack != nil {
-		cutoff := time.Now().UTC().Add(-time.Duration(*opts.HoursBack) * time.Hour)
-		cutoffTime = &cutoff
-	}
-
 	// Find all JSONL files
 	jsonlFiles, err := findJSONLFiles(opts.DataPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find JSONL files: %w", err)
 	}
 
-	// Process all files
+	// Check if we should use concurrent loading
+	useConcurrent := len(jsonlFiles) > 10 // Use concurrent loading for more than 10 files
+	
 	var allEntries []models.UsageEntry
 	var allRawEntries []map[string]interface{}
-	var processedHashes = make(map[string]bool) // For deduplication
 	var processingErrors []string
 	var cacheHits, cacheMisses int
 
-	for i, filePath := range jsonlFiles {
-		if i < 5 || i%100 == 0 { // Log first 5 files and every 100th file
-			logging.LogDebugf("Processing file %d/%d: %s", i+1, len(jsonlFiles), filepath.Base(filePath))
-		}
-
-		entries, rawEntries, fromCache, err := processSingleFileWithCache(filePath, opts, cutoffTime, processedHashes)
+	if useConcurrent {
+		// Use concurrent loader
+		loader := NewConcurrentLoader(0) // Use default worker count
+		ctx := context.Background()
+		
+		// Load files concurrently with progress
+		results, err := loader.LoadFilesWithProgress(ctx, jsonlFiles, opts)
 		if err != nil {
-			if i < 5 { // Log errors for first 5 files
-				logging.LogErrorf("Error processing file %s: %v", filepath.Base(filePath), err)
+			return nil, fmt.Errorf("concurrent loading failed: %w", err)
+		}
+		
+		// Merge results
+		var mergeErrors []error
+		allEntries, allRawEntries, mergeErrors = MergeResults(results)
+		
+		// Convert errors to strings
+		for _, err := range mergeErrors {
+			processingErrors = append(processingErrors, err.Error())
+		}
+		
+		// Calculate cache stats
+		for _, result := range results {
+			if result.Error == nil {
+				if result.FromCache {
+					cacheHits++
+				} else {
+					cacheMisses++
+				}
 			}
-			processingErrors = append(processingErrors, fmt.Sprintf("%s: %v", filePath, err))
-			continue
+		}
+	} else {
+		// Use sequential loading for small file counts
+		var processedHashes = make(map[string]bool) // For deduplication
+		
+		// Calculate cutoff time if specified
+		var cutoffTime *time.Time
+		if opts.HoursBack != nil {
+			cutoff := time.Now().UTC().Add(-time.Duration(*opts.HoursBack) * time.Hour)
+			cutoffTime = &cutoff
 		}
 
-		if fromCache {
-			cacheHits++
-		} else {
-			cacheMisses++
-		}
+		for i, filePath := range jsonlFiles {
+			if i < 5 || i%100 == 0 { // Log first 5 files and every 100th file
+				logging.LogDebugf("Processing file %d/%d: %s", i+1, len(jsonlFiles), filepath.Base(filePath))
+			}
 
-		if i < 5 { // Log successful processing for first 5 files
-			logging.LogDebugf("File %s processed: %d entries (from cache: %v)", filepath.Base(filePath), len(entries), fromCache)
-		}
+			entries, rawEntries, fromCache, err := processSingleFileWithCache(filePath, opts, cutoffTime, processedHashes)
+			if err != nil {
+				if i < 5 { // Log errors for first 5 files
+					logging.LogErrorf("Error processing file %s: %v", filepath.Base(filePath), err)
+				}
+				processingErrors = append(processingErrors, fmt.Sprintf("%s: %v", filePath, err))
+				continue
+			}
 
-		allEntries = append(allEntries, entries...)
-		if opts.IncludeRaw && rawEntries != nil {
-			allRawEntries = append(allRawEntries, rawEntries...)
+			if fromCache {
+				cacheHits++
+			} else {
+				cacheMisses++
+			}
+
+			if i < 5 { // Log successful processing for first 5 files
+				logging.LogDebugf("File %s processed: %d entries (from cache: %v)", filepath.Base(filePath), len(entries), fromCache)
+			}
+
+			allEntries = append(allEntries, entries...)
+			if opts.IncludeRaw && rawEntries != nil {
+				allRawEntries = append(allRawEntries, rawEntries...)
+			}
 		}
 	}
 
@@ -695,8 +732,22 @@ func (fs *FileSummary) ShouldUseCache(currentModTime time.Time, cacheThreshold t
 		return false
 	}
 
-	// If file hasn't been modified for longer than threshold, use cache
+	// Smart threshold based on file characteristics
 	timeSinceModification := time.Since(currentModTime)
+	fileAge := time.Since(fs.DateRange.End)
+	
+	// For historical data (older than 7 days), use cache more aggressively
+	if fileAge > 7*24*time.Hour {
+		// Historical files can use cache even if modified recently
+		return timeSinceModification >= 5*time.Minute
+	}
+	
+	// For large files (>10MB), use shorter threshold to reduce parsing overhead
+	if fs.FileSize > 10*1024*1024 {
+		return timeSinceModification >= cacheThreshold/2
+	}
+	
+	// For recent small files, use standard threshold
 	return timeSinceModification >= cacheThreshold
 }
 

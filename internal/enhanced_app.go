@@ -26,6 +26,7 @@ type EnhancedApplication struct {
 	orchestrator *orchestrator.MonitoringOrchestrator
 	metricsCalc  *calculations.EnhancedMetricsCalculator
 	cache        *cache.Store
+	cacheWarmer  *cache.CacheWarmer
 	ui           *ui.App
 	errorHandler *errors.EnhancedErrorHandler
 
@@ -136,6 +137,14 @@ func (ea *EnhancedApplication) bootstrap() error {
 
 	// Initialize metrics calculator
 	ea.metricsCalc = calculations.NewEnhancedMetricsCalculator(ea.config)
+
+	// Initialize cache warmer
+	ea.cacheWarmer = cache.NewCacheWarmer(ea.cache, 4)
+
+	// Start cache warming if enabled
+	if ea.config.Cache.Enabled {
+		ea.startCacheWarming()
+	}
 
 	// Initialize orchestrator with data paths
 	dataPath := ea.getDataPath()
@@ -487,6 +496,32 @@ func (ea *EnhancedApplication) shutdown() error {
 // GetOrchestrator returns the monitoring orchestrator (for testing/debugging)
 func (ea *EnhancedApplication) GetOrchestrator() *orchestrator.MonitoringOrchestrator {
 	return ea.orchestrator
+}
+
+// startCacheWarming starts asynchronous cache warming
+func (ea *EnhancedApplication) startCacheWarming() {
+	dataPath := ea.getDataPath()
+	if dataPath == "" {
+		return
+	}
+
+	// Create warmup configuration
+	patterns := cache.DefaultWarmupPatterns(dataPath)
+	config := cache.WarmupConfig{
+		Patterns:       patterns,
+		MaxFiles:       100,                     // Warm up to 100 files
+		MaxAge:         7 * 24 * time.Hour,     // Only warm files from last 7 days
+		WorkerCount:    4,                       // Use 4 workers
+		TimeoutPerFile: 5 * time.Second,         // 5 second timeout per file
+	}
+
+	// Start warming in background
+	ctx := context.Background() // Use separate context so it continues after main ctx
+	if err := ea.cacheWarmer.WarmupAsync(ctx, config); err != nil {
+		ea.logger.Warnf("Failed to start cache warming: %v", err)
+	} else {
+		ea.logger.Info("Cache warming started in background")
+	}
 }
 
 // GetMetricsCalculator returns the metrics calculator (for testing/debugging)

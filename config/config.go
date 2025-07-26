@@ -180,7 +180,7 @@ func DefaultConfig() *Config {
 			CacheSize:     50, // 50MB
 			SummaryCache: SummaryCacheConfig{
 				Enabled:    true,
-				Threshold:  time.Hour,        // Use cache for files not modified in last hour
+				Threshold:  30 * time.Minute, // Use cache for files not modified in last 30 minutes
 				MaxSize:    10 * 1024 * 1024, // 10MB for summary cache
 				MaxEntries: 1000,             // Maximum 1000 cached summaries
 			},

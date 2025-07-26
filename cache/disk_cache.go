@@ -118,8 +118,9 @@ func (dc *DiskCache) Get(key string) (interface{}, bool) {
 		return nil, false
 	}
 
-	// Check if expired
-	if dc.ttl > 0 && time.Since(item.CreatedAt) > dc.ttl {
+	// Check if expired based on dynamic TTL
+	itemTTL := dc.getTTLForValue(item.Value)
+	if itemTTL > 0 && time.Since(item.CreatedAt) > itemTTL {
 		// Remove expired file
 		os.Remove(filePath)
 		dc.stats.Misses++
@@ -252,8 +253,19 @@ func (dc *DiskCache) Cleanup() error {
 
 		totalSize += info.Size()
 
-		// Check if file is expired
-		if dc.ttl > 0 && time.Since(info.ModTime()) > dc.ttl {
+		// Check if file is expired based on age
+		// Use shorter TTL for recent files, longer for old files
+		fileAge := time.Since(info.ModTime())
+		var ttl time.Duration
+		if fileAge < 24*time.Hour {
+			ttl = dc.ttl // Standard TTL for recent files
+		} else if fileAge < 7*24*time.Hour {
+			ttl = dc.ttl * 2 // Double TTL for week-old files
+		} else {
+			ttl = dc.ttl * 4 // Quadruple TTL for older files
+		}
+		
+		if ttl > 0 && fileAge > ttl {
 			filesToRemove = append(filesToRemove, path)
 			return nil
 		}
@@ -448,4 +460,42 @@ func (dc *DiskCache) updateHitRate() {
 	if total > 0 {
 		dc.stats.HitRate = float64(dc.stats.Hits) / float64(total)
 	}
+}
+
+// getTTLForValue returns age-based TTL for a value
+func (dc *DiskCache) getTTLForValue(value interface{}) time.Duration {
+	// Check if value is a FileSummary
+	if summary, ok := value.(*FileSummary); ok {
+		// Calculate age based on data range
+		dataAge := time.Since(summary.DateRange.End)
+		
+		// Historical data (>30 days): Keep for months
+		if dataAge > 30*24*time.Hour {
+			return 90 * 24 * time.Hour // 90 days
+		}
+		
+		// Weekly data (7-30 days): Keep for weeks
+		if dataAge > 7*24*time.Hour {
+			return 30 * 24 * time.Hour // 30 days
+		}
+		
+		// Recent data (<7 days): Standard TTL
+		return dc.ttl
+	}
+	
+	// Check if value is DateRange
+	if dr, ok := value.(*DateRange); ok {
+		dataAge := time.Since(dr.End)
+		
+		if dataAge > 30*24*time.Hour {
+			return 90 * 24 * time.Hour
+		}
+		if dataAge > 7*24*time.Hour {
+			return 30 * 24 * time.Hour
+		}
+		return dc.ttl
+	}
+	
+	// Default TTL for other types
+	return dc.ttl
 }
