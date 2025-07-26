@@ -265,14 +265,18 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 		case "model":
 			key = result.Model
 		case "day":
-			key = result.Timestamp.Format("2006-01-02")
+			// Include model in the key to avoid aggregating different models on the same day
+			key = fmt.Sprintf("%s|%s", result.Timestamp.Format("2006-01-02"), result.Model)
 		case "hour":
-			key = result.Timestamp.Format("2006-01-02 15:00")
+			// Include model in the key to avoid aggregating different models in the same hour
+			key = fmt.Sprintf("%s|%s", result.Timestamp.Format("2006-01-02 15:00"), result.Model)
 		case "week":
 			year, week := result.Timestamp.ISOWeek()
-			key = fmt.Sprintf("%d-W%02d", year, week)
+			// Include model in the key to avoid aggregating different models in the same week
+			key = fmt.Sprintf("%d-W%02d|%s", year, week, result.Model)
 		case "month":
-			key = result.Timestamp.Format("2006-01")
+			// Include model in the key to avoid aggregating different models in the same month
+			key = fmt.Sprintf("%s|%s", result.Timestamp.Format("2006-01"), result.Model)
 		case "session":
 			key = result.SessionID
 		default:
@@ -290,8 +294,14 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 		}
 
 		// Create aggregated result
+		// Extract the actual group key (remove model part if present)
+		displayKey := groupKey
+		if idx := strings.LastIndex(groupKey, "|"); idx != -1 && analyzeGroupBy != "all" && analyzeGroupBy != "model" && analyzeGroupBy != "session" {
+			displayKey = groupKey[:idx]
+		}
+		
 		agg := models.AnalysisResult{
-			GroupKey:  groupKey,
+			GroupKey:  displayKey,
 			Model:     groupResults[0].Model,
 			Timestamp: groupResults[0].Timestamp,
 			SessionID: groupResults[0].SessionID,

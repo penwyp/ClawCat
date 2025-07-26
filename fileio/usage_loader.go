@@ -47,9 +47,20 @@ type FileSummary struct {
 	TotalCost       float64
 	TotalTokens     int
 	ModelStats      map[string]FileSummaryModelStat
+	HourlyBuckets   map[string]*FileSummaryTemporalBucket  // Hour-level aggregations (key: "2006-01-02 15")
+	DailyBuckets    map[string]*FileSummaryTemporalBucket  // Day-level aggregations (key: "2006-01-02")
 	ProcessedAt     time.Time
 	Checksum        string
 	ProcessedHashes map[string]bool
+}
+
+// FileSummaryTemporalBucket represents aggregated usage data for a specific time period
+type FileSummaryTemporalBucket struct {
+	Period      string                                  // The time period (e.g., "2006-01-02 15" for hour, "2006-01-02" for day)
+	EntryCount  int
+	TotalCost   float64
+	TotalTokens int
+	ModelStats  map[string]*FileSummaryModelStat  // Per-model statistics within this time bucket
 }
 
 // FileSummaryModelStat is used for file summary caching with additional fields
@@ -711,41 +722,146 @@ func generateEntryHash(entry models.UsageEntry) string {
 func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) []models.UsageEntry {
 	var entries []models.UsageEntry
 
-	// For cached summaries, we create synthetic entries based on model stats
-	// This is a simplification - in a more sophisticated implementation,
-	// we might store and retrieve actual entry data
-	for modelName, modelStat := range summary.ModelStats {
-		if modelStat.EntryCount > 0 {
-			// Create a representative entry for this model
-			entry := models.UsageEntry{
-				Timestamp:           summary.ProcessedAt, // Use processed time as timestamp
-				Model:               modelStat.Model,
-				InputTokens:         modelStat.InputTokens,
-				OutputTokens:        modelStat.OutputTokens,
-				CacheCreationTokens: modelStat.CacheCreationTokens,
-				CacheReadTokens:     modelStat.CacheReadTokens,
-				TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
-				CostUSD:             modelStat.TotalCost,
-				MessageID:           fmt.Sprintf("cached_%s_%d", modelName, summary.ProcessedAt.Unix()),
+	// Use hourly buckets if available for better temporal granularity
+	if len(summary.HourlyBuckets) > 0 {
+		// Create entries from hourly buckets
+		for hourKey, hourBucket := range summary.HourlyBuckets {
+			// Parse the hour timestamp
+			hourTime, err := time.Parse("2006-01-02 15", hourKey)
+			if err != nil {
+				logging.LogWarnf("Failed to parse hour key %s: %v", hourKey, err)
+				continue
 			}
 
-			entry.NormalizeModel()
+			// Skip if before cutoff time
+			if cutoffTime != nil && hourTime.Before(*cutoffTime) {
+				continue
+			}
 
-			// Check if this entry would be a duplicate
-			entryHash := generateEntryHash(entry)
-			isDuplicate := false
+			// Create entries for each model in this hour
+			for _, modelStat := range hourBucket.ModelStats {
+				if modelStat.EntryCount > 0 {
+					// Create a representative entry for this model in this hour
+					entry := models.UsageEntry{
+						Timestamp:           hourTime, // Use the hour timestamp
+						Model:               modelStat.Model,
+						InputTokens:         modelStat.InputTokens,
+						OutputTokens:        modelStat.OutputTokens,
+						CacheCreationTokens: modelStat.CacheCreationTokens,
+						CacheReadTokens:     modelStat.CacheReadTokens,
+						TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
+						CostUSD:             modelStat.TotalCost,
+						MessageID:           fmt.Sprintf("cached_%s_%s_%s", modelStat.Model, hourKey, summary.Checksum[:8]),
+					}
 
-			if regularMap != nil {
-				if regularMap[entryHash] {
-					isDuplicate = true
+					entry.NormalizeModel()
+
+					// Check if this entry would be a duplicate
+					entryHash := generateEntryHash(entry)
+					isDuplicate := false
+
+					if regularMap != nil {
+						if regularMap[entryHash] {
+							isDuplicate = true
+						}
+					} else if syncMap != nil {
+						_, loaded := syncMap.Load(entryHash)
+						isDuplicate = loaded
+					}
+
+					if !isDuplicate {
+						entries = append(entries, entry)
+					}
 				}
-			} else if syncMap != nil {
-				_, loaded := syncMap.Load(entryHash)
-				isDuplicate = loaded
+			}
+		}
+	} else if len(summary.DailyBuckets) > 0 {
+		// Fallback to daily buckets if hourly not available
+		for dayKey, dayBucket := range summary.DailyBuckets {
+			// Parse the day timestamp
+			dayTime, err := time.Parse("2006-01-02", dayKey)
+			if err != nil {
+				logging.LogWarnf("Failed to parse day key %s: %v", dayKey, err)
+				continue
 			}
 
-			if !isDuplicate {
-				entries = append(entries, entry)
+			// Skip if before cutoff time
+			if cutoffTime != nil && dayTime.Before(*cutoffTime) {
+				continue
+			}
+
+			// Create entries for each model in this day
+			for _, modelStat := range dayBucket.ModelStats {
+				if modelStat.EntryCount > 0 {
+					// Create a representative entry for this model in this day
+					entry := models.UsageEntry{
+						Timestamp:           dayTime, // Use the day timestamp
+						Model:               modelStat.Model,
+						InputTokens:         modelStat.InputTokens,
+						OutputTokens:        modelStat.OutputTokens,
+						CacheCreationTokens: modelStat.CacheCreationTokens,
+						CacheReadTokens:     modelStat.CacheReadTokens,
+						TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
+						CostUSD:             modelStat.TotalCost,
+						MessageID:           fmt.Sprintf("cached_%s_%s_%s", modelStat.Model, dayKey, summary.Checksum[:8]),
+					}
+
+					entry.NormalizeModel()
+
+					// Check if this entry would be a duplicate
+					entryHash := generateEntryHash(entry)
+					isDuplicate := false
+
+					if regularMap != nil {
+						if regularMap[entryHash] {
+							isDuplicate = true
+						}
+					} else if syncMap != nil {
+						_, loaded := syncMap.Load(entryHash)
+						isDuplicate = loaded
+					}
+
+					if !isDuplicate {
+						entries = append(entries, entry)
+					}
+				}
+			}
+		}
+	} else {
+		// Fallback to old behavior if no temporal buckets (for backward compatibility)
+		for modelName, modelStat := range summary.ModelStats {
+			if modelStat.EntryCount > 0 {
+				// Create a representative entry for this model
+				entry := models.UsageEntry{
+					Timestamp:           summary.ProcessedAt, // Use processed time as timestamp
+					Model:               modelStat.Model,
+					InputTokens:         modelStat.InputTokens,
+					OutputTokens:        modelStat.OutputTokens,
+					CacheCreationTokens: modelStat.CacheCreationTokens,
+					CacheReadTokens:     modelStat.CacheReadTokens,
+					TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
+					CostUSD:             modelStat.TotalCost,
+					MessageID:           fmt.Sprintf("cached_%s_%d", modelName, summary.ProcessedAt.Unix()),
+				}
+
+				entry.NormalizeModel()
+
+				// Check if this entry would be a duplicate
+				entryHash := generateEntryHash(entry)
+				isDuplicate := false
+
+				if regularMap != nil {
+					if regularMap[entryHash] {
+						isDuplicate = true
+					}
+				} else if syncMap != nil {
+					_, loaded := syncMap.Load(entryHash)
+					isDuplicate = loaded
+				}
+
+				if !isDuplicate {
+					entries = append(entries, entry)
+				}
 			}
 		}
 	}
@@ -756,26 +872,99 @@ func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Ti
 func createEntriesFromSummary(summary *FileSummary, cutoffTime *time.Time) []models.UsageEntry {
 	var entries []models.UsageEntry
 
-	// For cached summaries, we create synthetic entries based on model stats
-	// This is a simplification - in a more sophisticated implementation,
-	// we might store and retrieve actual entry data
-	for modelName, modelStat := range summary.ModelStats {
-		if modelStat.EntryCount > 0 {
-			// Create a representative entry for this model
-			entry := models.UsageEntry{
-				Timestamp:           summary.ProcessedAt, // Use processed time as timestamp
-				Model:               modelStat.Model,
-				InputTokens:         modelStat.InputTokens,
-				OutputTokens:        modelStat.OutputTokens,
-				CacheCreationTokens: modelStat.CacheCreationTokens,
-				CacheReadTokens:     modelStat.CacheReadTokens,
-				TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
-				CostUSD:             modelStat.TotalCost,
-				MessageID:           fmt.Sprintf("cached_%s_%d", modelName, summary.ProcessedAt.Unix()),
+	// Use hourly buckets if available for better temporal granularity
+	if len(summary.HourlyBuckets) > 0 {
+		// Create entries from hourly buckets
+		for hourKey, hourBucket := range summary.HourlyBuckets {
+			// Parse the hour timestamp
+			hourTime, err := time.Parse("2006-01-02 15", hourKey)
+			if err != nil {
+				logging.LogWarnf("Failed to parse hour key %s: %v", hourKey, err)
+				continue
 			}
 
-			entry.NormalizeModel()
-			entries = append(entries, entry)
+			// Skip if before cutoff time
+			if cutoffTime != nil && hourTime.Before(*cutoffTime) {
+				continue
+			}
+
+			// Create entries for each model in this hour
+			for _, modelStat := range hourBucket.ModelStats {
+				if modelStat.EntryCount > 0 {
+					// Create a representative entry for this model in this hour
+					entry := models.UsageEntry{
+						Timestamp:           hourTime, // Use the hour timestamp
+						Model:               modelStat.Model,
+						InputTokens:         modelStat.InputTokens,
+						OutputTokens:        modelStat.OutputTokens,
+						CacheCreationTokens: modelStat.CacheCreationTokens,
+						CacheReadTokens:     modelStat.CacheReadTokens,
+						TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
+						CostUSD:             modelStat.TotalCost,
+						MessageID:           fmt.Sprintf("cached_%s_%s_%s", modelStat.Model, hourKey, summary.Checksum[:8]),
+					}
+
+					entry.NormalizeModel()
+					entries = append(entries, entry)
+				}
+			}
+		}
+	} else if len(summary.DailyBuckets) > 0 {
+		// Fallback to daily buckets if hourly not available
+		for dayKey, dayBucket := range summary.DailyBuckets {
+			// Parse the day timestamp
+			dayTime, err := time.Parse("2006-01-02", dayKey)
+			if err != nil {
+				logging.LogWarnf("Failed to parse day key %s: %v", dayKey, err)
+				continue
+			}
+
+			// Skip if before cutoff time
+			if cutoffTime != nil && dayTime.Before(*cutoffTime) {
+				continue
+			}
+
+			// Create entries for each model in this day
+			for _, modelStat := range dayBucket.ModelStats {
+				if modelStat.EntryCount > 0 {
+					// Create a representative entry for this model in this day
+					entry := models.UsageEntry{
+						Timestamp:           dayTime, // Use the day timestamp
+						Model:               modelStat.Model,
+						InputTokens:         modelStat.InputTokens,
+						OutputTokens:        modelStat.OutputTokens,
+						CacheCreationTokens: modelStat.CacheCreationTokens,
+						CacheReadTokens:     modelStat.CacheReadTokens,
+						TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
+						CostUSD:             modelStat.TotalCost,
+						MessageID:           fmt.Sprintf("cached_%s_%s_%s", modelStat.Model, dayKey, summary.Checksum[:8]),
+					}
+
+					entry.NormalizeModel()
+					entries = append(entries, entry)
+				}
+			}
+		}
+	} else {
+		// Fallback to old behavior if no temporal buckets (for backward compatibility)
+		for modelName, modelStat := range summary.ModelStats {
+			if modelStat.EntryCount > 0 {
+				// Create a representative entry for this model
+				entry := models.UsageEntry{
+					Timestamp:           summary.ProcessedAt, // Use processed time as timestamp
+					Model:               modelStat.Model,
+					InputTokens:         modelStat.InputTokens,
+					OutputTokens:        modelStat.OutputTokens,
+					CacheCreationTokens: modelStat.CacheCreationTokens,
+					CacheReadTokens:     modelStat.CacheReadTokens,
+					TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
+					CostUSD:             modelStat.TotalCost,
+					MessageID:           fmt.Sprintf("cached_%s_%d", modelName, summary.ProcessedAt.Unix()),
+				}
+
+				entry.NormalizeModel()
+				entries = append(entries, entry)
+			}
 		}
 	}
 
@@ -803,6 +992,8 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		EntryCount:      len(entries),
 		ProcessedAt:     time.Now(),
 		ModelStats:      make(map[string]FileSummaryModelStat),
+		HourlyBuckets:   make(map[string]*FileSummaryTemporalBucket),
+		DailyBuckets:    make(map[string]*FileSummaryTemporalBucket),
 		ProcessedHashes: make(map[string]bool),
 	}
 
@@ -853,6 +1044,66 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		modelStat.CacheReadTokens += entry.CacheReadTokens
 
 		summary.ModelStats[entry.Model] = modelStat
+
+		// Update hourly bucket
+		hourKey := entry.Timestamp.Format("2006-01-02 15")
+		hourBucket, exists := summary.HourlyBuckets[hourKey]
+		if !exists {
+			hourBucket = &FileSummaryTemporalBucket{
+				Period:     hourKey,
+				ModelStats: make(map[string]*FileSummaryModelStat),
+			}
+			summary.HourlyBuckets[hourKey] = hourBucket
+		}
+
+		hourBucket.EntryCount++
+		hourBucket.TotalCost += entry.CostUSD
+		hourBucket.TotalTokens += entry.TotalTokens
+
+		// Update model stats within hourly bucket
+		hourModelStat, exists := hourBucket.ModelStats[entry.Model]
+		if !exists {
+			hourModelStat = &FileSummaryModelStat{
+				Model: entry.Model,
+			}
+			hourBucket.ModelStats[entry.Model] = hourModelStat
+		}
+		hourModelStat.EntryCount++
+		hourModelStat.TotalCost += entry.CostUSD
+		hourModelStat.InputTokens += entry.InputTokens
+		hourModelStat.OutputTokens += entry.OutputTokens
+		hourModelStat.CacheCreationTokens += entry.CacheCreationTokens
+		hourModelStat.CacheReadTokens += entry.CacheReadTokens
+
+		// Update daily bucket
+		dayKey := entry.Timestamp.Format("2006-01-02")
+		dayBucket, exists := summary.DailyBuckets[dayKey]
+		if !exists {
+			dayBucket = &FileSummaryTemporalBucket{
+				Period:     dayKey,
+				ModelStats: make(map[string]*FileSummaryModelStat),
+			}
+			summary.DailyBuckets[dayKey] = dayBucket
+		}
+
+		dayBucket.EntryCount++
+		dayBucket.TotalCost += entry.CostUSD
+		dayBucket.TotalTokens += entry.TotalTokens
+
+		// Update model stats within daily bucket
+		dayModelStat, exists := dayBucket.ModelStats[entry.Model]
+		if !exists {
+			dayModelStat = &FileSummaryModelStat{
+				Model: entry.Model,
+			}
+			dayBucket.ModelStats[entry.Model] = dayModelStat
+		}
+		dayModelStat.EntryCount++
+		dayModelStat.TotalCost += entry.CostUSD
+		dayModelStat.InputTokens += entry.InputTokens
+		dayModelStat.OutputTokens += entry.OutputTokens
+		dayModelStat.CacheCreationTokens += entry.CacheCreationTokens
+		dayModelStat.CacheReadTokens += entry.CacheReadTokens
 	}
 
 	summary.TotalCost = totalCost
