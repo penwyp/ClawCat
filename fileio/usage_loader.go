@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -293,9 +294,21 @@ func hasAssistantMessages(filePath string) bool {
 
 // processSingleFileWithCache processes a single JSONL file with caching support
 func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes map[string]bool) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
+	// This is a wrapper for compatibility - it uses a regular map
+	return processSingleFileWithCacheInternal(filePath, opts, cutoffTime, processedHashes, nil)
+}
+
+// processSingleFileWithCacheConcurrent processes a single JSONL file with caching support using sync.Map
+func processSingleFileWithCacheConcurrent(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
+	// This version uses sync.Map for concurrent access
+	return processSingleFileWithCacheInternal(filePath, opts, cutoffTime, nil, processedHashes)
+}
+
+// processSingleFileWithCacheInternal is the internal implementation that supports both map types
+func processSingleFileWithCacheInternal(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
 	// Get absolute path for cache key
-	absPath, err := filepath.Abs(filePath)
-	if err != nil {
+	absPath, absErr := filepath.Abs(filePath)
+	if absErr != nil {
 		absPath = filePath // fallback to relative path
 	}
 
@@ -304,16 +317,26 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 		// Quick pre-check: if file doesn't contain assistant messages, skip caching entirely
 		if !hasAssistantMessages(filePath) {
 			// Process directly without cache operations, avoiding unnecessary debug logs
-			entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
-			return entries, rawEntries, false, err
+			if regularMap != nil {
+				entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
+				return entries, rawEntries, false, err
+			} else {
+				entries, rawEntries, err := processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
+				return entries, rawEntries, false, err
+			}
 		}
 
 		// Get file info
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
 			// File doesn't exist, fall back to normal processing
-			entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
-			return entries, rawEntries, false, err
+			if regularMap != nil {
+				entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
+				return entries, rawEntries, false, err
+			} else {
+				entries, rawEntries, err := processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
+				return entries, rawEntries, false, err
+			}
 		}
 
 		// Check if we have a cached summary
@@ -324,10 +347,17 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 				logging.LogDebugf("Cache hit: %s (mtime: %v, size: %d)", filepath.Base(filePath), fileInfo.ModTime(), fileInfo.Size())
 
 				// Merge processed hashes to avoid duplicates
-				summary.MergeHashes(processedHashes)
+				if regularMap != nil {
+					summary.MergeHashes(regularMap)
+				} else {
+					// For sync.Map, we need to merge differently
+					for hash := range summary.ProcessedHashes {
+						syncMap.Store(hash, true)
+					}
+				}
 
-				// Create entries from summary (simplified approach)
-				entries := createEntriesFromSummary(summary, cutoffTime)
+				// Create entries from summary, but filter out duplicates
+				entries := createEntriesFromSummaryWithDedup(summary, cutoffTime, regularMap, syncMap)
 
 				return entries, nil, true, nil
 			} else {
@@ -340,7 +370,16 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 	}
 
 	// Cache miss or caching disabled, process normally
-	entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
+	var entries []models.UsageEntry
+	var rawEntries []map[string]interface{}
+	var err error
+	
+	if regularMap != nil {
+		entries, rawEntries, err = processSingleFile(filePath, opts.Mode, cutoffTime, regularMap, opts.IncludeRaw)
+	} else {
+		entries, rawEntries, err = processSingleFileConcurrent(filePath, opts.Mode, cutoffTime, syncMap, opts.IncludeRaw)
+	}
+	
 	if err != nil {
 		return entries, rawEntries, false, err
 	}
@@ -348,7 +387,21 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 	// If caching is enabled and we successfully processed the file, create and cache summary
 	// Skip caching if in watch mode (TUI) to avoid frequent writes
 	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 && !opts.IsWatchMode {
-		summary := createSummaryFromEntries(absPath, filePath, entries, processedHashes)
+		// Create summary with the appropriate hash map
+		var summary *FileSummary
+		if regularMap != nil {
+			summary = createSummaryFromEntries(absPath, filePath, entries, regularMap)
+		} else {
+			// For sync.Map, we need to convert to regular map for storage
+			tempMap := make(map[string]bool)
+			syncMap.Range(func(key, value interface{}) bool {
+				if hash, ok := key.(string); ok {
+					tempMap[hash] = true
+				}
+				return true
+			})
+			summary = createSummaryFromEntries(absPath, filePath, entries, tempMap)
+		}
 		if summary != nil {
 			if err := opts.CacheStore.SetFileSummary(summary); err != nil {
 				logging.LogWarnf("Failed to cache summary for %s: %v", filepath.Base(filePath), err)
@@ -365,6 +418,18 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 
 // processSingleFile processes a single JSONL file
 func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.Time, processedHashes map[string]bool, includeRaw bool) ([]models.UsageEntry, []map[string]interface{}, error) {
+	// This is a wrapper for compatibility
+	return processSingleFileInternal(filePath, mode, cutoffTime, processedHashes, nil, includeRaw)
+}
+
+// processSingleFileConcurrent processes a single JSONL file with sync.Map for concurrent access
+func processSingleFileConcurrent(filePath string, mode models.CostMode, cutoffTime *time.Time, processedHashes *sync.Map, includeRaw bool) ([]models.UsageEntry, []map[string]interface{}, error) {
+	// This version uses sync.Map
+	return processSingleFileInternal(filePath, mode, cutoffTime, nil, processedHashes, includeRaw)
+}
+
+// processSingleFileInternal is the actual implementation supporting both map types
+func processSingleFileInternal(filePath string, mode models.CostMode, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map, includeRaw bool) ([]models.UsageEntry, []map[string]interface{}, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open file: %w", err)
@@ -431,14 +496,28 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 
 		// Deduplicate based on content hash
 		entryHash := generateEntryHash(entry)
-		if processedHashes[entryHash] {
+		
+		// Check for duplicate using the appropriate map type
+		isDuplicate := false
+		if regularMap != nil {
+			if regularMap[entryHash] {
+				isDuplicate = true
+			} else {
+				regularMap[entryHash] = true
+			}
+		} else {
+			// For sync.Map, use LoadOrStore for atomic check-and-set
+			_, loaded := syncMap.LoadOrStore(entryHash, true)
+			isDuplicate = loaded
+		}
+		
+		if isDuplicate {
 			duplicates++
 			if isDebugFile && lineNum <= 3 {
 				logging.LogDebugf("  Line %d duplicate entry", lineNum)
 			}
 			continue
 		}
-		processedHashes[entryHash] = true
 
 		// Normalize model name
 		entry.NormalizeModel()
@@ -641,6 +720,52 @@ func generateEntryHash(entry models.UsageEntry) string {
 
 // createEntriesFromSummary creates placeholder entries from a cached summary
 // Note: This is a simplified approach that creates aggregate entries for cache hits
+// createEntriesFromSummaryWithDedup creates entries from summary with deduplication
+func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) []models.UsageEntry {
+	var entries []models.UsageEntry
+
+	// For cached summaries, we create synthetic entries based on model stats
+	// This is a simplification - in a more sophisticated implementation,
+	// we might store and retrieve actual entry data
+	for modelName, modelStat := range summary.ModelStats {
+		if modelStat.EntryCount > 0 {
+			// Create a representative entry for this model
+			entry := models.UsageEntry{
+				Timestamp:           summary.ProcessedAt, // Use processed time as timestamp
+				Model:               modelStat.Model,
+				InputTokens:         modelStat.InputTokens,
+				OutputTokens:        modelStat.OutputTokens,
+				CacheCreationTokens: modelStat.CacheCreationTokens,
+				CacheReadTokens:     modelStat.CacheReadTokens,
+				TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
+				CostUSD:             modelStat.TotalCost,
+				MessageID:           fmt.Sprintf("cached_%s_%d", modelName, summary.ProcessedAt.Unix()),
+			}
+
+			entry.NormalizeModel()
+			
+			// Check if this entry would be a duplicate
+			entryHash := generateEntryHash(entry)
+			isDuplicate := false
+			
+			if regularMap != nil {
+				if regularMap[entryHash] {
+					isDuplicate = true
+				}
+			} else if syncMap != nil {
+				_, loaded := syncMap.Load(entryHash)
+				isDuplicate = loaded
+			}
+			
+			if !isDuplicate {
+				entries = append(entries, entry)
+			}
+		}
+	}
+
+	return entries
+}
+
 func createEntriesFromSummary(summary *FileSummary, cutoffTime *time.Time) []models.UsageEntry {
 	var entries []models.UsageEntry
 

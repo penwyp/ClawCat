@@ -147,16 +147,8 @@ func (cl *ConcurrentLoader) worker(
 
 			startTime := time.Now()
 			
-			// Convert sync.Map to regular map for this file processing
-			localHashes := make(map[string]bool)
-			
-			// Process the file
-			entries, rawEntries, fromCache, err := processSingleFileWithCache(filePath, opts, cutoffTime, localHashes)
-			
-			// Merge local hashes back to shared map
-			for hash := range localHashes {
-				processedHashes.Store(hash, true)
-			}
+			// Process the file using the concurrent version that works directly with sync.Map
+			entries, rawEntries, fromCache, err := processSingleFileWithCacheConcurrent(filePath, opts, cutoffTime, processedHashes)
 
 			// Create result
 			result := FileResult{
