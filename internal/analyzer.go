@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/fileio"
 	"github.com/penwyp/ClawCat/logging"
@@ -57,98 +58,38 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 
 	a.logger.Infof("Starting analysis of %d paths: %v", len(paths), paths)
 
-	var allResults []models.AnalysisResult
-	var analyzedPaths []string
-	var errorPaths []string
+	// Create cache store if caching is enabled
+	var cacheStore fileio.CacheStore
+	if a.config.Data.SummaryCache.Enabled {
+		storeConfig := cache.StoreConfig{
+			MaxFileSize:  50 * 1024 * 1024, // 50MB
+			MaxMemory:    100 * 1024 * 1024, // 100MB
+			FileCacheTTL: time.Hour,
+			CalcCacheTTL: time.Hour,
+		}
+		cacheStore = fileio.NewStoreAdapter(cache.NewStore(storeConfig))
+	}
 
+	var allResults []models.AnalysisResult
 	for _, path := range paths {
-		a.logger.Infof("Analyzing path: %s", path)
-		results, err := a.analyzePath(path)
+		// Use LoadUsageEntries with caching support
+		opts := fileio.LoadUsageEntriesOptions{
+			DataPath:           path,
+			Mode:               models.CostModeCalculated,
+			CacheStore:         cacheStore,
+			CacheThreshold:     a.config.Data.SummaryCache.Threshold,
+			EnableSummaryCache: a.config.Data.SummaryCache.Enabled,
+		}
+
+		result, err := fileio.LoadUsageEntries(opts)
 		if err != nil {
-			a.logger.Errorf("Failed to analyze path %s: %v", path, err)
-			errorPaths = append(errorPaths, path)
+			a.logger.Errorf("Failed to load usage entries from %s: %v", path, err)
 			continue
 		}
 
-		if len(results) > 0 {
-			analyzedPaths = append(analyzedPaths, path)
-			a.logger.Infof("Found %d usage entries in path: %s", len(results), path)
-		} else {
-			a.logger.Warnf("No usage data found in path: %s", path)
-		}
-
-		allResults = append(allResults, results...)
-	}
-
-	// Sort results by timestamp
-	sort.Slice(allResults, func(i, j int) bool {
-		return allResults[i].Timestamp.Before(allResults[j].Timestamp)
-	})
-
-	if len(allResults) == 0 {
-		if len(errorPaths) > 0 {
-			return nil, fmt.Errorf("no usage data found - %d paths had errors: %v", len(errorPaths), errorPaths)
-		}
-		return nil, fmt.Errorf("no usage data found in any of the specified paths: %v\n\nExpected data format:\n- JSONL files with usage data\n- Files should contain either 'type: message' with usage field, or 'type: assistant' with message.usage field\n- Check that the paths contain Claude conversation or API usage logs", paths)
-	}
-
-	a.logger.Infof("Analysis completed: %d results from %d paths", len(allResults), len(analyzedPaths))
-	return allResults, nil
-}
-
-// analyzePath analyzes a single path (file or directory)
-func (a *Analyzer) analyzePath(path string) ([]models.AnalysisResult, error) {
-	// Discover files in the path
-	files, err := fileio.DiscoverFiles(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to discover files: %w", err)
-	}
-
-	var allResults []models.AnalysisResult
-
-	for _, file := range files {
-		results, err := a.analyzeFile(file)
-		if err != nil {
-			a.logger.Errorf("Failed to analyze file %s: %v", file, err)
-			continue
-		}
-
-		allResults = append(allResults, results...)
-	}
-
-	return allResults, nil
-}
-
-// analyzeFile analyzes a single file
-func (a *Analyzer) analyzeFile(filePath string) ([]models.AnalysisResult, error) {
-	reader, err := fileio.NewReader(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create reader: %w", err)
-	}
-	defer reader.Close()
-
-	var results []models.AnalysisResult
-	entryCh, errCh := reader.ReadEntries()
-
-	for {
-		select {
-		case entry, ok := <-entryCh:
-			if !ok {
-				// Channel closed, we're done
-				return results, nil
-			}
-
-			// Calculate cost and total tokens if not already calculated
-			if entry.CostUSD == 0 {
-				pricing := models.GetPricing(entry.Model)
-				entry.CostUSD = entry.CalculateCost(pricing)
-			}
-			if entry.TotalTokens == 0 {
-				entry.TotalTokens = entry.CalculateTotalTokens()
-			}
-
-			// Convert to analysis result
-			result := models.AnalysisResult{
+		// Convert usage entries to analysis results
+		for _, entry := range result.Entries {
+			analysisResult := models.AnalysisResult{
 				Timestamp:           entry.Timestamp,
 				Model:               entry.Model,
 				SessionID:           a.generateSessionID(entry.Timestamp),
@@ -160,16 +101,28 @@ func (a *Analyzer) analyzeFile(filePath string) ([]models.AnalysisResult, error)
 				CostUSD:             entry.CostUSD,
 				Count:               1,
 			}
-
-			results = append(results, result)
-
-		case err := <-errCh:
-			if err != nil {
-				return results, fmt.Errorf("error reading entries: %w", err)
-			}
+			allResults = append(allResults, analysisResult)
 		}
+
+		a.logger.Infof("Processed %d entries from %s (files: %d, errors: %d)", 
+			result.Metadata.EntriesLoaded, path, 
+			result.Metadata.FilesProcessed, 
+			len(result.Metadata.ProcessingErrors))
 	}
+
+	// Sort results by timestamp
+	sort.Slice(allResults, func(i, j int) bool {
+		return allResults[i].Timestamp.Before(allResults[j].Timestamp)
+	})
+
+	if len(allResults) == 0 {
+		return nil, fmt.Errorf("no usage data found in any of the specified paths: %v\n\nExpected data format:\n- JSONL files with usage data\n- Files should contain either 'type: message' with usage field, or 'type: assistant' with message.usage field\n- Check that the paths contain Claude conversation or API usage logs", paths)
+	}
+
+	a.logger.Infof("Analysis completed: %d results from %d paths", len(allResults), len(paths))
+	return allResults, nil
 }
+
 
 // generateSessionID generates a session ID based on timestamp
 func (a *Analyzer) generateSessionID(timestamp time.Time) string {

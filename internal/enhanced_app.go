@@ -195,6 +195,8 @@ func (ea *EnhancedApplication) start() error {
 	ea.logger.Info("Waiting for initial data...")
 	if !ea.orchestrator.WaitForInitialData(10 * time.Second) {
 		ea.logger.Warn("Timeout waiting for initial data, continuing anyway")
+	} else {
+		ea.logger.Info("Initial data received successfully")
 	}
 
 	return nil
@@ -255,6 +257,24 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 		entries := ea.extractEntriesFromBlocks(data.Data.Blocks)
 		ea.logger.Infof("Updating UI with %d sessions and %d entries", len(sessions), len(entries))
 		ea.ui.UpdateData(sessions, entries)
+		
+		// Also send the metrics update
+		if metrics != nil {
+			// Convert enhanced metrics to realtime metrics for UI
+			burnRate := float64(0)
+			if metrics.BurnRate != nil {
+				burnRate = metrics.BurnRate.TokensPerMinute
+			}
+			
+			realtimeMetrics := &calculations.RealtimeMetrics{
+				CurrentTokens: metrics.CurrentTokens,
+				CurrentCost:   metrics.CurrentCost,
+				BurnRate:      burnRate,
+				SessionStart:  metrics.SessionStart,
+				SessionEnd:    metrics.SessionEnd,
+			}
+			ea.ui.SendMessage(ui.RealtimeMetricsMsg{Metrics: realtimeMetrics})
+		}
 	} else {
 		ea.logger.Info("UI is not initialized - skipping UI update")
 	}

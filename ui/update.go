@@ -207,7 +207,7 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ViewDashboard:
 		if m.dashboard != nil {
 			updatedView, viewCmd := m.dashboard.Update(msg)
-			m.dashboard = updatedView.(*DashboardView)
+			m.dashboard = updatedView.(*EnhancedDashboardView)
 			cmd = viewCmd
 		}
 
@@ -249,7 +249,7 @@ func (m Model) handleViewUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ViewDashboard:
 		if m.dashboard != nil {
 			updatedView, viewCmd := m.dashboard.Update(msg)
-			m.dashboard = updatedView.(*DashboardView)
+			m.dashboard = updatedView.(*EnhancedDashboardView)
 			cmd = tea.Batch(spinnerCmd, viewCmd)
 		} else {
 			cmd = spinnerCmd

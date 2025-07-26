@@ -300,17 +300,35 @@ func (f *FlagSource) Priority() int {
 
 // Load loads configuration from command-line flags
 func (f *FlagSource) Load() (*Config, error) {
-	v := viper.New()
-	if err := v.BindPFlags(f.flags); err != nil {
-		return nil, fmt.Errorf("failed to bind pflags: %w", err)
-	}
+	config := &Config{}
+	
+	// Handle flags that are bound to nested config fields
+	f.flags.VisitAll(func(flag *pflag.Flag) {
+		if !flag.Changed {
+			return
+		}
+		
+		switch flag.Name {
+		case "debug":
+			if val, err := f.flags.GetBool("debug"); err == nil {
+				config.Debug.Enabled = val
+			}
+		case "log-level":
+			if val, err := f.flags.GetString("log-level"); err == nil {
+				config.App.LogLevel = val
+			}
+		case "no-color":
+			if val, err := f.flags.GetBool("no-color"); err == nil {
+				config.UI.NoColor = val
+			}
+		case "verbose":
+			if val, err := f.flags.GetBool("verbose"); err == nil {
+				config.App.Verbose = val
+			}
+		}
+	})
 
-	var config Config
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config from flags: %w", err)
-	}
-
-	return &config, nil
+	return config, nil
 }
 
 // DefaultMerger is the default configuration merger

@@ -54,7 +54,9 @@ func (d *EnhancedDashboardView) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View 渲染增强的 Dashboard
 func (d *EnhancedDashboardView) View() string {
 	if d.width == 0 || d.height == 0 {
-		return "Enhanced Dashboard loading..."
+		// Default reasonable size if not set yet
+		d.width = 80
+		d.height = 24
 	}
 
 	// 更新进度条宽度

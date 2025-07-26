@@ -14,6 +14,7 @@ import (
 	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/internal"
+	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -62,10 +63,13 @@ Examples:
 			return fmt.Errorf("failed to apply command flags: %w", err)
 		}
 		
-		// Apply debug flag if set
-		if debug || viper.GetBool("debug.enabled") {
+		// Apply debug flag if set from command line
+		if debug {
 			cfg.Debug.Enabled = true
 		}
+
+		// Initialize global logger for usage_loader cache logging
+		logging.InitGlobalLoggerWithDebug(cfg.App.LogLevel, "", cfg.Debug.Enabled)
 
 		// Reset cache if requested
 		if analyzeReset {

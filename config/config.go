@@ -36,6 +36,7 @@ type AppConfig struct {
 	LogLevel string `yaml:"log_level" json:"log_level"`
 	LogFile  string `yaml:"log_file" json:"log_file"`
 	Timezone string `yaml:"timezone" json:"timezone"`
+	Verbose  bool   `yaml:"verbose" json:"verbose"`
 }
 
 // DataConfig contains data source and processing settings
@@ -67,6 +68,7 @@ type UIConfig struct {
 	TablePageSize int           `yaml:"table_page_size" json:"table_page_size"`
 	DateFormat    string        `yaml:"date_format" json:"date_format"`
 	TimeFormat    string        `yaml:"time_format" json:"time_format"`
+	NoColor       bool          `yaml:"no_color" json:"no_color"`
 }
 
 // PerformanceConfig contains performance tuning settings

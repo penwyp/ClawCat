@@ -41,7 +41,7 @@ type Model struct {
 	streamingMode bool // New: enables non-fullscreen streaming mode
 
 	// Components
-	dashboard     *DashboardView
+	dashboard     *EnhancedDashboardView
 	sessionList   *SessionListView
 	analytics     *AnalyticsView
 	help          *HelpView
@@ -87,7 +87,7 @@ func NewModel(cfg Config) Model {
 	}
 
 	// Initialize views
-	m.dashboard = NewDashboardView()
+	m.dashboard = NewEnhancedDashboardView(cfg)
 	m.sessionList = NewSessionListView()
 	m.analytics = NewAnalyticsView()
 	m.help = NewHelpView()
@@ -122,6 +122,10 @@ func (m *Model) UpdateSessions(sessions []*sessions.Session) {
 	// Update individual views
 	if m.dashboard != nil {
 		m.dashboard.UpdateStats(m.stats)
+		// Also update metrics if available
+		if m.realtimeMetrics != nil {
+			m.dashboard.UpdateMetrics(m.realtimeMetrics)
+		}
 	}
 	if m.sessionList != nil {
 		m.sessionList.UpdateSessions(sessions)
@@ -156,6 +160,11 @@ func (m *Model) UpdateRealtimeMetrics(metrics *calculations.RealtimeMetrics) {
 		m.streamDisplay.SetMetrics(metrics)
 		m.streamDisplay.SetSessions(m.sessions)
 		m.streamDisplay.SetWidth(m.width)
+	}
+
+	// Update dashboard with metrics
+	if m.dashboard != nil && metrics != nil {
+		m.dashboard.UpdateMetrics(metrics)
 	}
 
 	m.lastUpdate = time.Now()
@@ -314,6 +323,9 @@ func (m *Model) Resize(width, height int) {
 	}
 	if m.help != nil {
 		m.help.Resize(width, height)
+	}
+	if m.streamDisplay != nil {
+		m.streamDisplay.SetWidth(width)
 	}
 }
 
