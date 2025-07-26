@@ -2,13 +2,13 @@ package internal
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
@@ -269,11 +269,14 @@ func (e *Exporter) exportJSON(data []models.AnalysisResult, options ExportOption
 	}
 	defer file.Close()
 
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-
-	if err := encoder.Encode(data); err != nil {
-		return fmt.Errorf("failed to encode JSON: %w", err)
+	jsonData, err := sonic.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal data: %w", err)
+	}
+	
+	_, err = file.Write(jsonData)
+	if err != nil {
+		return fmt.Errorf("failed to write data: %w", err)
 	}
 
 	return nil

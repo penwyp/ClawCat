@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -11,6 +10,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/internal"
@@ -507,9 +507,16 @@ func outputTable(results []models.AnalysisResult) error {
 }
 
 func outputJSON(results []models.AnalysisResult) error {
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(results)
+	data, err := sonic.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, err = os.Stdout.Write(data)
+	if err != nil {
+		return err
+	}
+	_, err = os.Stdout.Write([]byte("\n"))
+	return err
 }
 
 func outputCSV(results []models.AnalysisResult) error {

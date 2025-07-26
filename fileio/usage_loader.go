@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
 )
@@ -255,7 +255,6 @@ func findJSONLFiles(dataPath string) ([]string, error) {
 		}
 
 		if !info.IsDir() && strings.HasSuffix(strings.ToLower(info.Name()), ".jsonl") {
-			logging.LogDebugf("Found JSONL file: %s", path)
 			jsonlFiles = append(jsonlFiles, path)
 		}
 
@@ -270,6 +269,37 @@ func findJSONLFiles(dataPath string) ([]string, error) {
 	return jsonlFiles, nil
 }
 
+// hasAssistantMessages quickly checks if a file contains assistant messages with usage data
+// Uses simple string matching to avoid JSON parsing overhead
+func hasAssistantMessages(filePath string) bool {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // Same buffer size as main processing
+
+	// Check only the first few lines for efficiency
+	for i := 0; i < 5 && scanner.Scan(); i++ {
+		line := scanner.Text()
+		// Quick string matching - look for assistant messages with usage data
+		if strings.Contains(line, `"type":"assistant"`) && 
+		   (strings.Contains(line, `"usage"`) || strings.Contains(line, `"input_tokens"`)) {
+			return true
+		}
+		// Also check for legacy format (no type field but has usage)
+		if !strings.Contains(line, `"type":`) && 
+		   strings.Contains(line, `"usage"`) &&
+		   strings.Contains(line, `"input_tokens"`) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // processSingleFileWithCache processes a single JSONL file with caching support
 func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, processedHashes map[string]bool) ([]models.UsageEntry, []map[string]interface{}, bool, error) {
 	// Get absolute path for cache key
@@ -280,6 +310,13 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 
 	// Check if caching is enabled
 	if opts.EnableSummaryCache && opts.CacheStore != nil {
+		// Quick pre-check: if file doesn't contain assistant messages, skip caching entirely
+		if !hasAssistantMessages(filePath) {
+			// Process directly without cache operations, avoiding unnecessary debug logs
+			entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, processedHashes, opts.IncludeRaw)
+			return entries, rawEntries, false, err
+		}
+
 		// Get file info
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
@@ -359,7 +396,7 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 		}
 
 		var rawData map[string]interface{}
-		if err := json.Unmarshal(line, &rawData); err != nil {
+		if err := sonic.Unmarshal(line, &rawData); err != nil {
 			if isDebugFile && lineNum <= 3 {
 				logging.LogDebugf("  JSON parse error line %d: %v", lineNum, err)
 			}
@@ -452,7 +489,7 @@ func loadRawEntriesFromFile(filePath string) ([]map[string]interface{}, error) {
 		}
 
 		var rawData map[string]interface{}
-		if err := json.Unmarshal(line, &rawData); err != nil {
+		if err := sonic.Unmarshal(line, &rawData); err != nil {
 			continue
 		}
 

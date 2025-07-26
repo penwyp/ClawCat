@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -10,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/penwyp/ClawCat/models"
 )
 
@@ -455,7 +455,7 @@ type JSONValidator struct{}
 
 func (jv *JSONValidator) Validate(data []byte) error {
 	var entry models.UsageEntry
-	if err := json.Unmarshal(data, &entry); err != nil {
+	if err := sonic.Unmarshal(data, &entry); err != nil {
 		return fmt.Errorf("invalid JSON format: %w", err)
 	}
 	return nil

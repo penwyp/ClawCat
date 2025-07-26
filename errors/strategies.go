@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/penwyp/ClawCat/models"
 )
 
@@ -142,7 +143,7 @@ func (j *JSONParseRecovery) extractPartialData(data []byte) []byte {
 
 		// 尝试解析每一行
 		var temp interface{}
-		if err := json.Unmarshal([]byte(line), &temp); err == nil {
+		if err := sonic.Unmarshal([]byte(line), &temp); err == nil {
 			validLines = append(validLines, line)
 		}
 	}
@@ -178,7 +179,7 @@ func (jr *JSONRepair) TryRepair(data []byte) []byte {
 		if repaired := strategy.Repair(data); repaired != nil {
 			// 验证修复后的数据
 			var test interface{}
-			if err := json.Unmarshal(repaired, &test); err == nil {
+			if err := sonic.Unmarshal(repaired, &test); err == nil {
 				return repaired
 			}
 		}

@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"runtime"
 
+	"github.com/bytedance/sonic"
 	"github.com/spf13/cobra"
 )
 
@@ -80,9 +80,16 @@ func outputVersionDefault(info VersionInfo) error {
 }
 
 func outputVersionJSON(info VersionInfo) error {
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(info)
+	data, err := sonic.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, err = os.Stdout.Write(data)
+	if err != nil {
+		return err
+	}
+	_, err = os.Stdout.Write([]byte("\n"))
+	return err
 }
 
 func outputVersionShort(info VersionInfo) error {

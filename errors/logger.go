@@ -1,12 +1,12 @@
 package errors
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/penwyp/ClawCat/logging"
 )
 
@@ -319,7 +319,7 @@ func NewJSONEncoder() *JSONEncoder {
 
 // Encode 编码日志条目
 func (je *JSONEncoder) Encode(entry *ErrorLogEntry) ([]byte, error) {
-	return json.Marshal(entry)
+	return sonic.Marshal(entry)
 }
 
 // FileLogWriter 文件日志写入器

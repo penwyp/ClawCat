@@ -2,13 +2,14 @@ package fileio
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/bytedance/sonic"
 )
 
 type PathDiscovery struct {
@@ -350,7 +351,7 @@ func hasUsageData(filePath string) bool {
 		}
 
 		var data map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &data); err != nil {
+		if err := sonic.Unmarshal([]byte(line), &data); err != nil {
 			continue
 		}
 

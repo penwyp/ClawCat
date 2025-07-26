@@ -3,7 +3,6 @@ package pipeline
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/penwyp/ClawCat/models"
 )
 
@@ -328,7 +328,7 @@ func (sr *StreamReader) processLine(line string) error {
 	// 解析JSON
 	var entry models.UsageEntry
 	if sr.config.ParseJSON {
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+		if err := sonic.Unmarshal([]byte(line), &entry); err != nil {
 			return fmt.Errorf("failed to parse JSON: %w", err)
 		}
 	}
@@ -523,7 +523,7 @@ func (sr *StreamReader) ReadFrom(position int64, maxLines int) ([]ProcessedData,
 
 		var entry models.UsageEntry
 		if sr.config.ParseJSON {
-			if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			if err := sonic.Unmarshal([]byte(line), &entry); err != nil {
 				log.Printf("Failed to parse JSON line: %v", err)
 				continue
 			}

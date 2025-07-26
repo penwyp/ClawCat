@@ -1,12 +1,13 @@
 package internal
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/bytedance/sonic"
 )
 
 // Metrics contains application metrics
@@ -74,19 +75,23 @@ func (m *Metrics) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	m.updateRuntimeMetrics()
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(m); err != nil {
+	data, err := sonic.Marshal(m)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	w.Write(data)
 }
 
 // handleHealth handles the health check endpoint
 func (m *Metrics) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	data, _ := sonic.Marshal(map[string]string{
 		"status": "healthy",
 		"time":   time.Now().Format(time.RFC3339),
 	})
+	w.Write(data)
 }
 
 // updateRuntimeMetrics updates runtime-specific metrics

@@ -2,7 +2,7 @@ package logging
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/bytedance/sonic"
 	"fmt"
 	"io"
 	"log"
@@ -387,7 +387,7 @@ func (c *ConsoleOutput) Write(entry LogEntry) error {
 
 	var output string
 	if c.format == FormatJSON {
-		data, err := json.Marshal(entry)
+		data, err := sonic.Marshal(entry)
 		if err != nil {
 			return err
 		}
@@ -443,7 +443,7 @@ func (f *FileOutput) Write(entry LogEntry) error {
 
 	var output string
 	if f.format == FormatJSON {
-		data, err := json.Marshal(entry)
+		data, err := sonic.Marshal(entry)
 		if err != nil {
 			return err
 		}

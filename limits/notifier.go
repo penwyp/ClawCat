@@ -2,7 +2,6 @@ package limits
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os/exec"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/penwyp/ClawCat/config"
 )
 
@@ -148,7 +148,7 @@ func (n *Notifier) sendWebhookNotification(message string, severity Severity) er
 		}
 	}
 
-	jsonData, err := json.Marshal(payload)
+	jsonData, err := sonic.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal webhook payload: %w", err)
 	}
