@@ -34,6 +34,10 @@ var (
 	analyzeGroupBy   string
 	analyzeBreakdown bool
 	analyzeReset     bool
+	// Pricing and deduplication flags
+	analyzePricingSource      string
+	analyzePricingOffline     bool
+	analyzeEnableDeduplication bool
 )
 
 var analyzeCmd = &cobra.Command{
@@ -140,10 +144,18 @@ func init() {
 	// Reset flag
 	analyzeCmd.Flags().BoolVarP(&analyzeReset, "reset", "r", false, "Clear cache before analysis")
 
+	// Pricing and deduplication flags
+	analyzeCmd.Flags().StringVar(&analyzePricingSource, "pricing-source", "", "pricing source (default, litellm)")
+	analyzeCmd.Flags().BoolVar(&analyzePricingOffline, "pricing-offline", false, "use cached pricing data for offline mode")
+	analyzeCmd.Flags().BoolVar(&analyzeEnableDeduplication, "deduplication", false, "enable deduplication of entries across all files")
+
 	// Bind to viper
 	_ = viper.BindPFlag("analyze.output", analyzeCmd.Flags().Lookup("output"))
 	_ = viper.BindPFlag("analyze.from", analyzeCmd.Flags().Lookup("from"))
 	_ = viper.BindPFlag("analyze.to", analyzeCmd.Flags().Lookup("to"))
+	_ = viper.BindPFlag("data.pricing_source", analyzeCmd.Flags().Lookup("pricing-source"))
+	_ = viper.BindPFlag("data.pricing_offline_mode", analyzeCmd.Flags().Lookup("pricing-offline"))
+	_ = viper.BindPFlag("data.deduplication", analyzeCmd.Flags().Lookup("deduplication"))
 
 	rootCmd.AddCommand(analyzeCmd)
 }
@@ -210,6 +222,33 @@ func applyAnalyzeFlags(cfg *config.Config, args []string) error {
 			return fmt.Errorf("invalid sort field: %s (valid options: %s)",
 				analyzeSortBy, strings.Join(validSorts, ", "))
 		}
+	}
+
+	// Apply pricing source if provided
+	if analyzePricingSource != "" {
+		validSources := []string{"default", "litellm"}
+		found := false
+		for _, source := range validSources {
+			if strings.EqualFold(analyzePricingSource, source) {
+				cfg.Data.PricingSource = strings.ToLower(analyzePricingSource)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("invalid pricing source: %s (valid options: %s)",
+				analyzePricingSource, strings.Join(validSources, ", "))
+		}
+	}
+
+	// Apply pricing offline mode if set
+	if analyzePricingOffline {
+		cfg.Data.PricingOfflineMode = true
+	}
+
+	// Apply deduplication if set
+	if analyzeEnableDeduplication {
+		cfg.Data.Deduplication = true
 	}
 
 	return nil
