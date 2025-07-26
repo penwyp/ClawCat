@@ -418,7 +418,7 @@ func applyBreakdownGrouping(results []models.AnalysisResult) []models.AnalysisRe
 		for modelName := range groupData.models {
 			modelNames = append(modelNames, modelName)
 		}
-		sort.Strings(modelNames)
+		sortModelsByPreference(modelNames)
 
 		// Add model-specific results
 		for _, modelName := range modelNames {
@@ -542,7 +542,7 @@ func outputTableWithoutBreakdown(results []models.AnalysisResult) error {
 		for model := range group.models {
 			modelList = append(modelList, model)
 		}
-		sort.Strings(modelList)
+		sortModelsByPreference(modelList)
 
 		row := []string{
 			date,
@@ -628,7 +628,7 @@ func outputTableWithBreakdown(results []models.AnalysisResult) error {
 		for model := range group.modelStats {
 			modelNames = append(modelNames, model)
 		}
-		sort.Strings(modelNames)
+		sortModelsByPreference(modelNames)
 
 		// Convert models to string list
 		var modelList []string
@@ -1083,4 +1083,35 @@ func formatModels(models []string) string {
 	}
 
 	return strings.Join(models, ", ")
+}
+
+// sortModelsByPreference sorts models by preference: ops first, then sonnet, then others
+func sortModelsByPreference(models []string) {
+	sort.Slice(models, func(i, j int) bool {
+		return getModelPriority(models[i]) < getModelPriority(models[j])
+	})
+}
+
+// getModelPriority returns priority order for model sorting
+// Lower numbers have higher priority
+func getModelPriority(model string) int {
+	modelLower := strings.ToLower(model)
+	
+	// Opus models (highest priority)
+	if strings.Contains(modelLower, "opus") {
+		return 1
+	}
+	
+	// Sonnet models (medium priority)  
+	if strings.Contains(modelLower, "sonnet") {
+		return 2
+	}
+	
+	// Haiku models
+	if strings.Contains(modelLower, "haiku") {
+		return 3
+	}
+	
+	// Other models (lowest priority)
+	return 4
 }
