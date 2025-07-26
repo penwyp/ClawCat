@@ -102,11 +102,7 @@ type SubscriptionConfig struct {
 
 // DebugConfig contains debugging and profiling settings
 type DebugConfig struct {
-	Enabled       bool   `yaml:"enabled" json:"enabled"`
-	ProfileCPU    bool   `yaml:"profile_cpu" json:"profile_cpu"`
-	ProfileMemory bool   `yaml:"profile_memory" json:"profile_memory"`
-	TraceFile     string `yaml:"trace_file" json:"trace_file"`
-	MetricsPort   int    `yaml:"metrics_port" json:"metrics_port"`
+	Enabled bool `yaml:"enabled" json:"enabled"`
 }
 
 // LimitsConfig contains subscription limit settings

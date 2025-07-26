@@ -167,11 +167,6 @@ func (ea *EnhancedApplication) bootstrap() error {
 	}
 	ea.ui = ui.NewApp(uiConfig)
 
-	// Initialize metrics
-	if ea.config.Debug.MetricsPort > 0 {
-		ea.metrics = NewMetrics(ea.config.Debug.MetricsPort)
-	}
-
 	return nil
 }
 
@@ -194,12 +189,6 @@ func (ea *EnhancedApplication) start() error {
 	// Start the orchestrator
 	if err := ea.orchestrator.Start(); err != nil {
 		return fmt.Errorf("failed to start orchestrator: %w", err)
-	}
-
-	// Start metrics collection if enabled
-	if ea.config.Debug.MetricsPort > 0 && ea.metrics != nil {
-		ea.wg.Add(1)
-		go ea.collectMetrics()
 	}
 
 	// Wait for initial data with timeout

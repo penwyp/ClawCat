@@ -65,11 +65,6 @@ func (v *StandardValidator) Validate(cfg *Config) error {
 		errors = append(errors, fmt.Sprintf("subscription: %v", err))
 	}
 
-	// Validate Debug config
-	if err := v.validateDebug(&cfg.Debug); err != nil {
-		errors = append(errors, fmt.Sprintf("debug: %v", err))
-	}
-
 	if len(errors) > 0 {
 		return fmt.Errorf("validation errors: %s", strings.Join(errors, "; "))
 	}
@@ -283,33 +278,6 @@ func (v *StandardValidator) validateSubscription(sub *SubscriptionConfig) error 
 	}
 	if sub.WarnThreshold >= sub.AlertThreshold {
 		errors = append(errors, "warn_threshold: must be less than alert_threshold")
-	}
-
-	if len(errors) > 0 {
-		return fmt.Errorf("%s", strings.Join(errors, "; "))
-	}
-	return nil
-}
-
-// validateDebug validates debug configuration
-func (v *StandardValidator) validateDebug(debug *DebugConfig) error {
-	var errors []string
-
-	// Validate trace file path if specified
-	if debug.TraceFile != "" {
-		dir := filepath.Dir(debug.TraceFile)
-		if dir != "." {
-			if _, err := os.Stat(dir); os.IsNotExist(err) {
-				errors = append(errors, fmt.Sprintf("trace_file: directory does not exist: %s", dir))
-			}
-		}
-	}
-
-	// Validate metrics port
-	if debug.MetricsPort != 0 {
-		if debug.MetricsPort < 1024 || debug.MetricsPort > 65535 {
-			errors = append(errors, "metrics_port: must be between 1024 and 65535")
-		}
 	}
 
 	if len(errors) > 0 {

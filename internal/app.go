@@ -127,15 +127,6 @@ func (a *Application) start() error {
 		go a.processFileEvents()
 	}
 
-	// Session manager is already initialized, no start method needed
-
-	// Start metrics collection if enabled
-	if a.config.Debug.MetricsPort > 0 {
-		a.metrics = NewMetrics(a.config.Debug.MetricsPort)
-		a.wg.Add(1)
-		go a.collectMetrics()
-	}
-
 	// Initial data load
 	if err := a.loadInitialData(); err != nil {
 		return fmt.Errorf("failed to load initial data: %w", err)
