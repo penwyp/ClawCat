@@ -34,6 +34,11 @@ type RealtimeMetricsMsg struct {
 	Metrics *calculations.RealtimeMetrics
 }
 
+// SessionBlocksMsg carries session blocks for monitor view
+type SessionBlocksMsg struct {
+	Blocks []models.SessionBlock
+}
+
 // RefreshRequestMsg requests a data refresh
 type RefreshRequestMsg struct{}
 
@@ -111,6 +116,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.UpdateRealtimeMetrics(msg.Metrics)
 		return m, nil
 
+	case SessionBlocksMsg:
+		// Update session blocks
+		m.blocks = msg.Blocks
+		if m.monitor != nil {
+			m.monitor.UpdateBlocks(msg.Blocks)
+		}
+		return m, nil
+
 	case ConfigUpdateMsg:
 		// Update configuration
 		m.config = msg.Config
@@ -125,6 +138,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.analytics != nil {
 			m.analytics.UpdateConfig(msg.Config)
+		}
+		if m.monitor != nil {
+			m.monitor.UpdateConfig(msg.Config)
 		}
 
 		return m, nil
@@ -194,6 +210,10 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.SwitchView(ViewAnalytics)
 		return m, nil
 
+	case "4", "m":
+		m.SwitchView(ViewMonitor)
+		return m, nil
+
 	case "r", "f5":
 		m.SetLoading(true)
 		if m.manager != nil {
@@ -229,6 +249,13 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.help != nil {
 			updatedView, viewCmd := m.help.Update(msg)
 			m.help = updatedView.(*HelpView)
+			cmd = viewCmd
+		}
+
+	case ViewMonitor:
+		if m.monitor != nil {
+			updatedView, viewCmd := m.monitor.Update(msg)
+			m.monitor = updatedView.(*MonitorView)
 			cmd = viewCmd
 		}
 	}
@@ -282,6 +309,15 @@ func (m Model) handleViewUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmd = spinnerCmd
 		}
 
+	case ViewMonitor:
+		if m.monitor != nil {
+			updatedView, viewCmd := m.monitor.Update(msg)
+			m.monitor = updatedView.(*MonitorView)
+			cmd = tea.Batch(spinnerCmd, viewCmd)
+		} else {
+			cmd = spinnerCmd
+		}
+
 	default:
 		cmd = spinnerCmd
 	}
@@ -326,6 +362,12 @@ func (m Model) View() string {
 		}
 		return m.renderEmptyView("Help")
 
+	case ViewMonitor:
+		if m.monitor != nil {
+			return m.monitor.View()
+		}
+		return m.renderEmptyView("Monitor")
+
 	default:
 		return m.renderEmptyView("Unknown")
 	}
@@ -357,6 +399,12 @@ func (m Model) renderStreamingView() string {
 	case ViewHelp:
 		return m.renderStreamingHelp()
 
+	case ViewMonitor:
+		if m.monitor != nil {
+			return m.monitor.View()
+		}
+		return "Monitor view loading..."
+
 	default:
 		// Default to compact header
 		return m.streamDisplay.RenderHeader()
@@ -383,7 +431,7 @@ func (m Model) renderSessionSummary() string {
 func (m Model) renderStreamingHelp() string {
 	return `claudecat Streaming Mode - Keyboard Shortcuts:
   q/Ctrl+C: Quit
-  1/d: Dashboard view    2/s: Sessions view    3/a: Analytics view
+  1/d: Dashboard view    2/s: Sessions view    3/a: Analytics view    4/m: Monitor view
   r/F5: Refresh data     Tab: Next view        h/?: Help
   
 This is non-fullscreen mode - output streams inline with your terminal.`

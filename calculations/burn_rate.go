@@ -72,6 +72,7 @@ func (brc *BurnRateCalculator) ProjectBlockUsage(block models.SessionBlock) *mod
 }
 
 // CalculateHourlyBurnRate calculates burn rate based on all sessions in the last hour
+// This matches Claude-Code-Usage-Monitor's approach of calculating tokens/min from last hour
 func (brc *BurnRateCalculator) CalculateHourlyBurnRate(blocks []models.SessionBlock, currentTime time.Time) float64 {
 	if len(blocks) == 0 {
 		return 0.0
@@ -80,8 +81,9 @@ func (brc *BurnRateCalculator) CalculateHourlyBurnRate(blocks []models.SessionBl
 	oneHourAgo := currentTime.Add(-1 * time.Hour)
 	totalTokens := brc.calculateTotalTokensInHour(blocks, oneHourAgo, currentTime)
 
+	// Return tokens per minute (last hour's total divided by 60)
 	if totalTokens > 0 {
-		return totalTokens / 60.0 // Convert to tokens per minute
+		return totalTokens / 60.0
 	}
 	return 0.0
 }

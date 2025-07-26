@@ -83,6 +83,8 @@ type UIConfig struct {
 	DateFormat    string        `yaml:"date_format" json:"date_format"`
 	TimeFormat    string        `yaml:"time_format" json:"time_format"`
 	NoColor       bool          `yaml:"no_color" json:"no_color"`
+	ViewMode      string        `yaml:"view_mode" json:"view_mode"`       // "dashboard" or "monitor"
+	Timezone      string        `yaml:"timezone" json:"timezone"`         // Timezone for display
 }
 
 // PerformanceConfig contains performance tuning settings

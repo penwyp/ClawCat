@@ -31,6 +31,10 @@ var (
 	pricingSource      string
 	pricingOffline     bool
 	enableDeduplication bool
+	// Monitor view flags
+	viewMode   string
+	timezone   string
+	timeFormat string
 )
 
 var rootCmd = &cobra.Command{
@@ -112,7 +116,7 @@ func init() {
 
 	// Run command flags (now default behavior)
 	rootCmd.Flags().StringSliceVarP(&runPaths, "paths", "p", nil, "data paths to monitor (can be specified multiple times)")
-	rootCmd.Flags().StringVar(&runPlan, "plan", "", "subscription plan (free, pro, team)")
+	rootCmd.Flags().StringVar(&runPlan, "plan", "", "subscription plan (free, pro, team, max5, max20, custom)")
 	rootCmd.Flags().DurationVarP(&runRefresh, "refresh", "r", 0, "refresh interval (e.g., 1s, 500ms)")
 	rootCmd.Flags().StringVarP(&runTheme, "theme", "t", "", "UI theme (dark, light, high-contrast)")
 	rootCmd.Flags().BoolVarP(&runWatch, "watch", "w", false, "enable file watching for real-time updates")
@@ -122,6 +126,11 @@ func init() {
 	rootCmd.Flags().StringVar(&pricingSource, "pricing-source", "", "pricing source (default, litellm)")
 	rootCmd.Flags().BoolVar(&pricingOffline, "pricing-offline", false, "use cached pricing data for offline mode")
 	rootCmd.Flags().BoolVar(&enableDeduplication, "deduplication", false, "enable deduplication of entries across all files")
+	
+	// Monitor view flags
+	rootCmd.Flags().StringVar(&viewMode, "view", "", "view mode (dashboard or monitor)")
+	rootCmd.Flags().StringVar(&timezone, "timezone", "", "timezone for display (e.g., Asia/Shanghai)")
+	rootCmd.Flags().StringVar(&timeFormat, "time-format", "", "time format (12h or 24h)")
 
 	// Bind flags to viper
 	if err := viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
@@ -167,6 +176,17 @@ func init() {
 	}
 	if err := viper.BindPFlag("data.deduplication", rootCmd.Flags().Lookup("deduplication")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind deduplication flag: %v\n", err)
+	}
+	
+	// Bind monitor view flags
+	if err := viper.BindPFlag("ui.view_mode", rootCmd.Flags().Lookup("view")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind view flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("ui.timezone", rootCmd.Flags().Lookup("timezone")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind timezone flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("ui.time_format", rootCmd.Flags().Lookup("time-format")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind time-format flag: %v\n", err)
 	}
 }
 
@@ -289,7 +309,7 @@ func applyRunFlags(cfg *config.Config) error {
 
 	// Apply subscription plan if provided
 	if runPlan != "" {
-		validPlans := []string{"free", "pro", "team"}
+		validPlans := []string{"free", "pro", "team", "max5", "max20", "custom"}
 		found := false
 		for _, plan := range validPlans {
 			if strings.EqualFold(runPlan, plan) {
@@ -367,6 +387,48 @@ func applyRunFlags(cfg *config.Config) error {
 	// Apply deduplication if set
 	if enableDeduplication {
 		cfg.Data.Deduplication = true
+	}
+
+	// Apply view mode if provided
+	if viewMode != "" {
+		validModes := []string{"dashboard", "monitor"}
+		found := false
+		for _, mode := range validModes {
+			if strings.EqualFold(viewMode, mode) {
+				cfg.UI.ViewMode = strings.ToLower(viewMode)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("invalid view mode: %s (valid options: %s)",
+				viewMode, strings.Join(validModes, ", "))
+		}
+	} else if runPlan == "max5" && cfg.UI.ViewMode == "" {
+		// Default to monitor view for max5 plan
+		cfg.UI.ViewMode = "monitor"
+	}
+
+	// Apply timezone if provided
+	if timezone != "" {
+		cfg.UI.Timezone = timezone
+	}
+
+	// Apply time format if provided
+	if timeFormat != "" {
+		validFormats := []string{"12h", "24h"}
+		found := false
+		for _, format := range validFormats {
+			if strings.EqualFold(timeFormat, format) {
+				cfg.UI.TimeFormat = strings.ToLower(timeFormat)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("invalid time format: %s (valid options: %s)",
+				timeFormat, strings.Join(validFormats, ", "))
+		}
 	}
 
 	return nil

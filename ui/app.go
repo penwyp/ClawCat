@@ -27,6 +27,9 @@ type Config struct {
 	ChartHeight      int
 	TablePageSize    int
 	SubscriptionPlan string
+	ViewMode         string // "dashboard" or "monitor"
+	Timezone         string // Timezone for display
+	TimeFormat       string // "12h" or "24h"
 }
 
 // DefaultConfig returns the default UI configuration

@@ -19,7 +19,8 @@ const (
 	ViewSessions
 	ViewAnalytics
 	ViewHelp
-	ViewCount // Keep track of total views
+	ViewMonitor  // New monitor view
+	ViewCount    // Keep track of total views
 )
 
 // Model represents the application state
@@ -27,6 +28,7 @@ type Model struct {
 	// Data
 	sessions        []*sessions.Session
 	entries         []models.UsageEntry
+	blocks          []models.SessionBlock
 	stats           Statistics
 	manager         *sessions.Manager
 	realtimeMetrics *calculations.RealtimeMetrics
@@ -45,6 +47,7 @@ type Model struct {
 	sessionList   *SessionListView
 	analytics     *AnalyticsView
 	help          *HelpView
+	monitor       *MonitorView
 	streamDisplay *components.StreamingDisplay
 
 	// Utilities
@@ -91,7 +94,13 @@ func NewModel(cfg Config) Model {
 	m.sessionList = NewSessionListView()
 	m.analytics = NewAnalyticsView()
 	m.help = NewHelpView()
+	m.monitor = NewMonitorView(cfg)
 	m.streamDisplay = components.NewStreamingDisplay()
+	
+	// Set initial view based on config
+	if cfg.ViewMode == "monitor" {
+		m.view = ViewMonitor
+	}
 
 	return m
 }
@@ -133,6 +142,12 @@ func (m *Model) UpdateSessions(sessions []*sessions.Session) {
 	if m.analytics != nil {
 		m.analytics.UpdateData(sessions, m.entries)
 	}
+	if m.monitor != nil {
+		m.monitor.UpdateStats(m.stats)
+		if m.realtimeMetrics != nil {
+			m.monitor.UpdateMetrics(m.realtimeMetrics)
+		}
+	}
 
 	m.lastUpdate = time.Now()
 	m.loading = false
@@ -146,6 +161,17 @@ func (m *Model) UpdateEntries(entries []models.UsageEntry) {
 	// Update analytics view
 	if m.analytics != nil {
 		m.analytics.UpdateData(m.sessions, entries)
+	}
+
+	// Convert entries to blocks for monitor view
+	if len(entries) > 0 {
+		analyzer := sessions.NewSessionAnalyzer(5) // 5-hour sessions
+		m.blocks = analyzer.TransformToBlocks(entries)
+		
+		// Update monitor view with blocks
+		if m.monitor != nil {
+			m.monitor.UpdateBlocks(m.blocks)
+		}
 	}
 
 	m.lastUpdate = time.Now()
@@ -165,6 +191,11 @@ func (m *Model) UpdateRealtimeMetrics(metrics *calculations.RealtimeMetrics) {
 	// Update dashboard with metrics
 	if m.dashboard != nil && metrics != nil {
 		m.dashboard.UpdateMetrics(metrics)
+	}
+
+	// Update monitor view with metrics
+	if m.monitor != nil && metrics != nil {
+		m.monitor.UpdateMetrics(metrics)
 	}
 
 	m.lastUpdate = time.Now()
@@ -281,6 +312,8 @@ func (m Model) GetCurrentView() string {
 		return "Analytics"
 	case ViewHelp:
 		return "Help"
+	case ViewMonitor:
+		return "Monitor"
 	default:
 		return "Unknown"
 	}
@@ -323,6 +356,9 @@ func (m *Model) Resize(width, height int) {
 	}
 	if m.help != nil {
 		m.help.Resize(width, height)
+	}
+	if m.monitor != nil {
+		m.monitor.Resize(width, height)
 	}
 	if m.streamDisplay != nil {
 		m.streamDisplay.SetWidth(width)

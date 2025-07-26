@@ -157,6 +157,9 @@ func (ea *EnhancedApplication) bootstrap() error {
 		ChartHeight:      10,
 		TablePageSize:    20,
 		SubscriptionPlan: ea.config.Subscription.Plan,
+		ViewMode:         ea.config.UI.ViewMode,
+		Timezone:         ea.config.UI.Timezone,
+		TimeFormat:       ea.config.UI.TimeFormat,
 	}
 	ea.ui = ui.NewApp(uiConfig)
 
@@ -277,6 +280,9 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 				ModelDistribution: modelDistribution,
 			}
 			ea.ui.SendMessage(ui.RealtimeMetricsMsg{Metrics: realtimeMetrics})
+			
+			// Also send blocks for monitor view
+			ea.ui.SendMessage(ui.SessionBlocksMsg{Blocks: data.Data.Blocks})
 		}
 	} else {
 		ea.logger.Info("UI is not initialized - skipping UI update")
