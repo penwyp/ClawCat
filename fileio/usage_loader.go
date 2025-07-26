@@ -741,36 +741,74 @@ func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Ti
 			// Create entries for each model in this hour
 			for _, modelStat := range hourBucket.ModelStats {
 				if modelStat.EntryCount > 0 {
-					// Create a representative entry for this model in this hour
-					entry := models.UsageEntry{
-						Timestamp:           hourTime, // Use the hour timestamp
-						Model:               modelStat.Model,
-						InputTokens:         modelStat.InputTokens,
-						OutputTokens:        modelStat.OutputTokens,
-						CacheCreationTokens: modelStat.CacheCreationTokens,
-						CacheReadTokens:     modelStat.CacheReadTokens,
-						TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
-						CostUSD:             modelStat.TotalCost,
-						MessageID:           fmt.Sprintf("cached_%s_%s_%s", modelStat.Model, hourKey, summary.Checksum[:8]),
-					}
-
-					entry.NormalizeModel()
-
-					// Check if this entry would be a duplicate
-					entryHash := generateEntryHash(entry)
-					isDuplicate := false
-
-					if regularMap != nil {
-						if regularMap[entryHash] {
-							isDuplicate = true
+					// FIXED: Create individual synthetic entries to preserve granularity
+					// Instead of 1 aggregated entry, create EntryCount individual entries
+					// This preserves the expected entry count for analyze command
+					
+					// Calculate average values per entry
+					avgInputTokens := modelStat.InputTokens / modelStat.EntryCount
+					avgOutputTokens := modelStat.OutputTokens / modelStat.EntryCount
+					avgCacheCreationTokens := modelStat.CacheCreationTokens / modelStat.EntryCount
+					avgCacheReadTokens := modelStat.CacheReadTokens / modelStat.EntryCount
+					avgCostUSD := modelStat.TotalCost / float64(modelStat.EntryCount)
+					
+					// Handle remainders to ensure totals match exactly
+					remainderInputTokens := modelStat.InputTokens % modelStat.EntryCount
+					remainderOutputTokens := modelStat.OutputTokens % modelStat.EntryCount
+					remainderCacheCreationTokens := modelStat.CacheCreationTokens % modelStat.EntryCount
+					remainderCacheReadTokens := modelStat.CacheReadTokens % modelStat.EntryCount
+					
+					for i := 0; i < modelStat.EntryCount; i++ {
+						// Distribute tokens evenly, with remainders in the first entries
+						inputTokens := avgInputTokens
+						outputTokens := avgOutputTokens
+						cacheCreationTokens := avgCacheCreationTokens
+						cacheReadTokens := avgCacheReadTokens
+						
+						if i < remainderInputTokens {
+							inputTokens++
 						}
-					} else if syncMap != nil {
-						_, loaded := syncMap.Load(entryHash)
-						isDuplicate = loaded
-					}
+						if i < remainderOutputTokens {
+							outputTokens++
+						}
+						if i < remainderCacheCreationTokens {
+							cacheCreationTokens++
+						}
+						if i < remainderCacheReadTokens {
+							cacheReadTokens++
+						}
+						
+						// Create individual synthetic entry
+						entry := models.UsageEntry{
+							Timestamp:           hourTime.Add(time.Duration(i) * time.Minute), // Spread across hour
+							Model:               modelStat.Model,
+							InputTokens:         inputTokens,
+							OutputTokens:        outputTokens,
+							CacheCreationTokens: cacheCreationTokens,
+							CacheReadTokens:     cacheReadTokens,
+							TotalTokens:         inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens,
+							CostUSD:             avgCostUSD,
+							MessageID:           fmt.Sprintf("cached_%s_%s_%s_%d", modelStat.Model, hourKey, summary.Checksum[:8], i),
+						}
 
-					if !isDuplicate {
-						entries = append(entries, entry)
+						entry.NormalizeModel()
+
+						// Check if this entry would be a duplicate
+						entryHash := generateEntryHash(entry)
+						isDuplicate := false
+
+						if regularMap != nil {
+							if regularMap[entryHash] {
+								isDuplicate = true
+							}
+						} else if syncMap != nil {
+							_, loaded := syncMap.Load(entryHash)
+							isDuplicate = loaded
+						}
+
+						if !isDuplicate {
+							entries = append(entries, entry)
+						}
 					}
 				}
 			}
@@ -793,36 +831,71 @@ func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Ti
 			// Create entries for each model in this day
 			for _, modelStat := range dayBucket.ModelStats {
 				if modelStat.EntryCount > 0 {
-					// Create a representative entry for this model in this day
-					entry := models.UsageEntry{
-						Timestamp:           dayTime, // Use the day timestamp
-						Model:               modelStat.Model,
-						InputTokens:         modelStat.InputTokens,
-						OutputTokens:        modelStat.OutputTokens,
-						CacheCreationTokens: modelStat.CacheCreationTokens,
-						CacheReadTokens:     modelStat.CacheReadTokens,
-						TotalTokens:         modelStat.InputTokens + modelStat.OutputTokens + modelStat.CacheCreationTokens + modelStat.CacheReadTokens,
-						CostUSD:             modelStat.TotalCost,
-						MessageID:           fmt.Sprintf("cached_%s_%s_%s", modelStat.Model, dayKey, summary.Checksum[:8]),
-					}
-
-					entry.NormalizeModel()
-
-					// Check if this entry would be a duplicate
-					entryHash := generateEntryHash(entry)
-					isDuplicate := false
-
-					if regularMap != nil {
-						if regularMap[entryHash] {
-							isDuplicate = true
+					// FIXED: Create individual synthetic entries to preserve granularity
+					// Calculate average values per entry
+					avgInputTokens := modelStat.InputTokens / modelStat.EntryCount
+					avgOutputTokens := modelStat.OutputTokens / modelStat.EntryCount
+					avgCacheCreationTokens := modelStat.CacheCreationTokens / modelStat.EntryCount
+					avgCacheReadTokens := modelStat.CacheReadTokens / modelStat.EntryCount
+					avgCostUSD := modelStat.TotalCost / float64(modelStat.EntryCount)
+					
+					// Handle remainders to ensure totals match exactly
+					remainderInputTokens := modelStat.InputTokens % modelStat.EntryCount
+					remainderOutputTokens := modelStat.OutputTokens % modelStat.EntryCount
+					remainderCacheCreationTokens := modelStat.CacheCreationTokens % modelStat.EntryCount
+					remainderCacheReadTokens := modelStat.CacheReadTokens % modelStat.EntryCount
+					
+					for i := 0; i < modelStat.EntryCount; i++ {
+						// Distribute tokens evenly, with remainders in the first entries
+						inputTokens := avgInputTokens
+						outputTokens := avgOutputTokens
+						cacheCreationTokens := avgCacheCreationTokens
+						cacheReadTokens := avgCacheReadTokens
+						
+						if i < remainderInputTokens {
+							inputTokens++
 						}
-					} else if syncMap != nil {
-						_, loaded := syncMap.Load(entryHash)
-						isDuplicate = loaded
-					}
+						if i < remainderOutputTokens {
+							outputTokens++
+						}
+						if i < remainderCacheCreationTokens {
+							cacheCreationTokens++
+						}
+						if i < remainderCacheReadTokens {
+							cacheReadTokens++
+						}
+						
+						// Create individual synthetic entry
+						entry := models.UsageEntry{
+							Timestamp:           dayTime.Add(time.Duration(i) * time.Hour), // Spread across day
+							Model:               modelStat.Model,
+							InputTokens:         inputTokens,
+							OutputTokens:        outputTokens,
+							CacheCreationTokens: cacheCreationTokens,
+							CacheReadTokens:     cacheReadTokens,
+							TotalTokens:         inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens,
+							CostUSD:             avgCostUSD,
+							MessageID:           fmt.Sprintf("cached_%s_%s_%s_%d", modelStat.Model, dayKey, summary.Checksum[:8], i),
+						}
 
-					if !isDuplicate {
-						entries = append(entries, entry)
+						entry.NormalizeModel()
+
+						// Check if this entry would be a duplicate
+						entryHash := generateEntryHash(entry)
+						isDuplicate := false
+
+						if regularMap != nil {
+							if regularMap[entryHash] {
+								isDuplicate = true
+							}
+						} else if syncMap != nil {
+							_, loaded := syncMap.Load(entryHash)
+							isDuplicate = loaded
+						}
+
+						if !isDuplicate {
+							entries = append(entries, entry)
+						}
 					}
 				}
 			}
