@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"github.com/penwyp/ClawCat/logging"
 	"os"
 	"sort"
 	"time"
@@ -9,14 +10,12 @@ import (
 	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/fileio"
-	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
 )
 
 // Analyzer provides data analysis functionality
 type Analyzer struct {
 	config *config.Config
-	logger logging.LoggerInterface
 }
 
 // NewAnalyzer creates a new analyzer instance
@@ -25,12 +24,8 @@ func NewAnalyzer(cfg *config.Config) (*Analyzer, error) {
 		return nil, fmt.Errorf("configuration is required")
 	}
 
-	// Use debug console logging if debug mode is enabled
-	debugToConsole := cfg.Debug.Enabled
-
 	return &Analyzer{
 		config: cfg,
-		logger: logging.NewLoggerWithDebug(cfg.App.LogLevel, cfg.App.LogFile, debugToConsole),
 	}, nil
 }
 
@@ -47,7 +42,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			defaultPath := fmt.Sprintf("%s/.claude/projects", homeDir)
 			if _, err := os.Stat(defaultPath); err == nil {
 				paths = []string{defaultPath}
-				a.logger.Infof("Using default data path: %s", defaultPath)
+				logging.GetLogger().Infof("Using default data path: %s", defaultPath)
 			}
 		}
 	}
@@ -56,7 +51,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 		return nil, fmt.Errorf("no data paths found - please specify paths as arguments (e.g., clawcat analyze ~/claude-logs) or ensure ~/.claude/projects exists")
 	}
 
-	a.logger.Infof("Starting analysis of %d paths: %v", len(paths), paths)
+	logging.GetLogger().Infof("Starting analysis of %d paths: %v", len(paths), paths)
 
 	// Create cache store if caching is enabled
 	var cacheStore fileio.CacheStore
@@ -84,7 +79,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 
 		result, err := fileio.LoadUsageEntries(opts)
 		if err != nil {
-			a.logger.Errorf("Failed to load usage entries from %s: %v", path, err)
+			logging.GetLogger().Errorf("Failed to load usage entries from %s: %v", path, err)
 			continue
 		}
 
@@ -105,7 +100,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			allResults = append(allResults, analysisResult)
 		}
 
-		a.logger.Infof("Processed %d entries from %s (files: %d, errors: %d)",
+		logging.GetLogger().Infof("Processed %d entries from %s (files: %d, errors: %d)",
 			result.Metadata.EntriesLoaded, path,
 			result.Metadata.FilesProcessed,
 			len(result.Metadata.ProcessingErrors))
@@ -120,7 +115,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 		return nil, fmt.Errorf("no usage data found in any of the specified paths: %v\n\nExpected data format:\n- JSONL files with usage data\n- Files should contain either 'type: message' with usage field, or 'type: assistant' with message.usage field\n- Check that the paths contain Claude conversation or API usage logs", paths)
 	}
 
-	a.logger.Infof("Analysis completed: %d results from %d paths", len(allResults), len(paths))
+	logging.GetLogger().Infof("Analysis completed: %d results from %d paths", len(allResults), len(paths))
 	return allResults, nil
 }
 
