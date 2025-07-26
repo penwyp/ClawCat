@@ -24,7 +24,6 @@ func init() {
 type DiskCache struct {
 	baseDir     string
 	maxSize     int64
-	ttl         time.Duration
 	currentSize int64
 	mu          sync.RWMutex
 	stats       DiskCacheStats
@@ -32,15 +31,14 @@ type DiskCache struct {
 
 // DiskCacheStats tracks disk cache statistics
 type DiskCacheStats struct {
-	Hits        int64
-	Misses      int64
-	Writes      int64
-	Evictions   int64
-	Errors      int64
-	Size        int64
-	FileCount   int
-	HitRate     float64
-	LastCleanup time.Time
+	Hits      int64
+	Misses    int64
+	Writes    int64
+	Evictions int64
+	Errors    int64
+	Size      int64
+	FileCount int
+	HitRate   float64
 }
 
 // CacheItem represents a cached item on disk
@@ -53,7 +51,7 @@ type CacheItem struct {
 }
 
 // NewDiskCache creates a new disk cache instance
-func NewDiskCache(baseDir string, maxSize int64, ttl time.Duration) (*DiskCache, error) {
+func NewDiskCache(baseDir string, maxSize int64) (*DiskCache, error) {
 	// Expand home directory if needed
 	if strings.HasPrefix(baseDir, "~/") {
 		homeDir, err := os.UserHomeDir()
@@ -71,10 +69,7 @@ func NewDiskCache(baseDir string, maxSize int64, ttl time.Duration) (*DiskCache,
 	dc := &DiskCache{
 		baseDir: baseDir,
 		maxSize: maxSize,
-		ttl:     ttl,
-		stats: DiskCacheStats{
-			LastCleanup: time.Now(),
-		},
+		stats:   DiskCacheStats{},
 	}
 
 	// Calculate initial size
@@ -82,7 +77,7 @@ func NewDiskCache(baseDir string, maxSize int64, ttl time.Duration) (*DiskCache,
 		logging.LogWarnf("Failed to calculate initial cache size: %v", err)
 	}
 
-	logging.LogInfof("Disk cache initialized: dir=%s, maxSize=%d, ttl=%v", baseDir, maxSize, ttl)
+	logging.LogInfof("Disk cache initialized: dir=%s, maxSize=%d", baseDir, maxSize)
 	return dc, nil
 }
 
@@ -115,17 +110,6 @@ func (dc *DiskCache) Get(key string) (interface{}, bool) {
 	if err := decoder.Decode(&item); err != nil {
 		dc.stats.Errors++
 		logging.LogWarnf("Failed to decode cache file %s: %v", filePath, err)
-		return nil, false
-	}
-
-	// Check if expired based on dynamic TTL
-	itemTTL := dc.getTTLForValue(item.Value)
-	if itemTTL > 0 && time.Since(item.CreatedAt) > itemTTL {
-		// Remove expired file
-		os.Remove(filePath)
-		dc.stats.Misses++
-		dc.updateHitRate()
-		logging.LogDebugf("Cache miss (expired): key=%s, file=%s, age=%v, ttl=%v", key, filePath, time.Since(item.CreatedAt), itemTTL)
 		return nil, false
 	}
 
@@ -234,7 +218,6 @@ func (dc *DiskCache) Cleanup() error {
 
 	logging.LogDebugf("Starting disk cache cleanup")
 
-	var filesToRemove []string
 	var totalSize int64
 
 	err := filepath.WalkDir(dc.baseDir, func(path string, d fs.DirEntry, err error) error {
@@ -254,23 +237,6 @@ func (dc *DiskCache) Cleanup() error {
 
 		totalSize += info.Size()
 
-		// Check if file is expired based on age
-		// Use shorter TTL for recent files, longer for old files
-		fileAge := time.Since(info.ModTime())
-		var ttl time.Duration
-		if fileAge < 24*time.Hour {
-			ttl = dc.ttl // Standard TTL for recent files
-		} else if fileAge < 7*24*time.Hour {
-			ttl = dc.ttl * 2 // Double TTL for week-old files
-		} else {
-			ttl = dc.ttl * 4 // Quadruple TTL for older files
-		}
-		
-		if ttl > 0 && fileAge > ttl {
-			filesToRemove = append(filesToRemove, path)
-			return nil
-		}
-
 		// Check if we should remove based on LRU (access time)
 		// This is a simplified approach - in a more sophisticated implementation,
 		// we'd sort by access time and remove oldest first
@@ -282,22 +248,11 @@ func (dc *DiskCache) Cleanup() error {
 		return fmt.Errorf("failed to walk cache directory: %w", err)
 	}
 
-	// Remove expired files
-	for _, filePath := range filesToRemove {
-		if err := os.Remove(filePath); err != nil {
-			logging.LogWarnf("Failed to remove expired cache file %s: %v", filePath, err)
-			dc.stats.Errors++
-		} else {
-			dc.stats.Evictions++
-		}
-	}
-
 	// Update stats
 	dc.currentSize = totalSize
 	dc.stats.Size = totalSize
-	dc.stats.LastCleanup = time.Now()
 
-	logging.LogDebugf("Disk cache cleanup completed: removed=%d files, size=%d", len(filesToRemove), totalSize)
+	logging.LogDebugf("Disk cache cleanup completed: size=%d", totalSize)
 	return nil
 }
 
@@ -461,29 +416,4 @@ func (dc *DiskCache) updateHitRate() {
 	if total > 0 {
 		dc.stats.HitRate = float64(dc.stats.Hits) / float64(total)
 	}
-}
-
-// getTTLForValue returns age-based TTL for a value
-func (dc *DiskCache) getTTLForValue(value interface{}) time.Duration {
-	// Check if value is a FileSummary
-	if summary, ok := value.(*FileSummary); ok {
-		// Calculate age based on processed time
-		dataAge := time.Since(summary.ProcessedAt)
-		
-		// Historical data (>30 days): Keep for months
-		if dataAge > 30*24*time.Hour {
-			return 90 * 24 * time.Hour // 90 days
-		}
-		
-		// Weekly data (7-30 days): Keep for weeks
-		if dataAge > 7*24*time.Hour {
-			return 30 * 24 * time.Hour // 30 days
-		}
-		
-		// Recent data (<7 days): Standard TTL
-		return dc.ttl
-	}
-	
-	// Default TTL for other types
-	return dc.ttl
 }

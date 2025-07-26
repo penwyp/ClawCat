@@ -121,14 +121,10 @@ func (ea *EnhancedApplication) Run() error {
 func (ea *EnhancedApplication) bootstrap() error {
 	// Initialize cache with configuration
 	ea.cache = cache.NewStore(cache.StoreConfig{
-		MaxFileSize:       10 * 1024 * 1024,                // 10MB
-		MaxMemory:         ea.config.Cache.MaxMemory,       // From config
-		MaxDiskSize:       ea.config.Cache.MaxDiskSize,     // From config
-		DiskCacheDir:      ea.config.Cache.Dir,             // From config
-		FileCacheTTL:      24 * time.Hour,                  // File cache TTL
-		CalcCacheTTL:      1 * time.Hour,                   // Memory cache TTL
-		DiskCacheTTL:      ea.config.Cache.TTL,             // Disk cache TTL from config
-		CleanupInterval:   ea.config.Cache.CleanupInterval, // Cleanup interval from config
+		MaxFileSize:       10 * 1024 * 1024,            // 10MB
+		MaxMemory:         ea.config.Cache.MaxMemory,   // From config
+		MaxDiskSize:       ea.config.Cache.MaxDiskSize, // From config
+		DiskCacheDir:      ea.config.Cache.Dir,         // From config
 		CompressionLevel:  6,
 		EnableMetrics:     true,
 		EnableCompression: true,
@@ -289,7 +285,7 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 					Cost:       stats.Cost,
 				}
 			}
-			
+
 			realtimeMetrics := &calculations.RealtimeMetrics{
 				CurrentTokens:     metrics.CurrentTokens,
 				CurrentCost:       metrics.CurrentCost,
@@ -509,10 +505,10 @@ func (ea *EnhancedApplication) startCacheWarming() {
 	patterns := cache.DefaultWarmupPatterns(dataPath)
 	config := cache.WarmupConfig{
 		Patterns:       patterns,
-		MaxFiles:       100,                     // Warm up to 100 files
-		MaxAge:         7 * 24 * time.Hour,     // Only warm files from last 7 days
-		WorkerCount:    4,                       // Use 4 workers
-		TimeoutPerFile: 5 * time.Second,         // 5 second timeout per file
+		MaxFiles:       100,                // Warm up to 100 files
+		MaxAge:         7 * 24 * time.Hour, // Only warm files from last 7 days
+		WorkerCount:    4,                  // Use 4 workers
+		TimeoutPerFile: 5 * time.Second,    // 5 second timeout per file
 	}
 
 	// Start warming in background

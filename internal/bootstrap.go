@@ -2,15 +2,13 @@ package internal
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"time"
-
 	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/calculations"
 	"github.com/penwyp/ClawCat/fileio"
 	"github.com/penwyp/ClawCat/sessions"
 	"github.com/penwyp/ClawCat/ui"
+	"os"
+	"path/filepath"
 )
 
 // bootstrap initializes all application components
@@ -143,8 +141,6 @@ func (a *Application) setupCache() error {
 	// Create cache configuration
 	cacheConfig := cache.StoreConfig{
 		MaxMemory:         maxSize,
-		FileCacheTTL:      time.Duration(ttl) * time.Second,
-		CalcCacheTTL:      time.Duration(ttl) * time.Second,
 		EnableMetrics:     true,
 		EnableCompression: true,
 	}

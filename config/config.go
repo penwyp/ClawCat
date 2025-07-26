@@ -63,12 +63,10 @@ type SummaryCacheConfig struct {
 
 // CacheConfig contains cache system settings
 type CacheConfig struct {
-	Dir             string        `yaml:"dir" json:"dir"`                           // Cache directory path
-	MaxMemory       int64         `yaml:"max_memory" json:"max_memory"`             // L1 memory cache size
-	MaxDiskSize     int64         `yaml:"max_disk_size" json:"max_disk_size"`       // L2 disk cache size
-	TTL             time.Duration `yaml:"ttl" json:"ttl"`                           // Cache item time-to-live
-	CleanupInterval time.Duration `yaml:"cleanup_interval" json:"cleanup_interval"` // Cleanup check interval
-	Enabled         bool          `yaml:"enabled" json:"enabled"`                   // Enable cache system
+	Dir         string `yaml:"dir" json:"dir"`                     // Cache directory path
+	MaxMemory   int64  `yaml:"max_memory" json:"max_memory"`       // L1 memory cache size
+	MaxDiskSize int64  `yaml:"max_disk_size" json:"max_disk_size"` // L2 disk cache size
+	Enabled     bool   `yaml:"enabled" json:"enabled"`             // Enable cache system
 }
 
 // UIConfig contains user interface settings
@@ -212,12 +210,10 @@ func DefaultConfig() *Config {
 			Notifications: []NotificationType{NotifyDesktop},
 		},
 		Cache: CacheConfig{
-			Dir:             "~/.cache/clawcat",
-			MaxMemory:       200 * 1024 * 1024,  // 200MB
-			MaxDiskSize:     1024 * 1024 * 1024, // 1GB
-			TTL:             24 * time.Hour,     // 24 hours
-			CleanupInterval: time.Hour,          // Cleanup every hour
-			Enabled:         true,
+			Dir:         "~/.cache/clawcat",
+			MaxMemory:   200 * 1024 * 1024,  // 200MB
+			MaxDiskSize: 1024 * 1024 * 1024, // 1GB
+			Enabled:     true,
 		},
 		Debug: DebugConfig{
 			Enabled: false,

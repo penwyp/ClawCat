@@ -22,18 +22,14 @@ type Store struct {
 
 // StoreConfig configures the cache store behavior
 type StoreConfig struct {
-	MaxFileSize       int64         `json:"max_file_size"`
-	MaxMemory         int64         `json:"max_memory"`
-	MaxDiskSize       int64         `json:"max_disk_size"`  // L2 disk cache size
-	DiskCacheDir      string        `json:"disk_cache_dir"` // Disk cache directory
-	FileCacheTTL      time.Duration `json:"file_cache_ttl"`
-	CalcCacheTTL      time.Duration `json:"calc_cache_ttl"`
-	DiskCacheTTL      time.Duration `json:"disk_cache_ttl"`   // Disk cache TTL
-	CleanupInterval   time.Duration `json:"cleanup_interval"` // Periodic cleanup interval
-	CompressionLevel  int           `json:"compression_level"`
-	EnableMetrics     bool          `json:"enable_metrics"`
-	EnableCompression bool          `json:"enable_compression"`
-	EnableDiskCache   bool          `json:"enable_disk_cache"` // Enable L2 disk cache
+	MaxFileSize       int64  `json:"max_file_size"`
+	MaxMemory         int64  `json:"max_memory"`
+	MaxDiskSize       int64  `json:"max_disk_size"`  // L2 disk cache size
+	DiskCacheDir      string `json:"disk_cache_dir"` // Disk cache directory
+	CompressionLevel  int    `json:"compression_level"`
+	EnableMetrics     bool   `json:"enable_metrics"`
+	EnableCompression bool   `json:"enable_compression"`
+	EnableDiskCache   bool   `json:"enable_disk_cache"` // Enable L2 disk cache
 }
 
 // StoreStats provides overall cache store statistics
@@ -77,18 +73,6 @@ func NewStore(config StoreConfig) *Store {
 	if config.DiskCacheDir == "" {
 		config.DiskCacheDir = "~/.cache/clawcat"
 	}
-	if config.FileCacheTTL <= 0 {
-		config.FileCacheTTL = 5 * time.Minute
-	}
-	if config.CalcCacheTTL <= 0 {
-		config.CalcCacheTTL = 1 * time.Minute
-	}
-	if config.DiskCacheTTL <= 0 {
-		config.DiskCacheTTL = 24 * time.Hour // 24 hours for disk cache
-	}
-	if config.CleanupInterval <= 0 {
-		config.CleanupInterval = time.Hour // Default cleanup every hour
-	}
 	if config.CompressionLevel <= 0 {
 		config.CompressionLevel = 6 // Default compression
 	}
@@ -101,7 +85,7 @@ func NewStore(config StoreConfig) *Store {
 	var diskCache *DiskCache
 	if config.EnableDiskCache {
 		var err error
-		diskCache, err = NewDiskCache(config.DiskCacheDir, config.MaxDiskSize, config.DiskCacheTTL)
+		diskCache, err = NewDiskCache(config.DiskCacheDir, config.MaxDiskSize)
 		if err != nil {
 			// Log error but continue without disk cache
 			fmt.Printf("Warning: Failed to initialize disk cache: %v\n", err)
@@ -119,11 +103,6 @@ func NewStore(config StoreConfig) *Store {
 		diskCache:  diskCache,
 		memManager: memManager,
 		config:     config,
-	}
-
-	// Setup periodic cleanup if disk cache is enabled
-	if diskCache != nil && config.EnableDiskCache {
-		store.SetupPeriodicCleanup(config.CleanupInterval)
 	}
 
 	return store
@@ -226,7 +205,7 @@ func (s *Store) SetFileSummary(summary *FileSummary) error {
 	size := s.estimateFileSummarySize(summary)
 
 	// Store in L1 (memory cache) with TTL but not persistent to allow eviction
-	if err := s.lruCache.SetWithOptions(key, summary, size, s.config.CalcCacheTTL, false); err != nil {
+	if err := s.lruCache.SetWithOptions(key, summary, size, false); err != nil {
 		return fmt.Errorf("failed to store in L1 cache: %w", err)
 	}
 	logging.LogDebugf("Stored in L1 cache: absolutePath=%s, size=%d bytes", summary.AbsolutePath, size)
@@ -359,13 +338,6 @@ func (s *Store) Clear() error {
 func (s *Store) Cleanup() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	// Cleanup disk cache if enabled
-	if s.diskCache != nil {
-		if err := s.diskCache.Cleanup(); err != nil {
-			return fmt.Errorf("failed to cleanup disk cache: %w", err)
-		}
-	}
 
 	// Force garbage collection on memory caches
 	// This is already handled by the memory manager and LRU policies

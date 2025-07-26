@@ -76,10 +76,8 @@ Examples:
 		// Reset cache if requested
 		if analyzeReset {
 			storeConfig := cache.StoreConfig{
-				MaxFileSize:  50 * 1024 * 1024,  // 50MB
-				MaxMemory:    100 * 1024 * 1024, // 100MB
-				FileCacheTTL: time.Hour,
-				CalcCacheTTL: time.Hour,
+				MaxFileSize: 50 * 1024 * 1024,  // 50MB
+				MaxMemory:   100 * 1024 * 1024, // 100MB
 			}
 			cacheStore := cache.NewStore(storeConfig)
 			if err := cacheStore.Clear(); err != nil {
