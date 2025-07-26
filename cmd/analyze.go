@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -154,6 +155,12 @@ func applyAnalyzeFlags(cfg *config.Config, args []string) error {
 		cfg.Data.Paths = args
 	}
 
+	homeDir, _ := os.UserHomeDir()
+	if len(cfg.Data.Paths) == 0 {
+		p := path.Join(homeDir, ".claude", "projects")
+		cfg.Data.Paths = []string{p}
+	}
+
 	// Use format as alias for output if provided
 	if analyzeFormat != "" {
 		analyzeOutput = analyzeFormat
@@ -299,7 +306,7 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 		if idx := strings.LastIndex(groupKey, "|"); idx != -1 && analyzeGroupBy != "all" && analyzeGroupBy != "model" && analyzeGroupBy != "session" {
 			displayKey = groupKey[:idx]
 		}
-		
+
 		agg := models.AnalysisResult{
 			GroupKey:  displayKey,
 			Model:     groupResults[0].Model,
