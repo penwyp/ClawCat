@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
+	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
 )
@@ -30,48 +31,10 @@ type LoadUsageEntriesOptions struct {
 
 // CacheStore defines the interface for file summary caching
 type CacheStore interface {
-	GetFileSummary(absolutePath string) (*FileSummary, error)
-	SetFileSummary(summary *FileSummary) error
+	GetFileSummary(absolutePath string) (*cache.FileSummary, error)
+	SetFileSummary(summary *cache.FileSummary) error
 	HasFileSummary(absolutePath string) bool
 	InvalidateFileSummary(absolutePath string) error
-}
-
-// FileSummary represents a cached summary of a parsed usage file
-// This is imported from cache package but defined here to avoid circular import
-type FileSummary struct {
-	Path            string
-	AbsolutePath    string
-	ModTime         time.Time
-	FileSize        int64
-	EntryCount      int
-	TotalCost       float64
-	TotalTokens     int
-	ModelStats      map[string]FileSummaryModelStat
-	HourlyBuckets   map[string]*FileSummaryTemporalBucket  // Hour-level aggregations (key: "2006-01-02 15")
-	DailyBuckets    map[string]*FileSummaryTemporalBucket  // Day-level aggregations (key: "2006-01-02")
-	ProcessedAt     time.Time
-	Checksum        string
-	ProcessedHashes map[string]bool
-}
-
-// FileSummaryTemporalBucket represents aggregated usage data for a specific time period
-type FileSummaryTemporalBucket struct {
-	Period      string                                  // The time period (e.g., "2006-01-02 15" for hour, "2006-01-02" for day)
-	EntryCount  int
-	TotalCost   float64
-	TotalTokens int
-	ModelStats  map[string]*FileSummaryModelStat  // Per-model statistics within this time bucket
-}
-
-// FileSummaryModelStat is used for file summary caching with additional fields
-type FileSummaryModelStat struct {
-	Model               string
-	EntryCount          int
-	TotalCost           float64
-	InputTokens         int
-	OutputTokens        int
-	CacheCreationTokens int
-	CacheReadTokens     int
 }
 
 
@@ -390,7 +353,7 @@ func processSingleFileWithCacheInternal(filePath string, opts LoadUsageEntriesOp
 	// Skip caching if in watch mode (TUI) to avoid frequent writes
 	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 && !opts.IsWatchMode {
 		// Create summary with the appropriate hash map
-		var summary *FileSummary
+		var summary *cache.FileSummary
 		if regularMap != nil {
 			summary = createSummaryFromEntries(absPath, filePath, entries, regularMap)
 		} else {
@@ -719,7 +682,7 @@ func generateEntryHash(entry models.UsageEntry) string {
 // createEntriesFromSummary creates placeholder entries from a cached summary
 // Note: This is a simplified approach that creates aggregate entries for cache hits
 // createEntriesFromSummaryWithDedup creates entries from summary with deduplication
-func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) []models.UsageEntry {
+func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *time.Time, regularMap map[string]bool, syncMap *sync.Map) []models.UsageEntry {
 	var entries []models.UsageEntry
 
 	// Use hourly buckets if available for better temporal granularity
@@ -942,7 +905,7 @@ func createEntriesFromSummaryWithDedup(summary *FileSummary, cutoffTime *time.Ti
 	return entries
 }
 
-func createEntriesFromSummary(summary *FileSummary, cutoffTime *time.Time) []models.UsageEntry {
+func createEntriesFromSummary(summary *cache.FileSummary, cutoffTime *time.Time) []models.UsageEntry {
 	var entries []models.UsageEntry
 
 	// Use hourly buckets if available for better temporal granularity
@@ -1045,7 +1008,7 @@ func createEntriesFromSummary(summary *FileSummary, cutoffTime *time.Time) []mod
 }
 
 // createSummaryFromEntries creates a FileSummary from processed entries
-func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEntry, processedHashes map[string]bool) *FileSummary {
+func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEntry, processedHashes map[string]bool) *cache.FileSummary {
 	if len(entries) == 0 {
 		return nil
 	}
@@ -1057,16 +1020,16 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 	}
 
 	// Initialize summary
-	summary := &FileSummary{
+	summary := &cache.FileSummary{
 		Path:            relPath,
 		AbsolutePath:    absPath,
 		ModTime:         fileInfo.ModTime(),
 		FileSize:        fileInfo.Size(),
 		EntryCount:      len(entries),
 		ProcessedAt:     time.Now(),
-		ModelStats:      make(map[string]FileSummaryModelStat),
-		HourlyBuckets:   make(map[string]*FileSummaryTemporalBucket),
-		DailyBuckets:    make(map[string]*FileSummaryTemporalBucket),
+		ModelStats:      make(map[string]cache.ModelStat),
+		HourlyBuckets:   make(map[string]*cache.TemporalBucket),
+		DailyBuckets:    make(map[string]*cache.TemporalBucket),
 		ProcessedHashes: make(map[string]bool),
 	}
 
@@ -1104,7 +1067,7 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		// Update model statistics
 		modelStat, exists := summary.ModelStats[entry.Model]
 		if !exists {
-			modelStat = FileSummaryModelStat{
+			modelStat = cache.ModelStat{
 				Model: entry.Model,
 			}
 		}
@@ -1122,9 +1085,9 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		hourKey := entry.Timestamp.Format("2006-01-02 15")
 		hourBucket, exists := summary.HourlyBuckets[hourKey]
 		if !exists {
-			hourBucket = &FileSummaryTemporalBucket{
+			hourBucket = &cache.TemporalBucket{
 				Period:     hourKey,
-				ModelStats: make(map[string]*FileSummaryModelStat),
+				ModelStats: make(map[string]*cache.ModelStat),
 			}
 			summary.HourlyBuckets[hourKey] = hourBucket
 		}
@@ -1136,7 +1099,7 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		// Update model stats within hourly bucket
 		hourModelStat, exists := hourBucket.ModelStats[entry.Model]
 		if !exists {
-			hourModelStat = &FileSummaryModelStat{
+			hourModelStat = &cache.ModelStat{
 				Model: entry.Model,
 			}
 			hourBucket.ModelStats[entry.Model] = hourModelStat
@@ -1152,9 +1115,9 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		dayKey := entry.Timestamp.Format("2006-01-02")
 		dayBucket, exists := summary.DailyBuckets[dayKey]
 		if !exists {
-			dayBucket = &FileSummaryTemporalBucket{
+			dayBucket = &cache.TemporalBucket{
 				Period:     dayKey,
-				ModelStats: make(map[string]*FileSummaryModelStat),
+				ModelStats: make(map[string]*cache.ModelStat),
 			}
 			summary.DailyBuckets[dayKey] = dayBucket
 		}
@@ -1166,7 +1129,7 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 		// Update model stats within daily bucket
 		dayModelStat, exists := dayBucket.ModelStats[entry.Model]
 		if !exists {
-			dayModelStat = &FileSummaryModelStat{
+			dayModelStat = &cache.ModelStat{
 				Model: entry.Model,
 			}
 			dayBucket.ModelStats[entry.Model] = dayModelStat
@@ -1185,14 +1148,3 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 	return summary
 }
 
-// IsExpired checks if the summary is expired based on file modification time or size
-func (fs *FileSummary) IsExpired(currentModTime time.Time, currentSize int64) bool {
-	return !fs.ModTime.Equal(currentModTime) || fs.FileSize != currentSize
-}
-
-// MergeHashes merges processed hashes from summary into the target map
-func (fs *FileSummary) MergeHashes(target map[string]bool) {
-	for hash := range fs.ProcessedHashes {
-		target[hash] = true
-	}
-}

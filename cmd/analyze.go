@@ -76,12 +76,9 @@ Examples:
 
 		// Reset cache if requested
 		if analyzeReset {
-			storeConfig := cache.StoreConfig{
-				MaxFileSize: 50 * 1024 * 1024,  // 50MB
-				MaxMemory:   100 * 1024 * 1024, // 100MB
-			}
-			cacheStore := cache.NewStore(storeConfig)
-			if err := cacheStore.Clear(); err != nil {
+			// Use simplified cache for clearing
+			simpleCache := cache.NewSimpleCacheStore(cfg.Cache.Dir)
+			if err := simpleCache.Clear(); err != nil {
 				return fmt.Errorf("failed to clear cache: %w", err)
 			}
 			logging.GetLogger().Info("Cache cleared successfully")

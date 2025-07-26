@@ -28,7 +28,7 @@ type DataManager struct {
 	lastSuccessfulFetch time.Time
 
 	// Summary cache store
-	cacheStore         *cache.Store
+	cacheStore         *cache.SimpleSummaryCache
 	summaryCacheConfig config.SummaryCacheConfig
 }
 
@@ -38,6 +38,14 @@ func NewDataManager(hoursBack int, dataPath string) *DataManager {
 		hoursBack: hoursBack,
 		dataPath:  dataPath,
 	}
+}
+
+// SetCacheStore sets the cache store for file summaries
+func (dm *DataManager) SetCacheStore(cacheStore *cache.SimpleSummaryCache, config config.SummaryCacheConfig) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+	dm.cacheStore = cacheStore
+	dm.summaryCacheConfig = config
 }
 
 // GetData gets monitoring data with caching and error handling
@@ -144,9 +152,9 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 		IsWatchMode:        true, // DataManager is used in TUI mode with periodic updates
 	}
 
-	// Set cache store adapter if available
+	// Set cache store if available
 	if dm.cacheStore != nil {
-		opts.CacheStore = fileio.NewStoreAdapter(dm.cacheStore)
+		opts.CacheStore = dm.cacheStore
 	}
 
 	result, err := fileio.LoadUsageEntries(opts)

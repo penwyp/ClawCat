@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
@@ -80,11 +81,19 @@ type MonitoringOrchestrator struct {
 func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cfg *config.Config) *MonitoringOrchestrator {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	dataManager := NewDataManager(192, dataPath) // 192 hours back
+	
+	// Set up cache if enabled
+	if cfg.Cache.Enabled {
+		cacheStore := cache.NewSimpleCacheStore(cfg.Cache.Dir)
+		dataManager.SetCacheStore(cacheStore, cfg.Data.SummaryCache)
+	}
+
 	return &MonitoringOrchestrator{
 		updateInterval:   updateInterval,
 		dataPath:         dataPath,
 		config:           cfg,
-		dataManager:      NewDataManager(192, dataPath), // 192 hours back
+		dataManager:      dataManager,
 		sessionMonitor:   NewSessionMonitor(),
 		monitoring:       false,
 		stopEvent:        ctx,
