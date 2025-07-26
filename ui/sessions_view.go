@@ -6,7 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // SessionListView represents the session list view

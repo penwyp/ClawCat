@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // StreamingDisplay provides non-fullscreen terminal display for metrics
@@ -74,7 +74,7 @@ func (sd *StreamingDisplay) RenderHeader() string {
 // RenderInlineSummary renders a one-line summary update
 func (sd *StreamingDisplay) RenderInlineSummary() string {
 	if sd.metrics == nil {
-		return "📊 ClawCat - Waiting for data..."
+		return "📊 claudecat - Waiting for data..."
 	}
 
 	// Compact inline format similar to docker stats
@@ -97,7 +97,7 @@ func (sd *StreamingDisplay) RenderDetailedReport() string {
 	var report strings.Builder
 
 	// Header
-	report.WriteString("═══ ClawCat Metrics Report ═══\n")
+	report.WriteString("═══ claudecat Metrics Report ═══\n")
 	report.WriteString(fmt.Sprintf("Time: %s\n", time.Now().Format("2006-01-02 15:04:05")))
 	report.WriteString("\n")
 
@@ -170,7 +170,7 @@ func (sd *StreamingDisplay) RenderProgressBar() string {
 
 func (sd *StreamingDisplay) renderLoadingHeader() string {
 	timestamp := time.Now().Format("15:04:05")
-	return sd.styleHeader(fmt.Sprintf("[%s] 📊 ClawCat - Loading...", timestamp))
+	return sd.styleHeader(fmt.Sprintf("[%s] 📊 claudecat - Loading...", timestamp))
 }
 
 func (sd *StreamingDisplay) getStatusIndicator() string {

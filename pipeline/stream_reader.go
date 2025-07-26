@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // StreamReader 流式文件读取器

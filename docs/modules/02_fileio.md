@@ -186,7 +186,7 @@ var DefaultConfig = Config{
 package main
 
 import (
-    "github.com/penwyp/ClawCat/fileio"
+    "github.com/penwyp/claudecat/fileio"
     "log"
 )
 

@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/fileio"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/fileio"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // DataManager manages data fetching and caching for monitoring

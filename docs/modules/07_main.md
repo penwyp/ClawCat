@@ -29,8 +29,8 @@ The main package serves as the application entry point, orchestrating all module
 package main
 
 import (
-    "github.com/penwyp/ClawCat/cmd"
-    "github.com/penwyp/ClawCat/internal"
+    "github.com/penwyp/claudecat/cmd"
+    "github.com/penwyp/claudecat/internal"
     "log"
     "os"
 )
@@ -58,9 +58,9 @@ type RootCmd struct {
 }
 
 var rootCmd = &cobra.Command{
-    Use:   "clawcat",
+    Use:   "claudecat",
     Short: "Claude Code Usage Monitor",
-    Long:  `ClawCat is a high-performance TUI application for monitoring Claude AI token usage and costs.`,
+    Long:  `claudecat is a high-performance TUI application for monitoring Claude AI token usage and costs.`,
     PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
         // Initialize logging
         // Load configuration
@@ -89,7 +89,7 @@ Main interactive TUI mode.
 var runCmd = &cobra.Command{
     Use:   "run",
     Short: "Run the interactive TUI monitor",
-    Long:  `Start ClawCat in interactive mode with real-time monitoring.`,
+    Long:  `Start claudecat in interactive mode with real-time monitoring.`,
     RunE: func(cmd *cobra.Command, args []string) error {
         app, err := internal.NewApplication(config)
         if err != nil {
@@ -461,7 +461,7 @@ BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 LDFLAGS := -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)
 
 build:
-    go build -ldflags "$(LDFLAGS)" -o clawcat .
+    go build -ldflags "$(LDFLAGS)" -o claudecat .
 
 release:
     goreleaser release --clean

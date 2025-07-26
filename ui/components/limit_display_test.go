@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/penwyp/ClawCat/limits"
+	"github.com/penwyp/claudecat/limits"
 )
 
 func TestNewLimitDisplay(t *testing.T) {

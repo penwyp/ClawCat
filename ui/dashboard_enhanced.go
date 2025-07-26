@@ -7,9 +7,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/limits"
-	"github.com/penwyp/ClawCat/ui/components"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/limits"
+	"github.com/penwyp/claudecat/ui/components"
 )
 
 // EnhancedDashboardView 增强的 Dashboard 视图，包含进度条、限额显示和统计表格
@@ -149,7 +149,7 @@ func (d *EnhancedDashboardView) UpdateConfig(config Config) {
 
 // renderHeader 渲染 dashboard 头部
 func (d *EnhancedDashboardView) renderHeader() string {
-	title := d.styles.Title.Render("🐱 ClawCat Enhanced Dashboard")
+	title := d.styles.Title.Render("🐱 claudecat Enhanced Dashboard")
 	subtitle := d.styles.Subtitle.Render(
 		fmt.Sprintf("Last updated: %s", time.Now().Format("15:04:05")),
 	)
@@ -407,7 +407,7 @@ func getLimitsFromConfig(config Config) components.Limits {
 	if config.SubscriptionPlan != "" {
 		plan = strings.ToLower(config.SubscriptionPlan)
 	}
-	
+
 	// Map plan names to limits
 	switch plan {
 	case "free":

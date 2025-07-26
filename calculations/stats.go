@@ -4,7 +4,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // StatsAggregator provides flexible aggregation for various time periods

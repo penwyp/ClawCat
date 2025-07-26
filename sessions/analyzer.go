@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // SessionAnalyzer creates session blocks and detects limits
@@ -378,7 +378,6 @@ func (sa *SessionAnalyzer) isOpusLimit(contentLower string) bool {
 
 	return false
 }
-
 
 // contains checks if a string slice contains a specific string
 func contains(slice []string, item string) bool {

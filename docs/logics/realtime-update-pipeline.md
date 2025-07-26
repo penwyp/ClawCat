@@ -2,7 +2,7 @@
 
 ## 1. 功能概述
 
-实时更新管道是 ClawCat 的核心基础设施，负责监控文件变化、处理新数据、更新统计信息并刷新 UI。该系统需要实现 10 秒数据刷新周期、0.75Hz UI 刷新率，并通过批量更新等优化确保高性能和流畅的用户体验。
+实时更新管道是 claudecat 的核心基础设施，负责监控文件变化、处理新数据、更新统计信息并刷新 UI。该系统需要实现 10 秒数据刷新周期、0.75Hz UI 刷新率，并通过批量更新等优化确保高性能和流畅的用户体验。
 
 ### 1.1 核心需求
 
@@ -226,8 +226,8 @@ import (
     "context"
     "sync"
     "time"
-    "github.com/penwyp/ClawCat/models"
-    "github.com/penwyp/ClawCat/config"
+    "github.com/penwyp/claudecat/models"
+    "github.com/penwyp/claudecat/config"
 )
 
 // NewUpdatePipeline 创建更新管道

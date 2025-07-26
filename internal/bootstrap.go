@@ -2,11 +2,11 @@ package internal
 
 import (
 	"fmt"
-	"github.com/penwyp/ClawCat/cache"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/fileio"
-	"github.com/penwyp/ClawCat/sessions"
-	"github.com/penwyp/ClawCat/ui"
+	"github.com/penwyp/claudecat/cache"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/fileio"
+	"github.com/penwyp/claudecat/sessions"
+	"github.com/penwyp/claudecat/ui"
 	"os"
 	"path/filepath"
 )

@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/errors"
-	"github.com/penwyp/ClawCat/fileio"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/orchestrator"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/errors"
+	"github.com/penwyp/claudecat/fileio"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/orchestrator"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // TestClaudeMonitorConsistency tests consistency with Claude Monitor behavior
@@ -390,7 +390,7 @@ func createTestConfig() *config.Config {
 
 func createTestData(t *testing.T) string {
 	// Create temporary directory
-	tmpDir, err := os.MkdirTemp("", "clawcat-test-*")
+	tmpDir, err := os.MkdirTemp("", "claudecat-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}

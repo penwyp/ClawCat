@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/calculations"
+	"github.com/penwyp/claudecat/calculations"
 )
 
 // StatisticsTable 统计表格组件

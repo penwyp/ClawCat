@@ -2,7 +2,7 @@
 
 ## 1. 功能概述
 
-订阅计划限制功能是 ClawCat 的核心安全机制，用于监控和控制用户的资源使用，防止超出订阅计划的限额。该功能包括多种订阅计划支持、实时限额监控、智能警告系统以及基于历史数据的 P90 自动限额计算。
+订阅计划限制功能是 claudecat 的核心安全机制，用于监控和控制用户的资源使用，防止超出订阅计划的限额。该功能包括多种订阅计划支持、实时限额监控、智能警告系统以及基于历史数据的 P90 自动限额计算。
 
 ### 1.1 核心功能
 
@@ -132,8 +132,8 @@ import (
     "fmt"
     "sync"
     "time"
-    "github.com/penwyp/ClawCat/models"
-    "github.com/penwyp/ClawCat/config"
+    "github.com/penwyp/claudecat/models"
+    "github.com/penwyp/claudecat/config"
 )
 
 // 预定义计划
@@ -533,7 +533,7 @@ import (
     "net/http"
     "os/exec"
     "runtime"
-    "github.com/penwyp/ClawCat/config"
+    "github.com/penwyp/claudecat/config"
 )
 
 // Notifier 通知器
@@ -592,7 +592,7 @@ func (n *Notifier) SendNotification(message string, severity Severity) error {
 
 // sendDesktopNotification 发送桌面通知
 func (n *Notifier) sendDesktopNotification(message string, severity Severity) error {
-    title := fmt.Sprintf("ClawCat - %s", severity)
+    title := fmt.Sprintf("claudecat - %s", severity)
     
     switch runtime.GOOS {
     case "darwin":
@@ -687,7 +687,7 @@ import (
     "fmt"
     "strings"
     "github.com/charmbracelet/lipgloss"
-    "github.com/penwyp/ClawCat/limits"
+    "github.com/penwyp/claudecat/limits"
 )
 
 // LimitDisplay 限额显示组件

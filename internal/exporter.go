@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
 )
 
 // Exporter provides data export functionality
@@ -273,7 +273,7 @@ func (e *Exporter) exportJSON(data []models.AnalysisResult, options ExportOption
 	if err != nil {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
-	
+
 	_, err = file.Write(jsonData)
 	if err != nil {
 		return fmt.Errorf("failed to write data: %w", err)

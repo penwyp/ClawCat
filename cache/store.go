@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // Store provides a unified cache store with multiple backends
@@ -70,7 +70,7 @@ func NewStore(config StoreConfig) *Store {
 		config.MaxDiskSize = 1024 * 1024 * 1024 // 1GB
 	}
 	if config.DiskCacheDir == "" {
-		config.DiskCacheDir = "~/.cache/clawcat"
+		config.DiskCacheDir = "~/.cache/claudecat"
 	}
 	if config.CompressionLevel <= 0 {
 		config.CompressionLevel = 6 // Default compression
@@ -161,7 +161,6 @@ func (s *Store) SetCalculation(key string, value interface{}) error {
 
 	return s.lruCache.Set(key, value)
 }
-
 
 // Preload loads multiple files into cache
 func (s *Store) Preload(paths []string) error {
@@ -389,4 +388,3 @@ func (s *Store) IsHealthy() bool {
 	// Consider healthy if memory usage is below 90%
 	return memoryPercentage < 90.0
 }
-

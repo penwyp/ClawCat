@@ -75,7 +75,7 @@ func (h *HelpView) UpdateConfig(config Config) {
 
 // renderHeader renders the help header
 func (h *HelpView) renderHeader() string {
-	title := h.styles.HelpTitle().Render("ClawCat Help")
+	title := h.styles.HelpTitle().Render("claudecat Help")
 	subtitle := h.styles.Subtitle.Render("Keyboard shortcuts and navigation")
 	return strings.Join([]string{title, subtitle}, "\n")
 }

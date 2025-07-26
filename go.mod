@@ -1,4 +1,4 @@
-module github.com/penwyp/ClawCat
+module github.com/penwyp/claudecat
 
 go 1.24.4
 

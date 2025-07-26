@@ -6,7 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // DegradedRenderer 降级渲染器
@@ -75,7 +75,7 @@ func (dr *DegradedRenderer) renderMinimalDashboard(stats Statistics) string {
 	var lines []string
 
 	// 标题
-	lines = append(lines, "ClawCat - Minimal Mode")
+	lines = append(lines, "claudecat - Minimal Mode")
 	lines = append(lines, strings.Repeat("-", 25))
 
 	// 关键统计信息
@@ -106,7 +106,7 @@ func (dr *DegradedRenderer) renderTextDashboard(stats Statistics) string {
 	var lines []string
 
 	// 头部信息
-	lines = append(lines, "╭─ ClawCat Dashboard (Text Mode) ─╮")
+	lines = append(lines, "╭─ claudecat Dashboard (Text Mode) ─╮")
 	lines = append(lines, "│                                │")
 
 	// 会话信息
@@ -153,7 +153,7 @@ func (dr *DegradedRenderer) renderBasicDashboard(stats Statistics) string {
 	var lines []string
 
 	// 标题栏
-	title := "ClawCat Dashboard - Basic Mode"
+	title := "claudecat Dashboard - Basic Mode"
 	lines = append(lines, centerText(title, dr.width))
 	lines = append(lines, strings.Repeat("═", dr.width))
 	lines = append(lines, "")
@@ -214,7 +214,7 @@ func (dr *DegradedRenderer) renderBasicDashboard(stats Statistics) string {
 func (dr *DegradedRenderer) renderSafeDashboard(stats Statistics) string {
 	var lines []string
 
-	lines = append(lines, "ClawCat - Safe Mode")
+	lines = append(lines, "claudecat - Safe Mode")
 	lines = append(lines, "==================")
 	lines = append(lines, "")
 

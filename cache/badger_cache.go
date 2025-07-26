@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/claudecat/logging"
 )
 
 // BadgerSummaryCache provides a BadgerDB-based cache for file summaries
@@ -23,11 +23,11 @@ type BadgerSummaryCache struct {
 
 // BadgerCacheStats tracks cache statistics
 type BadgerCacheStats struct {
-	Hits      int64
-	Misses    int64
-	Writes    int64
-	Deletes   int64
-	Errors    int64
+	Hits    int64
+	Misses  int64
+	Writes  int64
+	Deletes int64
+	Errors  int64
 }
 
 // NewBadgerSummaryCache creates a new BadgerDB-based summary cache
@@ -40,7 +40,7 @@ func NewBadgerSummaryCache(persistPath string) (*BadgerSummaryCache, error) {
 
 	// Open BadgerDB
 	opts := badger.DefaultOptions(persistPath)
-	opts.Logger = nil // Disable BadgerDB's internal logging
+	opts.Logger = nil       // Disable BadgerDB's internal logging
 	opts.SyncWrites = false // Better performance, acceptable for cache
 	opts.NumVersionsToKeep = 1
 	opts.NumMemtables = 2
@@ -214,7 +214,7 @@ func (c *BadgerSummaryCache) Clear() error {
 	opts := badger.DefaultOptions(c.persistPath)
 	opts.Logger = nil
 	opts.SyncWrites = false
-	
+
 	db, err := badger.Open(opts)
 	if err != nil {
 		return fmt.Errorf("failed to reopen database: %w", err)
@@ -265,19 +265,19 @@ func (c *BadgerSummaryCache) GetStats() map[string]interface{} {
 	})
 
 	return map[string]interface{}{
-		"cached_files":   entryCount,
-		"total_entries":  totalEntries,
-		"total_cost":     totalCost,
-		"total_tokens":   totalTokens,
-		"db_size_lsm":    lsm,
-		"db_size_vlog":   vlog,
-		"hits":           c.stats.Hits,
-		"misses":         c.stats.Misses,
-		"writes":         c.stats.Writes,
-		"deletes":        c.stats.Deletes,
-		"errors":         c.stats.Errors,
-		"hit_rate":       float64(c.stats.Hits) / float64(c.stats.Hits+c.stats.Misses),
-		"persist_path":   c.persistPath,
+		"cached_files":  entryCount,
+		"total_entries": totalEntries,
+		"total_cost":    totalCost,
+		"total_tokens":  totalTokens,
+		"db_size_lsm":   lsm,
+		"db_size_vlog":  vlog,
+		"hits":          c.stats.Hits,
+		"misses":        c.stats.Misses,
+		"writes":        c.stats.Writes,
+		"deletes":       c.stats.Deletes,
+		"errors":        c.stats.Errors,
+		"hit_rate":      float64(c.stats.Hits) / float64(c.stats.Hits+c.stats.Misses),
+		"persist_path":  c.persistPath,
 	}
 }
 
@@ -298,4 +298,3 @@ func (c *BadgerSummaryCache) runGCRoutine() {
 		}
 	}
 }
-

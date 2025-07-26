@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 	"github.com/stretchr/testify/assert"
 )
 

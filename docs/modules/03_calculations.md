@@ -202,8 +202,8 @@ func ExtrapolateValue(current float64, rate float64, duration time.Duration) flo
 package main
 
 import (
-    "github.com/penwyp/ClawCat/calculations"
-    "github.com/penwyp/ClawCat/models"
+    "github.com/penwyp/claudecat/calculations"
+    "github.com/penwyp/claudecat/models"
     "time"
 )
 

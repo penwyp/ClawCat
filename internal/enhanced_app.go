@@ -9,15 +9,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/penwyp/ClawCat/cache"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/errors"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/orchestrator"
-	"github.com/penwyp/ClawCat/sessions"
-	"github.com/penwyp/ClawCat/ui"
+	"github.com/penwyp/claudecat/cache"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/errors"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/orchestrator"
+	"github.com/penwyp/claudecat/sessions"
+	"github.com/penwyp/claudecat/ui"
 )
 
 // EnhancedApplication represents the main application orchestrator using the new architecture
@@ -71,7 +71,7 @@ func (ea *EnhancedApplication) Run() error {
 	ea.running = true
 	ea.mu.Unlock()
 
-	ea.logger.Info("Starting ClawCat enhanced application")
+	ea.logger.Info("Starting claudecat enhanced application")
 
 	// Set up signal handling
 	sigCh := make(chan os.Signal, 1)
@@ -112,7 +112,7 @@ func (ea *EnhancedApplication) Run() error {
 		}
 	}
 
-	ea.logger.Info("ClawCat enhanced application stopped")
+	ea.logger.Info("claudecat enhanced application stopped")
 	return err
 }
 
@@ -385,7 +385,7 @@ func (ea *EnhancedApplication) getDataPath() string {
 	// Fallback to first default path even if it doesn't exist
 	defaultPath := defaultPaths[0]
 	ea.logger.Warnf("No existing data paths found, using default: %s", defaultPath)
-	ea.logger.Warnf("To specify a custom path, use: clawcat run --paths /path/to/claude/data")
+	ea.logger.Warnf("To specify a custom path, use: claudecat run --paths /path/to/claude/data")
 	return defaultPath
 }
 
@@ -428,7 +428,6 @@ func (ea *EnhancedApplication) reloadConfig() error {
 	ea.logger.Info("Configuration reload not implemented yet")
 	return nil
 }
-
 
 // shutdown performs application cleanup
 func (ea *EnhancedApplication) shutdown() error {

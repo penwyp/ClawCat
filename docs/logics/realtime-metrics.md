@@ -2,7 +2,7 @@
 
 ## 1. 功能概述
 
-实时指标计算是 ClawCat 的核心功能之一，负责在用户使用 Claude 期间实时计算和更新各种使用指标。这些指标包括 token 使用量、成本、燃烧率以及预测值，为用户提供实时的资源使用洞察。
+实时指标计算是 claudecat 的核心功能之一，负责在用户使用 Claude 期间实时计算和更新各种使用指标。这些指标包括 token 使用量、成本、燃烧率以及预测值，为用户提供实时的资源使用洞察。
 
 ### 1.1 核心指标
 
@@ -89,7 +89,7 @@ package calculations
 import (
     "math"
     "time"
-    "github.com/penwyp/ClawCat/models"
+    "github.com/penwyp/claudecat/models"
 )
 
 // NewMetricsCalculator 创建新的指标计算器
@@ -246,7 +246,7 @@ func (mc *MetricsCalculator) getPlanLimit() float64 {
 package sessions
 
 import (
-    "github.com/penwyp/ClawCat/calculations"
+    "github.com/penwyp/claudecat/calculations"
 )
 
 // SessionWithMetrics 带实时指标的会话
@@ -287,7 +287,7 @@ package ui
 import (
     "fmt"
     "github.com/charmbracelet/lipgloss"
-    "github.com/penwyp/ClawCat/calculations"
+    "github.com/penwyp/claudecat/calculations"
 )
 
 // MetricsDisplay 实时指标显示组件

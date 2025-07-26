@@ -5,10 +5,10 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/sessions"
-	"github.com/penwyp/ClawCat/ui/components"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/sessions"
+	"github.com/penwyp/claudecat/ui/components"
 )
 
 // ViewType represents different views in the application

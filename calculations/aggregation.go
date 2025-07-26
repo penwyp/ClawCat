@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/models"
 )
 
 // AggregationView 聚合视图类型

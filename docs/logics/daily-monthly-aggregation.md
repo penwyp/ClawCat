@@ -118,7 +118,7 @@ import (
     "fmt"
     "sort"
     "time"
-    "github.com/penwyp/ClawCat/models"
+    "github.com/penwyp/claudecat/models"
 )
 
 // NewAggregationEngine 创建聚合引擎
@@ -323,7 +323,7 @@ import (
     "strings"
     "time"
     "github.com/charmbracelet/lipgloss"
-    "github.com/penwyp/ClawCat/calculations"
+    "github.com/penwyp/claudecat/calculations"
 )
 
 // AggregationView UI 聚合视图
@@ -509,7 +509,7 @@ import (
     "fmt"
     "strings"
     "github.com/charmbracelet/lipgloss"
-    "github.com/penwyp/ClawCat/calculations"
+    "github.com/penwyp/claudecat/calculations"
 )
 
 // AggregationTable 聚合数据表格
@@ -700,7 +700,7 @@ import (
     "math"
     "strings"
     "github.com/charmbracelet/lipgloss"
-    "github.com/penwyp/ClawCat/calculations"
+    "github.com/penwyp/claudecat/calculations"
 )
 
 // UsageChart 使用趋势图表
@@ -1197,7 +1197,7 @@ func (re *ReportExporter) ExportHTML() (string, error) {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>ClawCat Usage Report</title>
+    <title>claudecat Usage Report</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { border-collapse: collapse; width: 100%; }

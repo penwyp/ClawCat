@@ -7,9 +7,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/ui/controllers"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/ui/controllers"
 )
 
 // AggregationPage 聚合分析页面

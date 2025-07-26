@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
 )
 
 // SessionChangeType represents the type of session change

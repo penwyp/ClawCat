@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/fileio"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/orchestrator"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/fileio"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/orchestrator"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // ValidationReport contains the results of consistency validation
@@ -28,7 +28,7 @@ type ValidationReport struct {
 }
 
 func main() {
-	fmt.Println("ClawCat Consistency Validation")
+	fmt.Println("claudecat Consistency Validation")
 	fmt.Println("==============================")
 
 	// Get data path from command line or use default

@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/models"
 )
 
 // RealtimeMetrics 实时指标数据结构

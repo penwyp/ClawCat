@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/models"
 )
 
 // Manager coordinates all session operations with thread-safe access

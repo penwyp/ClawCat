@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ClawCat is a Go-powered real-time usage tracker for Claude Code that monitors token usage, costs, and session statistics. It processes JSONL files from Claude projects to provide analytics via a terminal UI (TUI).
+claudecat is a Go-powered real-time usage tracker for Claude Code that monitors token usage, costs, and session statistics. It processes JSONL files from Claude projects to provide analytics via a terminal UI (TUI).
 
 ## Common Development Commands
 
@@ -104,16 +104,16 @@ Calculations (Metrics) → Cache (Storage) → UI (Display)
 Enable debug mode for verbose logging:
 ```bash
 # Run with debug flag
-./bin/clawcat --debug
+./bin/claudecat --debug
 
 # Or set in config
-CLAWCAT_DEBUG_ENABLED=true ./bin/clawcat
+CLAWCAT_DEBUG_ENABLED=true ./bin/claudecat
 ```
 
 ## Configuration
 
-ClawCat looks for configuration in:
-1. `~/.clawcat.yaml`
+claudecat looks for configuration in:
+1. `~/.claudecat.yaml`
 2. Environment variables (prefix: `CLAWCAT_`)
 3. Command-line flags
 

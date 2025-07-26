@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // FileAccessRecovery 文件访问错误恢复

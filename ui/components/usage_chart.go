@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/calculations"
+	"github.com/penwyp/claudecat/calculations"
 )
 
 // UsageChart 使用量图表组件

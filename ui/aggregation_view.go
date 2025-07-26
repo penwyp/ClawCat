@@ -8,8 +8,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/ui/components"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/ui/components"
 )
 
 // AggregationView 聚合视图

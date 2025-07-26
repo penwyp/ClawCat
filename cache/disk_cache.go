@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/claudecat/logging"
 )
 
 func init() {

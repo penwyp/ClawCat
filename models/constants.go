@@ -40,7 +40,7 @@ const (
 const (
 	DefaultLogFileName   = "claude_code_usage.jsonl"
 	LogFileSearchPattern = "*claude_code_usage*.jsonl"
-	ConfigFileName       = ".clawcat.yml"
+	ConfigFileName       = ".claudecat.yml"
 )
 
 // Time formats

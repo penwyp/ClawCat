@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/penwyp/ClawCat/internal"
+	"github.com/penwyp/claudecat/internal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -42,11 +42,11 @@ Time ranges:
   all     - All available data (default)
 
 Examples:
-  clawcat export data.csv                              # Export all data to CSV
-  clawcat export --format json data.json              # Export to JSON
-  clawcat export --range week --compress weekly.csv   # Last week, compressed
-  clawcat export --from 2025-01-01 --to 2025-01-31 jan.xlsx  # Date range to Excel
-  clawcat export --aggregate --format json summary.json      # Aggregated data`,
+  claudecat export data.csv                              # Export all data to CSV
+  claudecat export --format json data.json              # Export to JSON
+  claudecat export --range week --compress weekly.csv   # Last week, compressed
+  claudecat export --from 2025-01-01 --to 2025-01-31 jan.xlsx  # Date range to Excel
+  claudecat export --aggregate --format json summary.json      # Aggregated data`,
 
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -156,7 +156,7 @@ func validateOutputFile(outputFile string) error {
 	}
 
 	// Check if we can write to the directory
-	tempFile := filepath.Join(dir, ".clawcat_write_test")
+	tempFile := filepath.Join(dir, ".claudecat_write_test")
 	file, err := os.Create(tempFile)
 	if err != nil {
 		return fmt.Errorf("cannot write to directory: %s", dir)

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/penwyp/ClawCat/calculations"
+	"github.com/penwyp/claudecat/calculations"
 )
 
 func TestNewProgressSection(t *testing.T) {

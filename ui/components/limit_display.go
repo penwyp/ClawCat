@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/limits"
+	"github.com/penwyp/claudecat/limits"
 )
 
 // LimitDisplayStyles 限额显示样式

@@ -6,10 +6,10 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/ui/components"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/ui/components"
 )
 
 // AggregationController 聚合控制器

@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/cache"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/internal"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/cache"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/internal"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -47,11 +47,11 @@ reporting, and integration with other tools. It can process multiple data files
 and generate detailed reports about usage patterns, costs, and statistics.
 
 Examples:
-  clawcat analyze ~/claude-logs                           # Basic analysis
-  clawcat analyze --output table --by-model              # Group by model
-  clawcat analyze --from 2025-01-01 --to 2025-01-31     # Date range
-  clawcat analyze --format json --sort-by cost --limit 10 # Top 10 by cost
-  clawcat analyze --group-by hour --output csv > report.csv # Hourly CSV report`,
+  claudecat analyze ~/claude-logs                           # Basic analysis
+  claudecat analyze --output table --by-model              # Group by model
+  claudecat analyze --from 2025-01-01 --to 2025-01-31     # Date range
+  claudecat analyze --format json --sort-by cost --limit 10 # Top 10 by cost
+  claudecat analyze --group-by hour --output csv > report.csv # Hourly CSV report`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load configuration

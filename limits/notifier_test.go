@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/penwyp/ClawCat/config"
+	"github.com/penwyp/claudecat/config"
 )
 
 func TestNewNotifier(t *testing.T) {

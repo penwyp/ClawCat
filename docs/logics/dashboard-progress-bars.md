@@ -2,7 +2,7 @@
 
 ## 1. 功能概述
 
-Dashboard 进度条组件是 ClawCat 的核心可视化组件，用于直观展示用户的资源使用情况。通过三个主要进度条（Token 使用、成本使用、时间进度）和动态颜色编码，让用户一目了然地了解当前会话的资源消耗状态。
+Dashboard 进度条组件是 claudecat 的核心可视化组件，用于直观展示用户的资源使用情况。通过三个主要进度条（Token 使用、成本使用、时间进度）和动态颜色编码，让用户一目了然地了解当前会话的资源消耗状态。
 
 ### 1.1 核心组件
 
@@ -222,7 +222,7 @@ import (
     "strings"
     "time"
     "github.com/charmbracelet/lipgloss"
-    "github.com/penwyp/ClawCat/calculations"
+    "github.com/penwyp/claudecat/calculations"
 )
 
 // NewProgressSection 创建进度条区域
@@ -446,8 +446,8 @@ func formatDuration(d time.Duration) string {
 package ui
 
 import (
-    "github.com/penwyp/ClawCat/ui/components"
-    "github.com/penwyp/ClawCat/calculations"
+    "github.com/penwyp/claudecat/ui/components"
+    "github.com/penwyp/claudecat/calculations"
 )
 
 // EnhancedDashboardView 增强的 Dashboard 视图

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/calculations"
+	"github.com/penwyp/claudecat/calculations"
 )
 
 // AggregationView 聚合视图组件

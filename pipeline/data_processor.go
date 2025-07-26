@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // DataProcessor 数据处理器

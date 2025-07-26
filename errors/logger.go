@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/claudecat/logging"
 )
 
 // ErrorLogger 错误日志记录器
@@ -98,7 +98,7 @@ type LogBuffer struct {
 // NewErrorLogger 创建错误日志记录器
 func NewErrorLogger(config LogConfig) *ErrorLogger {
 	if config.OutputPath == "" {
-		config.OutputPath = "clawcat-errors.log"
+		config.OutputPath = "claudecat-errors.log"
 	}
 	if config.Format == "" {
 		config.Format = LogFormatJSON

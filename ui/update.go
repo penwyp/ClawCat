@@ -5,9 +5,9 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // Message types for the application
@@ -334,7 +334,7 @@ func (m Model) View() string {
 // renderStreamingView renders the non-fullscreen streaming view
 func (m Model) renderStreamingView() string {
 	if m.streamDisplay == nil {
-		return "ClawCat - Streaming mode loading..."
+		return "claudecat - Streaming mode loading..."
 	}
 
 	// Choose display format based on view
@@ -381,7 +381,7 @@ func (m Model) renderSessionSummary() string {
 
 // renderStreamingHelp renders help for streaming mode
 func (m Model) renderStreamingHelp() string {
-	return `ClawCat Streaming Mode - Keyboard Shortcuts:
+	return `claudecat Streaming Mode - Keyboard Shortcuts:
   q/Ctrl+C: Quit
   1/d: Dashboard view    2/s: Sessions view    3/a: Analytics view
   r/F5: Refresh data     Tab: Next view        h/?: Help
@@ -392,14 +392,14 @@ This is non-fullscreen mode - output streams inline with your terminal.`
 // renderLoading renders the loading screen
 func (m Model) renderLoading() string {
 	if m.streamingMode {
-		content := "📊 ClawCat - Starting up..."
+		content := "📊 claudecat - Starting up..."
 		if m.config.ShowSpinner {
 			content = m.spinner.View() + " " + content
 		}
 		return content
 	}
 
-	content := m.styles.Normal.Render("Initializing ClawCat...")
+	content := m.styles.Normal.Render("Initializing claudecat...")
 
 	if m.config.ShowSpinner {
 		content = m.spinner.View() + " " + content

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/penwyp/ClawCat/cmd"
+	"github.com/penwyp/claudecat/cmd"
 )
 
 // Build information set by linker

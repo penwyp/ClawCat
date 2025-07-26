@@ -34,7 +34,7 @@ type VersionInfo struct {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version information",
-	Long:  `Display version information for ClawCat including build details and system information.`,
+	Long:  `Display version information for claudecat including build details and system information.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		versionInfo := VersionInfo{
 			Version:   Version,
@@ -65,7 +65,7 @@ func init() {
 }
 
 func outputVersionDefault(info VersionInfo) error {
-	fmt.Printf("ClawCat - Claude Code Usage Monitor\n")
+	fmt.Printf("claudecat - Claude Code Usage Monitor\n")
 	fmt.Printf("Version:     %s\n", info.Version)
 	if info.GitCommit != "unknown" {
 		fmt.Printf("Git Commit:  %s\n", info.GitCommit)

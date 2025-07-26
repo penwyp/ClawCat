@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/ui/components"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/ui/components"
 )
 
 // RealtimeUpdatePipeline 实时更新管道

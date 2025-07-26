@@ -2,7 +2,7 @@
 
 ## 1. 功能概述
 
-统计表格是 ClawCat Dashboard 的核心组件之一，用于展示当前会话的实时统计数据。通过对比当前值和预测值，展示燃烧率指标，以及模型使用分布，为用户提供全面的数据洞察。表格需要具备响应式设计，能够适应不同的终端窗口大小。
+统计表格是 claudecat Dashboard 的核心组件之一，用于展示当前会话的实时统计数据。通过对比当前值和预测值，展示燃烧率指标，以及模型使用分布，为用户提供全面的数据洞察。表格需要具备响应式设计，能够适应不同的终端窗口大小。
 
 ### 1.1 核心功能
 
@@ -130,7 +130,7 @@ import (
     "fmt"
     "strings"
     "github.com/charmbracelet/lipgloss"
-    "github.com/penwyp/ClawCat/calculations"
+    "github.com/penwyp/claudecat/calculations"
 )
 
 // NewStatisticsTable 创建统计表格

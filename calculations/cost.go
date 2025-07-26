@@ -4,7 +4,7 @@ import (
 	"errors"
 	"math"
 
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // CostCalculator provides precise cost calculations with multi-currency support

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/claudecat/logging"
 )
 
 // LRUCache implements a Least Recently Used eviction policy cache

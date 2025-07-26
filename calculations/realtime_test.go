@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/models"
 )
 
 // 测试配置

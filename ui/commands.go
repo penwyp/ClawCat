@@ -4,8 +4,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // tickCmd returns a command that sends a tick message after a brief delay

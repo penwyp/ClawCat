@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // Detector intelligently detects session boundaries and gaps in usage data

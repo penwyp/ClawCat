@@ -7,11 +7,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/penwyp/ClawCat/cache"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/fileio"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/cache"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/fileio"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
 )
 
 // Analyzer provides data analysis functionality
@@ -33,7 +33,7 @@ func NewAnalyzer(cfg *config.Config) (*Analyzer, error) {
 // Analyze performs analysis on the specified data paths
 func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 	if len(paths) == 0 {
-		return nil, fmt.Errorf("no data paths found - please specify paths as arguments (e.g., clawcat analyze ~/claude-logs) or ensure ~/.claude/projects exists")
+		return nil, fmt.Errorf("no data paths found - please specify paths as arguments (e.g., claudecat analyze ~/claude-logs) or ensure ~/.claude/projects exists")
 	}
 
 	logging.LogInfof("Starting analysis of %d paths: %v", len(paths), paths)
@@ -46,7 +46,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			homeDir, _ := os.UserHomeDir()
 			cacheDir = filepath.Join(homeDir, cacheDir[2:])
 		}
-		
+
 		// Use BadgerDB cache for better concurrent performance
 		persistPath := filepath.Join(cacheDir, "badger_summaries")
 		badgerCache, err := cache.NewBadgerSummaryCache(persistPath)

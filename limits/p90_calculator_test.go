@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/penwyp/ClawCat/config"
+	"github.com/penwyp/claudecat/config"
 )
 
 func TestP90Calculator_Calculate(t *testing.T) {

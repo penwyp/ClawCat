@@ -1,4 +1,4 @@
-# ClawCat Configuration File
+# claudecat Configuration File
 # This is a sample configuration for testing
 
 # Application settings
@@ -9,7 +9,7 @@ app:
 # File paths
 paths:
   data_dir: "~/.claude"
-  cache_dir: "~/.cache/clawcat"
+  cache_dir: "~/.cache/claudecat"
 
 # UI settings  
 ui:

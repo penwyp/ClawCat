@@ -1,7 +1,7 @@
 .PHONY: all build test lint bench deps install clean run fmt fmt-check build-all release race ci help
 
 # Variables
-BINARY_NAME := clawcat
+BINARY_NAME := claudecat
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")

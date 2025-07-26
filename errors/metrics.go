@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/claudecat/logging"
 )
 
 // ErrorMetrics 错误指标

@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/cache"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/cache"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
 )
 
 // MonitoringData represents the data structure passed to callbacks
@@ -84,7 +84,7 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 	ctx, cancel := context.WithCancel(context.Background())
 
 	dataManager := NewDataManager(192, dataPath) // 192 hours back
-	
+
 	// Set up cache if enabled
 	if cfg.Cache.Enabled && cfg.Data.SummaryCache.Enabled {
 		// Expand cache directory path

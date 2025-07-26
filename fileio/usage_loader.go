@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/cache"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/cache"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
 )
 
 // LoadUsageEntriesOptions configures the usage loading behavior
@@ -36,7 +36,6 @@ type CacheStore interface {
 	HasFileSummary(absolutePath string) bool
 	InvalidateFileSummary(absolutePath string) error
 }
-
 
 // LoadUsageEntriesResult contains the loaded data
 type LoadUsageEntriesResult struct {
@@ -707,27 +706,27 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 					// FIXED: Create individual synthetic entries to preserve granularity
 					// Instead of 1 aggregated entry, create EntryCount individual entries
 					// This preserves the expected entry count for analyze command
-					
+
 					// Calculate average values per entry
 					avgInputTokens := modelStat.InputTokens / modelStat.EntryCount
 					avgOutputTokens := modelStat.OutputTokens / modelStat.EntryCount
 					avgCacheCreationTokens := modelStat.CacheCreationTokens / modelStat.EntryCount
 					avgCacheReadTokens := modelStat.CacheReadTokens / modelStat.EntryCount
 					avgCostUSD := modelStat.TotalCost / float64(modelStat.EntryCount)
-					
+
 					// Handle remainders to ensure totals match exactly
 					remainderInputTokens := modelStat.InputTokens % modelStat.EntryCount
 					remainderOutputTokens := modelStat.OutputTokens % modelStat.EntryCount
 					remainderCacheCreationTokens := modelStat.CacheCreationTokens % modelStat.EntryCount
 					remainderCacheReadTokens := modelStat.CacheReadTokens % modelStat.EntryCount
-					
+
 					for i := 0; i < modelStat.EntryCount; i++ {
 						// Distribute tokens evenly, with remainders in the first entries
 						inputTokens := avgInputTokens
 						outputTokens := avgOutputTokens
 						cacheCreationTokens := avgCacheCreationTokens
 						cacheReadTokens := avgCacheReadTokens
-						
+
 						if i < remainderInputTokens {
 							inputTokens++
 						}
@@ -740,7 +739,7 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 						if i < remainderCacheReadTokens {
 							cacheReadTokens++
 						}
-						
+
 						// Create individual synthetic entry
 						entry := models.UsageEntry{
 							Timestamp:           hourTime.Add(time.Duration(i) * time.Minute), // Spread across hour
@@ -801,20 +800,20 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 					avgCacheCreationTokens := modelStat.CacheCreationTokens / modelStat.EntryCount
 					avgCacheReadTokens := modelStat.CacheReadTokens / modelStat.EntryCount
 					avgCostUSD := modelStat.TotalCost / float64(modelStat.EntryCount)
-					
+
 					// Handle remainders to ensure totals match exactly
 					remainderInputTokens := modelStat.InputTokens % modelStat.EntryCount
 					remainderOutputTokens := modelStat.OutputTokens % modelStat.EntryCount
 					remainderCacheCreationTokens := modelStat.CacheCreationTokens % modelStat.EntryCount
 					remainderCacheReadTokens := modelStat.CacheReadTokens % modelStat.EntryCount
-					
+
 					for i := 0; i < modelStat.EntryCount; i++ {
 						// Distribute tokens evenly, with remainders in the first entries
 						inputTokens := avgInputTokens
 						outputTokens := avgOutputTokens
 						cacheCreationTokens := avgCacheCreationTokens
 						cacheReadTokens := avgCacheReadTokens
-						
+
 						if i < remainderInputTokens {
 							inputTokens++
 						}
@@ -827,7 +826,7 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 						if i < remainderCacheReadTokens {
 							cacheReadTokens++
 						}
-						
+
 						// Create individual synthetic entry
 						entry := models.UsageEntry{
 							Timestamp:           dayTime.Add(time.Duration(i) * time.Hour), // Spread across day
@@ -904,7 +903,6 @@ func createEntriesFromSummaryWithDedup(summary *cache.FileSummary, cutoffTime *t
 
 	return entries
 }
-
 
 // createSummaryFromEntries creates a FileSummary from processed entries
 func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEntry, processedHashes map[string]bool) *cache.FileSummary {
@@ -1046,4 +1044,3 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 
 	return summary
 }
-

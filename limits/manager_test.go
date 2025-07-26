@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/models"
 )
 
 func TestNewLimitManager(t *testing.T) {

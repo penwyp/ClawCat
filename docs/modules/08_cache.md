@@ -273,8 +273,8 @@ func (m *Metrics) Export() MetricsSnapshot
 package main
 
 import (
-    "github.com/penwyp/ClawCat/cache"
-    "github.com/penwyp/ClawCat/models"
+    "github.com/penwyp/claudecat/cache"
+    "github.com/penwyp/claudecat/models"
 )
 
 func main() {

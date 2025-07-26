@@ -5,8 +5,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/sessions"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/sessions"
 )
 
 // App represents the main application structure

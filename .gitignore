@@ -31,8 +31,8 @@ go.work.sum
 # .idea/
 # .vscode/
 bin
-ClawCat
-clawcat.log
+claudecat
+claudecat.log
 
 .idea
 .cursor

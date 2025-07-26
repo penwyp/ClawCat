@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/internal"
-	"github.com/penwyp/ClawCat/logging"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/internal"
+	"github.com/penwyp/claudecat/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -30,9 +30,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "clawcat",
+	Use:   "claudecat",
 	Short: "Claude Code Usage Monitor",
-	Long: `ClawCat is a high-performance TUI application for monitoring Claude AI token usage and costs.
+	Long: `claudecat is a high-performance TUI application for monitoring Claude AI token usage and costs.
 
 It provides real-time monitoring, session analysis, cost calculations, and data export
 capabilities to help developers track their Claude API usage efficiently.`,
@@ -70,7 +70,7 @@ capabilities to help developers track their Claude API usage efficiently.`,
 		}
 
 		if verbose {
-			fmt.Fprintf(os.Stderr, "Starting ClawCat enhanced TUI monitor...\n")
+			fmt.Fprintf(os.Stderr, "Starting claudecat enhanced TUI monitor...\n")
 			fmt.Fprintf(os.Stderr, "Configuration: %+v\n", cfg)
 		}
 
@@ -94,13 +94,13 @@ func init() {
 		Use:    "no-help",
 		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("Error: unknown command \"help\" for \"clawcat\"\n")
-			cmd.Printf("Run 'clawcat --help' for usage.\n")
+			cmd.Printf("Error: unknown command \"help\" for \"claudecat\"\n")
+			cmd.Printf("Run 'claudecat --help' for usage.\n")
 		},
 	})
 
 	// Global flags
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.clawcat.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.claudecat.yaml)")
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "log level (debug, info, warn, error)")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable colored output")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
@@ -160,11 +160,11 @@ func initConfig() {
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// Search config in home directory with name ".clawcat" (without extension)
+		// Search config in home directory with name ".claudecat" (without extension)
 		viper.AddConfigPath(home)
 		viper.AddConfigPath(".")
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".clawcat")
+		viper.SetConfigName(".claudecat")
 	}
 
 	// Environment variable prefix
@@ -184,7 +184,7 @@ func initConfig() {
 
 func setDefaults() {
 	// App defaults
-	viper.SetDefault("app.name", "ClawCat")
+	viper.SetDefault("app.name", "claudecat")
 	viper.SetDefault("app.refresh_interval", "1s")
 	viper.SetDefault("app.data_paths", []string{})
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/penwyp/ClawCat/calculations"
+	"github.com/penwyp/claudecat/calculations"
 )
 
 // Limits 订阅限制配置
@@ -61,7 +61,7 @@ func (ps *ProgressSection) Update(metrics *calculations.RealtimeMetrics, limits 
 		ps.TimeProgress = NewProgressBar("Time Elapsed", 0, 300) // 5 hours in minutes
 		return
 	}
-	
+
 	// 更新 Token 进度条
 	ps.TokenProgress = ps.createTokenProgress(metrics, limits)
 

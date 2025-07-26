@@ -212,7 +212,7 @@ func (w *Watcher) Current() *Config
 func DefaultConfig() *Config {
     return &Config{
         App: AppConfig{
-            Name:     "ClawCat",
+            Name:     "claudecat",
             Version:  Version,
             LogLevel: "info",
             Timezone: "Local",
@@ -263,10 +263,10 @@ func ProductionConfig() *Config
 ```go
 func ConfigPaths() []string {
     return []string{
-        "./clawcat.yaml",
-        "$HOME/.config/clawcat/config.yaml",
-        "$HOME/.clawcat/config.yaml",
-        "/etc/clawcat/config.yaml",
+        "./claudecat.yaml",
+        "$HOME/.config/claudecat/config.yaml",
+        "$HOME/.claudecat/config.yaml",
+        "/etc/claudecat/config.yaml",
     }
 }
 ```
@@ -308,14 +308,14 @@ performance:
 package main
 
 import (
-    "github.com/penwyp/ClawCat/config"
+    "github.com/penwyp/claudecat/config"
     "log"
 )
 
 func main() {
     // Load configuration
     loader := config.NewLoader()
-    loader.AddSource(config.NewFileSource("./clawcat.yaml"))
+    loader.AddSource(config.NewFileSource("./claudecat.yaml"))
     loader.AddSource(config.NewEnvSource("CLAWCAT"))
     loader.AddSource(config.NewFlagSource())
     
@@ -325,7 +325,7 @@ func main() {
     }
     
     // Watch for changes
-    watcher, err := config.NewWatcher("./clawcat.yaml", func(newCfg *config.Config) {
+    watcher, err := config.NewWatcher("./claudecat.yaml", func(newCfg *config.Config) {
         log.Println("Configuration reloaded")
     })
     if err == nil {

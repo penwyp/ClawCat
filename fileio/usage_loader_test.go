@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,11 +47,11 @@ func TestConvertRawToUsageEntry_ConversationLogFormat(t *testing.T) {
 	assert.Equal(t, "msg-789", entry.MessageID)
 	assert.Equal(t, "req-456", entry.RequestID)
 	assert.Equal(t, "session-123", entry.SessionID)
-	
+
 	// Verify timestamp
 	expectedTime, _ := time.Parse(time.RFC3339, "2024-03-15T10:30:00Z")
 	assert.Equal(t, expectedTime, entry.Timestamp)
-	
+
 	// Verify cost calculation (approximate)
 	assert.Greater(t, entry.CostUSD, 0.0)
 }

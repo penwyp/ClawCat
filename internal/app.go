@@ -8,14 +8,14 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/penwyp/ClawCat/cache"
-	"github.com/penwyp/ClawCat/calculations"
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/fileio"
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/sessions"
-	"github.com/penwyp/ClawCat/ui"
+	"github.com/penwyp/claudecat/cache"
+	"github.com/penwyp/claudecat/calculations"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/fileio"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/sessions"
+	"github.com/penwyp/claudecat/ui"
 )
 
 // Application represents the main application orchestrator
@@ -68,7 +68,7 @@ func (a *Application) Run() error {
 	a.running = true
 	a.mu.Unlock()
 
-	a.logger.Info("Starting ClawCat application")
+	a.logger.Info("Starting claudecat application")
 
 	// Set up signal handling
 	sigCh := make(chan os.Signal, 1)
@@ -105,7 +105,7 @@ func (a *Application) Run() error {
 		}
 	}
 
-	a.logger.Info("ClawCat application stopped")
+	a.logger.Info("claudecat application stopped")
 	return err
 }
 
@@ -306,7 +306,6 @@ func (a *Application) reloadConfig() error {
 	a.logger.Info("Configuration reload not implemented yet")
 	return nil
 }
-
 
 // GetManager returns the session manager
 func (a *Application) GetManager() *sessions.Manager {

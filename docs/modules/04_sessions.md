@@ -234,8 +234,8 @@ func SessionsOverlap(s1, s2 *Session) bool
 package main
 
 import (
-    "github.com/penwyp/ClawCat/sessions"
-    "github.com/penwyp/ClawCat/models"
+    "github.com/penwyp/claudecat/sessions"
+    "github.com/penwyp/claudecat/models"
     "log"
 )
 

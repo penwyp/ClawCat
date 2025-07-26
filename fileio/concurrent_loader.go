@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/penwyp/ClawCat/logging"
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/logging"
+	"github.com/penwyp/claudecat/models"
 )
 
 // ConcurrentLoader loads usage entries concurrently from multiple files
@@ -66,10 +66,10 @@ func (cl *ConcurrentLoader) LoadFiles(ctx context.Context, files []string, opts 
 	// Create channels
 	fileChan := make(chan string, cl.bufferSize)
 	resultChan := make(chan FileResult, cl.bufferSize)
-	
+
 	// Create a shared map for deduplication
 	processedHashes := &sync.Map{}
-	
+
 	// Calculate cutoff time if specified
 	var cutoffTime *time.Time
 	if opts.HoursBack != nil {
@@ -80,7 +80,7 @@ func (cl *ConcurrentLoader) LoadFiles(ctx context.Context, files []string, opts 
 	// Start worker goroutines
 	var wg sync.WaitGroup
 	wg.Add(cl.workerCount)
-	
+
 	for i := 0; i < cl.workerCount; i++ {
 		go func(workerID int) {
 			defer wg.Done()
@@ -91,7 +91,7 @@ func (cl *ConcurrentLoader) LoadFiles(ctx context.Context, files []string, opts 
 	// Start result collector
 	results := make([]FileResult, 0, len(files))
 	resultsDone := make(chan struct{})
-	
+
 	go func() {
 		for result := range resultChan {
 			results = append(results, result)
@@ -114,7 +114,7 @@ func (cl *ConcurrentLoader) LoadFiles(ctx context.Context, files []string, opts 
 	// Wait for all workers to complete
 	wg.Wait()
 	close(resultChan)
-	
+
 	// Wait for results to be collected
 	<-resultsDone
 
@@ -146,7 +146,7 @@ func (cl *ConcurrentLoader) worker(
 			}
 
 			startTime := time.Now()
-			
+
 			// Process the file using the concurrent version that works directly with sync.Map
 			entries, rawEntries, fromCache, err := processSingleFileWithCacheConcurrent(filePath, opts, cutoffTime, processedHashes)
 
@@ -194,28 +194,28 @@ func (cl *ConcurrentLoader) worker(
 // LoadFilesWithProgress is a convenience method that provides a default progress printer
 func (cl *ConcurrentLoader) LoadFilesWithProgress(ctx context.Context, files []string, opts LoadUsageEntriesOptions) ([]FileResult, error) {
 	lastUpdate := time.Now()
-	
+
 	progressCallback := func(progress *LoadProgress) {
 		if time.Since(lastUpdate) < 100*time.Millisecond {
 			return // Throttle updates
 		}
 		lastUpdate = time.Now()
-		
+
 		processed := atomic.LoadInt32(&progress.ProcessedFiles)
 		total := atomic.LoadInt32(&progress.TotalFiles)
 		hits := atomic.LoadInt32(&progress.CacheHits)
 		misses := atomic.LoadInt32(&progress.CacheMisses)
-		
+
 		hitRate := float64(0)
 		if hits+misses > 0 {
 			hitRate = float64(hits) / float64(hits+misses) * 100
 		}
-		
+
 		cl.logger.Infof("Progress: %d/%d files (%.1f%%), Cache: %d hits, %d misses (%.1f%% hit rate)",
 			processed, total, float64(processed)/float64(total)*100,
 			hits, misses, hitRate)
 	}
-	
+
 	return cl.LoadFiles(ctx, files, opts, progressCallback)
 }
 
@@ -224,7 +224,7 @@ func MergeResults(results []FileResult) ([]models.UsageEntry, []map[string]inter
 	var allEntries []models.UsageEntry
 	var allRawEntries []map[string]interface{}
 	var errors []error
-	
+
 	// Calculate total capacity needed
 	totalEntries := 0
 	totalRaw := 0
@@ -236,13 +236,13 @@ func MergeResults(results []FileResult) ([]models.UsageEntry, []map[string]inter
 		totalEntries += len(result.Entries)
 		totalRaw += len(result.RawEntries)
 	}
-	
+
 	// Pre-allocate slices
 	allEntries = make([]models.UsageEntry, 0, totalEntries)
 	if totalRaw > 0 {
 		allRawEntries = make([]map[string]interface{}, 0, totalRaw)
 	}
-	
+
 	// Merge results
 	for _, result := range results {
 		if result.Error == nil {
@@ -252,6 +252,6 @@ func MergeResults(results []FileResult) ([]models.UsageEntry, []map[string]inter
 			}
 		}
 	}
-	
+
 	return allEntries, allRawEntries, errors
 }

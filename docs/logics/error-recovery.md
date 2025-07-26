@@ -2,7 +2,7 @@
 
 ## 1. 功能概述
 
-错误恢复机制是 ClawCat 的重要保障功能，确保系统在遇到各种异常情况时能够优雅降级、自动恢复，并保持基本功能可用。该机制涵盖文件访问错误、JSON 解析错误、UI 渲染异常等多种场景，并提供完善的日志记录和错误报告功能。
+错误恢复机制是 claudecat 的重要保障功能，确保系统在遇到各种异常情况时能够优雅降级、自动恢复，并保持基本功能可用。该机制涵盖文件访问错误、JSON 解析错误、UI 渲染异常等多种场景，并提供完善的日志记录和错误报告功能。
 
 ### 1.1 核心目标
 
@@ -574,7 +574,7 @@ func (fr *FallbackRenderer) RenderDashboard(data DashboardData) string {
 func (fr *FallbackRenderer) renderTextDashboard(data DashboardData) string {
     var sb strings.Builder
     
-    sb.WriteString("=== ClawCat Dashboard (Text Mode) ===\n\n")
+    sb.WriteString("=== claudecat Dashboard (Text Mode) ===\n\n")
     
     // 基本统计
     sb.WriteString(fmt.Sprintf("Current Session: %s\n", data.SessionID))
@@ -610,7 +610,7 @@ func (fr *FallbackRenderer) renderTextDashboard(data DashboardData) string {
 // renderMinimalDashboard 最小功能渲染
 func (fr *FallbackRenderer) renderMinimalDashboard(data DashboardData) string {
     // 使用基本的 lipgloss 样式
-    title := fr.styles.Title("ClawCat Monitor")
+    title := fr.styles.Title("claudecat Monitor")
     
     stats := fmt.Sprintf(
         "Tokens: %s | Cost: $%.2f | Time: %s",
@@ -672,7 +672,7 @@ var ComponentFallbacks = map[string]func(error) string{
         return "Chart: Data visualization unavailable"
     },
     "Table": func(err error) string {
-        return "Table: Use 'clawcat export' for data"
+        return "Table: Use 'claudecat export' for data"
     },
 }
 ```
@@ -1111,7 +1111,7 @@ func TestErrorHandler_Classification(t *testing.T) {
 func TestRecoveryStrategies(t *testing.T) {
     t.Run("file access recovery", func(t *testing.T) {
         strategy := &FileAccessRecovery{
-            alternativePaths: []string{"/tmp/backup", "/var/cache/clawcat"},
+            alternativePaths: []string{"/tmp/backup", "/var/cache/claudecat"},
             cache:            NewFileCache(),
         }
         
@@ -1341,12 +1341,12 @@ error_recovery:
       - desktop
       - log
       - webhook
-    webhook_url: "https://hooks.example.com/clawcat"
+    webhook_url: "https://hooks.example.com/claudecat"
     
   # 日志配置
   logging:
     level: "info"
-    output_path: "~/.clawcat/errors.log"
+    output_path: "~/.claudecat/errors.log"
     max_size: 100MB
     max_age: 30d
     include_stack: true

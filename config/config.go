@@ -146,10 +146,10 @@ const (
 // ConfigPaths returns the default configuration file paths in order of precedence
 func ConfigPaths() []string {
 	return []string{
-		"./clawcat.yaml",
-		"$HOME/.config/clawcat/config.yaml",
-		"$HOME/.clawcat/config.yaml",
-		"/etc/clawcat/config.yaml",
+		"./claudecat.yaml",
+		"$HOME/.config/claudecat/config.yaml",
+		"$HOME/.claudecat/config.yaml",
+		"/etc/claudecat/config.yaml",
 	}
 }
 
@@ -160,10 +160,10 @@ var Version = "dev"
 func DefaultConfig() *Config {
 	return &Config{
 		App: AppConfig{
-			Name:     "ClawCat",
+			Name:     "claudecat",
 			Version:  Version,
 			LogLevel: "info",
-			LogFile:  "clawcat.log",
+			LogFile:  "claudecat.log",
 			Timezone: "Local",
 		},
 		Data: DataConfig{
@@ -206,7 +206,7 @@ func DefaultConfig() *Config {
 			Notifications: []NotificationType{NotifyDesktop},
 		},
 		Cache: CacheConfig{
-			Dir:         "~/.cache/clawcat",
+			Dir:         "~/.cache/claudecat",
 			MaxMemory:   200 * 1024 * 1024,  // 200MB
 			MaxDiskSize: 1024 * 1024 * 1024, // 1GB
 			Enabled:     true,

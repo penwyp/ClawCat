@@ -4,10 +4,10 @@ import (
 	"math"
 	"testing"
 
-	"github.com/penwyp/ClawCat/config"
-	"github.com/penwyp/ClawCat/limits"
-	"github.com/penwyp/ClawCat/models"
-	"github.com/penwyp/ClawCat/ui/components"
+	"github.com/penwyp/claudecat/config"
+	"github.com/penwyp/claudecat/limits"
+	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/ui/components"
 )
 
 // TestLimitsIntegration tests the complete limits feature integration

@@ -12,7 +12,7 @@ func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 
 	// Test App config
-	assert.Equal(t, "ClawCat", cfg.App.Name)
+	assert.Equal(t, "claudecat", cfg.App.Name)
 	assert.Equal(t, "info", cfg.App.LogLevel)
 	assert.Equal(t, "Local", cfg.App.Timezone)
 
@@ -84,10 +84,10 @@ func TestConfigPaths(t *testing.T) {
 	paths := ConfigPaths()
 
 	expectedPaths := []string{
-		"./clawcat.yaml",
-		"$HOME/.config/clawcat/config.yaml",
-		"$HOME/.clawcat/config.yaml",
-		"/etc/clawcat/config.yaml",
+		"./claudecat.yaml",
+		"$HOME/.config/claudecat/config.yaml",
+		"$HOME/.claudecat/config.yaml",
+		"/etc/claudecat/config.yaml",
 	}
 
 	assert.Equal(t, expectedPaths, paths)

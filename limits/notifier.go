@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/penwyp/ClawCat/config"
+	"github.com/penwyp/claudecat/config"
 )
 
 // Notifier 通知器
@@ -65,7 +65,7 @@ func (n *Notifier) SendNotification(message string, severity Severity) error {
 
 // sendDesktopNotification 发送桌面通知
 func (n *Notifier) sendDesktopNotification(message string, severity Severity) error {
-	title := fmt.Sprintf("ClawCat - %s", n.capitalizeFirst(string(severity)))
+	title := fmt.Sprintf("claudecat - %s", n.capitalizeFirst(string(severity)))
 
 	switch runtime.GOOS {
 	case "darwin":
@@ -137,7 +137,7 @@ func (n *Notifier) sendWebhookNotification(message string, severity Severity) er
 		"message":   message,
 		"severity":  severity,
 		"timestamp": time.Now().Unix(),
-		"source":    "clawcat",
+		"source":    "claudecat",
 		"type":      "limit_warning",
 	}
 
@@ -226,7 +226,7 @@ func (n *Notifier) IsEnabled(notifType config.NotificationType) bool {
 
 // TestNotification 测试通知功能
 func (n *Notifier) TestNotification() error {
-	testMessage := "ClawCat notification test - all systems working!"
+	testMessage := "claudecat notification test - all systems working!"
 	return n.SendNotification(testMessage, SeverityInfo)
 }
 

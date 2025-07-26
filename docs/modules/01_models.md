@@ -156,7 +156,7 @@ type PricingError struct {
 package main
 
 import (
-    "github.com/penwyp/ClawCat/models"
+    "github.com/penwyp/claudecat/models"
     "time"
 )
 

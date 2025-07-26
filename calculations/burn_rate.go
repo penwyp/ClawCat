@@ -3,7 +3,7 @@ package calculations
 import (
 	"time"
 
-	"github.com/penwyp/ClawCat/models"
+	"github.com/penwyp/claudecat/models"
 )
 
 // BurnRateCalculator calculates burn rates and usage projections for session blocks
