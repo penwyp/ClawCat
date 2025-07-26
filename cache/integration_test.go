@@ -21,8 +21,7 @@ func TestEnhancedStoreIntegration(t *testing.T) {
 		BadgerConfig: BadgerConfig{
 			DBPath:         tmpDir,
 			MaxMemoryUsage: 64 * 1024 * 1024, // 64MB for test
-			DefaultTTL:     time.Hour,
-			LogLevel:       "ERROR", // Only errors during test
+			LogLevel:       "ERROR",          // Only errors during test
 		},
 		EnableMetrics: true,
 		AutoCleanup:   false, // Disable for test
@@ -150,7 +149,7 @@ func TestEnhancedStoreIntegration(t *testing.T) {
 	topModels, err := store.GetTopModels(3, startDate, endDate.Add(24*time.Hour))
 	require.NoError(t, err, "Failed to get top models")
 	assert.Len(t, topModels, 3, "Expected top 3 models")
-	
+
 	// Verify ranking (Sonnet should be #1 by cost)
 	assert.Equal(t, "claude-3-sonnet-20240229", topModels[0].Model, "Expected Sonnet to be top model")
 	assert.InDelta(t, 0.134, topModels[0].TotalCost, 0.001, "Top model cost mismatch")
@@ -174,7 +173,6 @@ func TestBadgerCacheBasicOperations(t *testing.T) {
 	config := BadgerConfig{
 		DBPath:         tmpDir,
 		MaxMemoryUsage: 32 * 1024 * 1024, // 32MB for test
-		DefaultTTL:     time.Minute,
 		LogLevel:       "ERROR",
 	}
 
@@ -195,26 +193,12 @@ func TestBadgerCacheBasicOperations(t *testing.T) {
 
 	retrievedValue, exists := cache.Get(testKey)
 	require.True(t, exists, "Key should exist")
-	
+
 	// Convert back to map for comparison
 	valueMap, ok := retrievedValue.(map[string]interface{})
 	require.True(t, ok, "Retrieved value should be a map")
 	assert.Equal(t, "test", valueMap["name"], "Name field mismatch")
 	assert.Equal(t, float64(42), valueMap["value"], "Value field mismatch") // JSON numbers are float64
-
-	// Test TTL functionality
-	shortTTLKey := "test:ttl:key"
-	err = cache.SetWithTTL(shortTTLKey, "temporary", 100*time.Millisecond)
-	require.NoError(t, err, "Failed to set value with TTL")
-
-	// Should exist immediately
-	_, exists = cache.Get(shortTTLKey)
-	assert.True(t, exists, "Key should exist immediately after set")
-
-	// Wait for TTL to expire
-	time.Sleep(200 * time.Millisecond)
-	_, exists = cache.Get(shortTTLKey)
-	assert.False(t, exists, "Key should not exist after TTL expiry")
 
 	// Test delete operation
 	err = cache.Delete(testKey)
@@ -255,7 +239,6 @@ func BenchmarkEnhancedStore(b *testing.B) {
 		BadgerConfig: BadgerConfig{
 			DBPath:         tmpDir,
 			MaxMemoryUsage: 128 * 1024 * 1024, // 128MB
-			DefaultTTL:     time.Hour,
 			LogLevel:       "ERROR",
 		},
 		EnableMetrics: false, // Disable for benchmark
@@ -294,7 +277,7 @@ func BenchmarkEnhancedStore(b *testing.B) {
 	b.Run("DailyRangeQuery", func(b *testing.B) {
 		start := baseTime.Add(-30 * 24 * time.Hour)
 		end := baseTime
-		
+
 		for i := 0; i < b.N; i++ {
 			_, err := store.GetDailyRange(start, end)
 			if err != nil {
@@ -307,7 +290,7 @@ func BenchmarkEnhancedStore(b *testing.B) {
 	b.Run("ModelUsageQuery", func(b *testing.B) {
 		start := baseTime.Add(-7 * 24 * time.Hour)
 		end := baseTime
-		
+
 		for i := 0; i < b.N; i++ {
 			_, err := store.GetModelUsageInRange("claude-3-sonnet-20240229", start, end)
 			if err != nil {
@@ -320,7 +303,7 @@ func BenchmarkEnhancedStore(b *testing.B) {
 	b.Run("TopModelsQuery", func(b *testing.B) {
 		start := baseTime.Add(-30 * 24 * time.Hour)
 		end := baseTime
-		
+
 		for i := 0; i < b.N; i++ {
 			_, err := store.GetTopModels(5, start, end)
 			if err != nil {

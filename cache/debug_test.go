@@ -19,7 +19,6 @@ func TestDebugBasicCache(t *testing.T) {
 	config := BadgerConfig{
 		DBPath:         tmpDir,
 		MaxMemoryUsage: 32 * 1024 * 1024, // 32MB for test
-		DefaultTTL:     time.Hour,         // Long TTL for debugging
 		LogLevel:       "ERROR",
 	}
 
@@ -46,7 +45,7 @@ func TestDebugBasicCache(t *testing.T) {
 	}
 
 	fmt.Printf("Retrieved value: %v (type: %T)\n", retrievedValue, retrievedValue)
-	
+
 	if retrievedValue != testValue {
 		t.Fatalf("Value mismatch: expected %v, got %v", testValue, retrievedValue)
 	}
@@ -67,7 +66,6 @@ func TestDebugEnhancedStore(t *testing.T) {
 		BadgerConfig: BadgerConfig{
 			DBPath:         tmpDir,
 			MaxMemoryUsage: 64 * 1024 * 1024, // 64MB for test
-			DefaultTTL:     time.Hour,
 			LogLevel:       "ERROR",
 		},
 		EnableMetrics: true,
@@ -123,12 +121,12 @@ func TestDebugEnhancedStore(t *testing.T) {
 	// Check hourly aggregation
 	hourTimestamp := baseTime.Add(-1 * time.Hour)
 	fmt.Printf("Checking hourly aggregation for: %s\n", hourTimestamp.Format("2006-01-02 15:04:05"))
-	
+
 	hourlyAgg, err := store.GetHourlyAggregation(hourTimestamp)
 	if err != nil {
 		fmt.Printf("Hourly aggregation error: %v\n", err)
 	} else {
-		fmt.Printf("Hourly aggregation found: %d models, %d total entries\n", 
+		fmt.Printf("Hourly aggregation found: %d models, %d total entries\n",
 			len(hourlyAgg.Models), hourlyAgg.TotalStats.EntryCount)
 		for model, stats := range hourlyAgg.Models {
 			fmt.Printf("  %s: %d entries, $%.4f\n", model, stats.EntryCount, stats.TotalCost)
@@ -138,12 +136,12 @@ func TestDebugEnhancedStore(t *testing.T) {
 	// Check daily aggregation
 	dayTimestamp := baseTime.Add(-1 * time.Hour).Truncate(24 * time.Hour)
 	fmt.Printf("Checking daily aggregation for: %s\n", dayTimestamp.Format("2006-01-02"))
-	
+
 	dailyAgg, err := store.GetDailyAggregation(dayTimestamp)
 	if err != nil {
 		fmt.Printf("Daily aggregation error: %v\n", err)
 	} else {
-		fmt.Printf("Daily aggregation found: %d models, %d total entries\n", 
+		fmt.Printf("Daily aggregation found: %d models, %d total entries\n",
 			len(dailyAgg.Models), dailyAgg.TotalStats.EntryCount)
 	}
 

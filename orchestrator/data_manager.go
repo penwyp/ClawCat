@@ -15,7 +15,6 @@ import (
 
 // DataManager manages data fetching and caching for monitoring
 type DataManager struct {
-	cacheTTL  time.Duration
 	hoursBack int
 	dataPath  string
 
@@ -34,45 +33,18 @@ type DataManager struct {
 }
 
 // NewDataManager creates a new data manager with cache and fetch settings
-func NewDataManager(cacheTTL time.Duration, hoursBack int, dataPath string) *DataManager {
+func NewDataManager(hoursBack int, dataPath string) *DataManager {
 	return &DataManager{
-		cacheTTL:  cacheTTL,
 		hoursBack: hoursBack,
 		dataPath:  dataPath,
 	}
-}
-
-// NewDataManagerWithConfig creates a new data manager with full configuration
-func NewDataManagerWithConfig(cacheTTL time.Duration, hoursBack int, dataPath string, cfg *config.Config) *DataManager {
-	dm := &DataManager{
-		cacheTTL:           cacheTTL,
-		hoursBack:          hoursBack,
-		dataPath:           dataPath,
-		summaryCacheConfig: cfg.Data.SummaryCache,
-	}
-
-	// Initialize cache store if summary caching is enabled
-	if cfg.Data.SummaryCache.Enabled {
-		storeConfig := cache.StoreConfig{
-			MaxMemory:         cfg.Data.SummaryCache.MaxSize,
-			EnableMetrics:     true,
-			EnableCompression: false, // Disable compression for summaries for simplicity
-		}
-		dm.cacheStore = cache.NewStore(storeConfig)
-		logging.LogInfof("Summary cache enabled with threshold: %v, max size: %d bytes",
-			cfg.Data.SummaryCache.Threshold, cfg.Data.SummaryCache.MaxSize)
-	}
-
-	return dm
 }
 
 // GetData gets monitoring data with caching and error handling
 func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 	dm.mu.RLock()
 	// Check cache validity
-	if !forceRefresh && dm.isCacheValid() {
-		cacheAge := time.Since(dm.cacheTimestamp)
-		logging.LogDebugf("Using cached data (age: %.1fs)", cacheAge.Seconds())
+	if !forceRefresh {
 		result := dm.cache
 		dm.mu.RUnlock()
 		return result, nil
@@ -156,16 +128,6 @@ func (dm *DataManager) GetLastSuccessfulFetchTime() time.Time {
 	dm.mu.RLock()
 	defer dm.mu.RUnlock()
 	return dm.lastSuccessfulFetch
-}
-
-// isCacheValid checks if the cache is still valid (caller must hold read lock)
-func (dm *DataManager) isCacheValid() bool {
-	if dm.cache == nil || dm.cacheTimestamp.IsZero() {
-		return false
-	}
-
-	cacheAge := time.Since(dm.cacheTimestamp)
-	return cacheAge <= dm.cacheTTL
 }
 
 // analyzeUsage performs the equivalent of Claude Monitor's analyze_usage function

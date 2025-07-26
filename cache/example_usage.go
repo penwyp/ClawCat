@@ -14,7 +14,6 @@ func ExampleUsage() error {
 		BadgerConfig: BadgerConfig{
 			DBPath:         "/tmp/clawcat_cache_demo",
 			MaxMemoryUsage: 128 * 1024 * 1024, // 128MB
-			DefaultTTL:     24 * time.Hour,     // 24 hours
 			LogLevel:       "WARNING",
 		},
 		EnableMetrics:   true,
@@ -101,7 +100,7 @@ func ExampleUsage() error {
 		fmt.Printf("  Total tokens: %d\n", dailyAgg.TotalStats.TotalTokens)
 		fmt.Printf("  Models used: %d\n", len(dailyAgg.Models))
 		for model, stats := range dailyAgg.Models {
-			fmt.Printf("    %s: %d entries, $%.4f, %d tokens\n", 
+			fmt.Printf("    %s: %d entries, $%.4f, %d tokens\n",
 				model, stats.EntryCount, stats.TotalCost, stats.TotalTokens)
 		}
 	}
@@ -138,7 +137,7 @@ func ExampleUsage() error {
 	}
 	fmt.Printf("\nTop 3 models by cost:\n")
 	for i, ranking := range topModels {
-		fmt.Printf("  %d. %s: $%.4f (%d tokens, %d entries)\n", 
+		fmt.Printf("  %d. %s: $%.4f (%d tokens, %d entries)\n",
 			i+1, ranking.Model, ranking.TotalCost, ranking.TotalTokens, ranking.EntryCount)
 	}
 
@@ -162,11 +161,11 @@ func ExampleUsage() error {
 // BenchmarkQueries demonstrates the performance benefits of pre-aggregated data
 func BenchmarkQueries(store *EnhancedStore) error {
 	fmt.Println("\n=== Performance Benchmark ===")
-	
+
 	// Simulate querying monthly data (30 days)
 	start := time.Now().Add(-30 * 24 * time.Hour)
 	end := time.Now()
-	
+
 	// Time the daily range query
 	startTime := time.Now()
 	dailyAggs, err := store.GetDailyRange(start, end)
@@ -174,12 +173,12 @@ func BenchmarkQueries(store *EnhancedStore) error {
 		return err
 	}
 	dailyQueryTime := time.Since(startTime)
-	
+
 	fmt.Printf("Daily aggregations query:\n")
 	fmt.Printf("  Time: %v\n", dailyQueryTime)
 	fmt.Printf("  Records returned: %d\n", len(dailyAggs))
 	fmt.Printf("  Average time per record: %v\n", dailyQueryTime/time.Duration(len(dailyAggs)))
-	
+
 	// Calculate total stats from daily aggregations
 	startTime = time.Now()
 	totalStats := &ModelStats{}
@@ -191,13 +190,13 @@ func BenchmarkQueries(store *EnhancedStore) error {
 		}
 	}
 	aggregationTime := time.Since(startTime)
-	
+
 	fmt.Printf("Secondary aggregation:\n")
 	fmt.Printf("  Time: %v\n", aggregationTime)
 	fmt.Printf("  Total entries aggregated: %d\n", totalStats.EntryCount)
 	fmt.Printf("  Total cost: $%.4f\n", totalStats.TotalCost)
-	
+
 	fmt.Printf("Total query time: %v\n", dailyQueryTime+aggregationTime)
-	
+
 	return nil
 }

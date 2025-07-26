@@ -135,9 +135,6 @@ func (a *Application) setupCache() error {
 	// Parse max size
 	maxSize := int64(a.config.Data.CacheSize) * 1024 * 1024 // Convert MB to bytes
 
-	// Use default TTL
-	ttl := 3600 // 1 hour in seconds
-
 	// Create cache configuration
 	cacheConfig := cache.StoreConfig{
 		MaxMemory:         maxSize,
@@ -148,7 +145,7 @@ func (a *Application) setupCache() error {
 	// Initialize cache store
 	a.cache = cache.NewStore(cacheConfig)
 
-	a.logger.Infof("Cache initialized: max_size=%d, ttl=%v", maxSize, ttl)
+	a.logger.Infof("Cache initialized: max_size=%d", maxSize)
 	return nil
 }
 

@@ -26,20 +26,11 @@ type CacheStats struct {
 
 // Entry represents a cache entry with metadata
 type Entry struct {
-	Key        string        `json:"key"`
-	Value      interface{}   `json:"value"`
-	Size       int64         `json:"size"`
-	AccessTime time.Time     `json:"access_time"`
-	CreateTime time.Time     `json:"create_time"`
-	TTL        time.Duration `json:"ttl"`
-}
-
-// IsExpired checks if the entry has expired based on TTL
-func (e *Entry) IsExpired() bool {
-	if e.TTL == 0 {
-		return false
-	}
-	return time.Since(e.CreateTime) > e.TTL
+	Key        string      `json:"key"`
+	Value      interface{} `json:"value"`
+	Size       int64       `json:"size"`
+	AccessTime time.Time   `json:"access_time"`
+	CreateTime time.Time   `json:"create_time"`
 }
 
 // UpdateCacheStats calculates the hit rate for cache stats

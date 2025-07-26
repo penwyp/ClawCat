@@ -94,9 +94,6 @@ func (tc *TypedCache) setTyped(key string, value interface{}) error {
 
 	return tc.db.Update(func(txn *badger.Txn) error {
 		entry := badger.NewEntry([]byte(key), buf.Bytes())
-		if tc.config.DefaultTTL > 0 {
-			entry = entry.WithTTL(tc.config.DefaultTTL)
-		}
 		return txn.SetEntry(entry)
 	})
 }
@@ -139,7 +136,7 @@ func (tc *TypedCache) Close() error {
 // GetStats returns cache statistics
 func (tc *TypedCache) GetStats() BadgerStats {
 	lsm, vlog := tc.db.Size()
-	
+
 	return BadgerStats{
 		LSMSize:   lsm,
 		VLogSize:  vlog,
@@ -152,7 +149,7 @@ func (tc *TypedCache) GetStats() BadgerStats {
 // countKeys counts the number of keys in the database
 func (tc *TypedCache) countKeys() int64 {
 	var count int64
-	
+
 	tc.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false // Only count keys, don't fetch values
@@ -164,6 +161,6 @@ func (tc *TypedCache) countKeys() int64 {
 		}
 		return nil
 	})
-	
+
 	return count
 }

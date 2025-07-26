@@ -17,7 +17,6 @@ func RunFinalDemo() error {
 		BadgerConfig: BadgerConfig{
 			DBPath:         "/tmp/clawcat_demo",
 			MaxMemoryUsage: 128 * 1024 * 1024, // 128MB
-			DefaultTTL:     24 * time.Hour,
 			LogLevel:       "ERROR",
 		},
 		EnableMetrics:   true,
@@ -36,20 +35,20 @@ func RunFinalDemo() error {
 
 	// 2. Simulate processing multiple files with usage data
 	baseTime := time.Now().Truncate(time.Hour)
-	
+
 	// File 1: Yesterday's data
 	yesterdayEntries := []models.UsageEntry{
 		{
 			Timestamp:   baseTime.Add(-25 * time.Hour),
 			Model:       "claude-3-sonnet-20240229",
 			InputTokens: 2000, OutputTokens: 1000, CostUSD: 0.089,
-			SessionID:   "session-001",
+			SessionID: "session-001",
 		},
 		{
 			Timestamp:   baseTime.Add(-24 * time.Hour),
 			Model:       "claude-3-haiku-20240307",
 			InputTokens: 1500, OutputTokens: 800, CostUSD: 0.018,
-			SessionID:   "session-002",
+			SessionID: "session-002",
 		},
 	}
 
@@ -59,13 +58,13 @@ func RunFinalDemo() error {
 			Timestamp:   baseTime.Add(-2 * time.Hour),
 			Model:       "claude-3-opus-20240229",
 			InputTokens: 1200, OutputTokens: 600, CostUSD: 0.126,
-			SessionID:   "session-003",
+			SessionID: "session-003",
 		},
 		{
 			Timestamp:   baseTime.Add(-1 * time.Hour),
 			Model:       "claude-3-sonnet-20240229",
 			InputTokens: 1800, OutputTokens: 900, CostUSD: 0.078,
-			SessionID:   "session-001",
+			SessionID: "session-001",
 		},
 	}
 
@@ -84,7 +83,7 @@ func RunFinalDemo() error {
 	fmt.Println("----------------------------------------")
 
 	// 3. Demonstrate various queries
-	
+
 	// Get models list
 	models, err := store.GetModelsList()
 	if err != nil {
@@ -101,7 +100,7 @@ func RunFinalDemo() error {
 		fmt.Printf("   Total cost: $%.4f\n", dailyAgg.TotalStats.TotalCost)
 		fmt.Printf("   Models used: %d\n", len(dailyAgg.Models))
 		for model, stats := range dailyAgg.Models {
-			fmt.Printf("     %s: %d entries, $%.4f\n", 
+			fmt.Printf("     %s: %d entries, $%.4f\n",
 				model, stats.EntryCount, stats.TotalCost)
 		}
 	}
@@ -113,7 +112,7 @@ func RunFinalDemo() error {
 		fmt.Printf("🎯 Claude-3-Sonnet usage (last 3 days):\n")
 		fmt.Printf("   Entries: %d\n", sonnetUsage.EntryCount)
 		fmt.Printf("   Cost: $%.4f\n", sonnetUsage.TotalCost)
-		fmt.Printf("   Tokens: %d (input: %d, output: %d)\n", 
+		fmt.Printf("   Tokens: %d (input: %d, output: %d)\n",
 			sonnetUsage.TotalTokens, sonnetUsage.InputTokens, sonnetUsage.OutputTokens)
 	}
 
@@ -133,7 +132,7 @@ func RunFinalDemo() error {
 	if err == nil {
 		fmt.Printf("🏆 Top models by cost:\n")
 		for i, ranking := range topModels {
-			fmt.Printf("   %d. %s: $%.4f (%d entries)\n", 
+			fmt.Printf("   %d. %s: $%.4f (%d entries)\n",
 				i+1, ranking.Model, ranking.TotalCost, ranking.EntryCount)
 		}
 	}
@@ -147,17 +146,17 @@ func RunFinalDemo() error {
 		fmt.Printf("💾 Storage:\n")
 		fmt.Printf("   Database size: %d bytes\n", stats.BadgerStats.TotalSize)
 		fmt.Printf("   Number of keys: %d\n", stats.BadgerStats.NumKeys)
-		
+
 		fmt.Printf("⚡ Processing:\n")
 		fmt.Printf("   Files processed: %d\n", stats.ProcessorMetrics.FilesProcessed)
 		fmt.Printf("   Entries processed: %d\n", stats.ProcessorMetrics.EntriesProcessed)
 		fmt.Printf("   Processing time: %dms\n", stats.ProcessorMetrics.ProcessingTimeMs)
-		
+
 		fmt.Printf("🎯 Aggregations:\n")
 		fmt.Printf("   Hourly aggregations: %d\n", stats.HourlyAggregations)
 		fmt.Printf("   Daily aggregations: %d\n", stats.DailyAggregations)
 		fmt.Printf("   Total models: %d\n", stats.TotalModels)
-		
+
 		fmt.Printf("💚 Health: %v\n", store.IsHealthy())
 	}
 

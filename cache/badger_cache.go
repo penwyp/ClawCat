@@ -35,14 +35,13 @@ type BadgerCache struct {
 // BadgerConfig configures the BadgerDB cache
 type BadgerConfig struct {
 	DBPath           string        `json:"db_path"`
-	MaxMemoryUsage   int64         `json:"max_memory_usage"`   // Memory usage limit in bytes
-	ValueThreshold   int64         `json:"value_threshold"`    // Values larger than this are stored separately
-	CompactionLevel  int           `json:"compaction_level"`   // Compression level (0-3)
-	GCDiscardRatio   float64       `json:"gc_discard_ratio"`   // GC discard ratio (0.5 recommended)
-	GCInterval       time.Duration `json:"gc_interval"`        // Garbage collection interval
-	DefaultTTL       time.Duration `json:"default_ttl"`        // Default TTL for entries
-	EnableEncryption bool          `json:"enable_encryption"`  // Enable encryption at rest
-	LogLevel         string        `json:"log_level"`          // Log level: DEBUG, INFO, WARNING, ERROR
+	MaxMemoryUsage   int64         `json:"max_memory_usage"`  // Memory usage limit in bytes
+	ValueThreshold   int64         `json:"value_threshold"`   // Values larger than this are stored separately
+	CompactionLevel  int           `json:"compaction_level"`  // Compression level (0-3)
+	GCDiscardRatio   float64       `json:"gc_discard_ratio"`  // GC discard ratio (0.5 recommended)
+	GCInterval       time.Duration `json:"gc_interval"`       // Garbage collection interval
+	EnableEncryption bool          `json:"enable_encryption"` // Enable encryption at rest
+	LogLevel         string        `json:"log_level"`         // Log level: DEBUG, INFO, WARNING, ERROR
 }
 
 // NewBadgerCache creates a new BadgerDB cache
@@ -70,9 +69,6 @@ func NewBadgerCache(config BadgerConfig) (*BadgerCache, error) {
 	if config.GCInterval <= 0 {
 		config.GCInterval = 5 * time.Minute
 	}
-	if config.DefaultTTL <= 0 {
-		config.DefaultTTL = 24 * time.Hour
-	}
 	if config.LogLevel == "" {
 		config.LogLevel = "WARNING"
 	}
@@ -87,11 +83,11 @@ func NewBadgerCache(config BadgerConfig) (*BadgerCache, error) {
 	opts = opts.WithValueThreshold(config.ValueThreshold)
 	// Note: BadgerDB v3 uses different compression API - compression enabled by default
 	opts = opts.WithMemTableSize(config.MaxMemoryUsage / 4) // Use 1/4 of memory for memtable
-	opts = opts.WithValueLogFileSize(64 * 1024 * 1024)     // 64MB value log files
-	opts = opts.WithNumMemtables(3)                        // 3 memtables for better write performance
-	opts = opts.WithNumLevelZeroTables(5)                  // Level 0 SST tables
-	opts = opts.WithNumLevelZeroTablesStall(10)            // Stall writes threshold
-	
+	opts = opts.WithValueLogFileSize(64 * 1024 * 1024)      // 64MB value log files
+	opts = opts.WithNumMemtables(3)                         // 3 memtables for better write performance
+	opts = opts.WithNumLevelZeroTables(5)                   // Level 0 SST tables
+	opts = opts.WithNumLevelZeroTablesStall(10)             // Stall writes threshold
+
 	// Set custom logger to suppress logs by default
 	opts = opts.WithLogger(&badgerLogger{})
 
@@ -146,13 +142,8 @@ func (bc *BadgerCache) Get(key string) (interface{}, bool) {
 	return result, true
 }
 
-// Set stores a value in the cache with default TTL
+// Set stores a value in the cache
 func (bc *BadgerCache) Set(key string, value interface{}) error {
-	return bc.SetWithTTL(key, value, bc.config.DefaultTTL)
-}
-
-// SetWithTTL stores a value in the cache with specified TTL
-func (bc *BadgerCache) SetWithTTL(key string, value interface{}, ttl time.Duration) error {
 	bc.mu.RLock()
 	defer bc.mu.RUnlock()
 
@@ -170,9 +161,6 @@ func (bc *BadgerCache) SetWithTTL(key string, value interface{}, ttl time.Durati
 
 	return bc.db.Update(func(txn *badger.Txn) error {
 		entry := badger.NewEntry([]byte(key), data)
-		if ttl > 0 {
-			entry = entry.WithTTL(ttl)
-		}
 		return txn.SetEntry(entry)
 	})
 }
@@ -213,7 +201,7 @@ func (bc *BadgerCache) GetByPrefix(prefix string) (map[string]interface{}, error
 	}
 
 	results := make(map[string]interface{})
-	
+
 	err := bc.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 100 // Prefetch for better performance
@@ -224,7 +212,7 @@ func (bc *BadgerCache) GetByPrefix(prefix string) (map[string]interface{}, error
 		for it.Seek(prefixBytes); it.ValidForPrefix(prefixBytes); it.Next() {
 			item := it.Item()
 			key := string(item.Key())
-			
+
 			var value interface{}
 			err := item.Value(func(val []byte) error {
 				buf := bytes.NewBuffer(val)
@@ -235,7 +223,7 @@ func (bc *BadgerCache) GetByPrefix(prefix string) (map[string]interface{}, error
 				fmt.Printf("Failed to unmarshal value for key %s: %v\n", key, err)
 				continue
 			}
-			
+
 			results[key] = value
 		}
 		return nil
@@ -254,20 +242,20 @@ func (bc *BadgerCache) GetStats() BadgerStats {
 	}
 
 	lsm, vlog := bc.db.Size()
-	
+
 	return BadgerStats{
-		LSMSize:       lsm,
-		VLogSize:      vlog,
-		TotalSize:     lsm + vlog,
-		NumKeys:       bc.countKeys(),
-		Config:        bc.config,
+		LSMSize:   lsm,
+		VLogSize:  vlog,
+		TotalSize: lsm + vlog,
+		NumKeys:   bc.countKeys(),
+		Config:    bc.config,
 	}
 }
 
 // BadgerStats provides BadgerDB statistics
 type BadgerStats struct {
 	LSMSize   int64        `json:"lsm_size"`   // LSM tree size in bytes
-	VLogSize  int64        `json:"vlog_size"`  // Value log size in bytes  
+	VLogSize  int64        `json:"vlog_size"`  // Value log size in bytes
 	TotalSize int64        `json:"total_size"` // Total database size
 	NumKeys   int64        `json:"num_keys"`   // Number of keys
 	Config    BadgerConfig `json:"config"`     // Configuration
@@ -360,7 +348,7 @@ func (bc *BadgerCache) startGC() {
 // countKeys counts the number of keys in the database
 func (bc *BadgerCache) countKeys() int64 {
 	var count int64
-	
+
 	bc.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false // Only count keys, don't fetch values
@@ -372,7 +360,7 @@ func (bc *BadgerCache) countKeys() int64 {
 		}
 		return nil
 	})
-	
+
 	return count
 }
 

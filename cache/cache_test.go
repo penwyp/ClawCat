@@ -2,11 +2,9 @@ package cache
 
 import (
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestCacheStats_UpdateHitRate(t *testing.T) {
@@ -32,55 +30,6 @@ func TestCacheStats_UpdateHitRate(t *testing.T) {
 
 			stats.UpdateHitRate()
 			assert.Equal(t, tt.expected, stats.HitRate)
-		})
-	}
-}
-
-func TestEntry_IsExpired(t *testing.T) {
-	now := time.Now()
-
-	tests := []struct {
-		name     string
-		entry    Entry
-		expected bool
-	}{
-		{
-			name: "No TTL",
-			entry: Entry{
-				CreateTime: now.Add(-1 * time.Hour),
-				TTL:        0,
-			},
-			expected: false,
-		},
-		{
-			name: "Not expired",
-			entry: Entry{
-				CreateTime: now.Add(-30 * time.Second),
-				TTL:        1 * time.Minute,
-			},
-			expected: false,
-		},
-		{
-			name: "Expired",
-			entry: Entry{
-				CreateTime: now.Add(-2 * time.Minute),
-				TTL:        1 * time.Minute,
-			},
-			expected: true,
-		},
-		{
-			name: "Just expired",
-			entry: Entry{
-				CreateTime: now.Add(-1*time.Minute - 1*time.Second),
-				TTL:        1 * time.Minute,
-			},
-			expected: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, tt.entry.IsExpired())
 		})
 	}
 }

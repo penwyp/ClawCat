@@ -15,10 +15,8 @@ import (
 
 func TestNewStore(t *testing.T) {
 	config := StoreConfig{
-		MaxFileSize:  1024,
-		MaxMemory:    2048,
-		FileCacheTTL: 5 * time.Minute,
-		CalcCacheTTL: 1 * time.Minute,
+		MaxFileSize: 1024,
+		MaxMemory:   2048,
 	}
 
 	store := NewStore(config)
@@ -39,8 +37,6 @@ func TestNewStore_Defaults(t *testing.T) {
 
 	assert.Equal(t, int64(50*1024*1024), store.config.MaxFileSize)
 	assert.Equal(t, int64(100*1024*1024), store.config.MaxMemory)
-	assert.Equal(t, 5*time.Minute, store.config.FileCacheTTL)
-	assert.Equal(t, 1*time.Minute, store.config.CalcCacheTTL)
 	assert.Equal(t, 6, store.config.CompressionLevel)
 }
 

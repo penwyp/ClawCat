@@ -68,7 +68,6 @@ type EnhancedMetricsCalculator struct {
 
 	// Cache management
 	cacheEnabled   bool
-	cacheTTL       time.Duration
 	lastCalculated time.Time
 	cachedMetrics  *EnhancedRealtimeMetrics
 
@@ -90,7 +89,6 @@ func NewEnhancedMetricsCalculator(cfg *config.Config) *EnhancedMetricsCalculator
 		config:           cfg,
 		sessionBlocks:    make([]models.SessionBlock, 0),
 		cacheEnabled:     true,
-		cacheTTL:         5 * time.Second, // 5-second cache TTL like Claude Monitor
 		updateInterval:   10 * time.Second,
 		confidenceWindow: 1 * time.Hour,
 		ctx:              ctx,
@@ -119,8 +117,7 @@ func (emc *EnhancedMetricsCalculator) Calculate() *EnhancedRealtimeMetrics {
 	calculationStart := now
 
 	// Check cache
-	if emc.cacheEnabled && emc.cachedMetrics != nil &&
-		now.Sub(emc.lastCalculated) < emc.cacheTTL {
+	if emc.cacheEnabled && emc.cachedMetrics != nil {
 		return emc.cachedMetrics
 	}
 

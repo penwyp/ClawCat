@@ -122,7 +122,6 @@ type AggregationCache struct {
 type CacheEntry struct {
 	Data      []AggregatedData
 	Timestamp time.Time
-	TTL       time.Duration
 }
 
 // NewAggregationEngine 创建聚合引擎
@@ -194,7 +193,7 @@ func (ae *AggregationEngine) Aggregate(view AggregationView, start, end time.Tim
 	})
 
 	// 缓存结果
-	ae.cache.Set(cacheKey, results, time.Hour)
+	ae.cache.Set(cacheKey, results)
 
 	return results, nil
 }
@@ -591,17 +590,11 @@ func (c *AggregationCache) Get(key string) ([]AggregatedData, bool) {
 		return nil, false
 	}
 
-	// 检查是否过期
-	if time.Since(entry.Timestamp) > entry.TTL {
-		delete(c.cache, key)
-		return nil, false
-	}
-
 	return entry.Data, true
 }
 
 // Set 设置缓存数据
-func (c *AggregationCache) Set(key string, data []AggregatedData, ttl time.Duration) {
+func (c *AggregationCache) Set(key string, data []AggregatedData) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -625,6 +618,5 @@ func (c *AggregationCache) Set(key string, data []AggregatedData, ttl time.Durat
 	c.cache[key] = CacheEntry{
 		Data:      data,
 		Timestamp: time.Now(),
-		TTL:       ttl,
 	}
 }

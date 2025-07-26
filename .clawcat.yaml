@@ -21,7 +21,6 @@ ui:
 cache:
   max_memory: "200MB"
   eviction_policy: "lru"
-  ttl: "1h"
 
 # Export settings
 export:

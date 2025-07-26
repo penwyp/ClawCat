@@ -84,7 +84,7 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 		updateInterval:   updateInterval,
 		dataPath:         dataPath,
 		config:           cfg,
-		dataManager:      NewDataManager(5*time.Second, 192, dataPath), // 5-second TTL, 192 hours back
+		dataManager:      NewDataManager(192, dataPath), // 192 hours back
 		sessionMonitor:   NewSessionMonitor(),
 		monitoring:       false,
 		stopEvent:        ctx,

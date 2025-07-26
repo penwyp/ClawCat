@@ -204,7 +204,7 @@ func (s *Store) SetFileSummary(summary *FileSummary) error {
 	// Calculate size estimate for the summary
 	size := s.estimateFileSummarySize(summary)
 
-	// Store in L1 (memory cache) with TTL but not persistent to allow eviction
+	// Store in L1 (memory cache) but not persistent to allow eviction
 	if err := s.lruCache.SetWithOptions(key, summary, size, false); err != nil {
 		return fmt.Errorf("failed to store in L1 cache: %w", err)
 	}

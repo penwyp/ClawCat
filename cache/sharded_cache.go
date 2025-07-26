@@ -23,7 +23,6 @@ type ShardedCache struct {
 type ShardedCacheConfig struct {
 	ShardCount int   // Number of shards (must be power of 2)
 	MaxSize    int64 // Total max size across all shards
-	TTL        time.Duration
 }
 
 // cacheShard represents a single shard in the cache

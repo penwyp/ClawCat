@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	cfgFile       string
-	logLevel      string
-	noColor       bool
-	debug         bool
-	verbose       bool
+	cfgFile  string
+	logLevel string
+	noColor  bool
+	debug    bool
+	verbose  bool
 	// Run command flags moved to root
 	runPaths      []string
 	runPlan       string
@@ -206,7 +206,6 @@ func setDefaults() {
 	// Cache defaults
 	viper.SetDefault("cache.enabled", true)
 	viper.SetDefault("cache.max_size", "100MB")
-	viper.SetDefault("cache.ttl", "1h")
 
 	// Session defaults
 	viper.SetDefault("sessions.idle_timeout", "5m")
@@ -241,7 +240,7 @@ func loadConfiguration(cmd *cobra.Command) (*config.Config, error) {
 	// Add environment variable source
 	loader.AddSource(config.NewEnvSource("CLAWCAT"))
 
-	// Add command line flags source  
+	// Add command line flags source
 	loader.AddSource(config.NewFlagSource(cmd.Flags()))
 
 	// Add validator
