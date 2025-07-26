@@ -432,9 +432,6 @@ func getLimitsFromConfig(config Config) components.Limits {
 		}
 	case "custom":
 		// For custom plan, check if custom limits are provided
-		tokenLimit := 0
-		costLimit := 0.0
-		
 		// These would be read from config.CustomTokenLimit and config.CustomCostLimit
 		// For now, use default Pro limits
 		return components.Limits{

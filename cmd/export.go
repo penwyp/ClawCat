@@ -58,7 +58,7 @@ Examples:
 		}
 
 		// Load configuration
-		cfg, err := loadConfiguration()
+		cfg, err := loadConfiguration(cmd)
 		if err != nil {
 			return fmt.Errorf("failed to load configuration: %w", err)
 		}

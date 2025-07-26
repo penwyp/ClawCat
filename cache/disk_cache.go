@@ -14,6 +14,13 @@ import (
 	"github.com/penwyp/ClawCat/logging"
 )
 
+func init() {
+	// Register types that will be stored as interfaces in CacheItem.Value
+	gob.Register(&FileSummary{})
+	gob.Register(&DateRange{})
+	gob.Register(&ModelStat{})
+}
+
 // DiskCache implements persistent cache storage on disk
 type DiskCache struct {
 	baseDir     string

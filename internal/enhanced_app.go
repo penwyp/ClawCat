@@ -276,7 +276,7 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 			modelDistribution := make(map[string]calculations.ModelMetrics)
 			for model, stats := range metrics.ModelDistribution {
 				modelDistribution[model] = calculations.ModelMetrics{
-					TokenCount: stats.TokenCount,
+					TokenCount: stats.TotalTokens,
 					Cost:       stats.Cost,
 				}
 			}

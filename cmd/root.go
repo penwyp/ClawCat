@@ -4,17 +4,29 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/penwyp/ClawCat/config"
+	"github.com/penwyp/ClawCat/internal"
+	"github.com/penwyp/ClawCat/logging"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	cfgFile  string
-	logLevel string
-	noColor  bool
-	debug    bool
-	verbose  bool
+	cfgFile       string
+	logLevel      string
+	noColor       bool
+	debug         bool
+	verbose       bool
+	// Run command flags moved to root
+	runPaths      []string
+	runPlan       string
+	runRefresh    time.Duration
+	runTheme      string
+	runWatch      bool
+	runBackground bool
 )
 
 var rootCmd = &cobra.Command{
@@ -28,6 +40,34 @@ capabilities to help developers track their Claude API usage efficiently.`,
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		return initializeConfig()
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Load and validate configuration
+		cfg, err := loadConfiguration(cmd)
+		if err != nil {
+			return fmt.Errorf("failed to load configuration: %w", err)
+		}
+
+		// Override configuration with command line flags
+		if err := applyRunFlags(cfg); err != nil {
+			return fmt.Errorf("failed to apply command flags: %w", err)
+		}
+
+		// Initialize global logger with debug mode support
+		logging.InitLogger(cfg.App.LogLevel, cfg.App.LogFile, debug)
+
+		// Create and run enhanced application
+		app, err := internal.NewEnhancedApplication(cfg)
+		if err != nil {
+			return fmt.Errorf("failed to create enhanced application: %w", err)
+		}
+
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Starting ClawCat enhanced TUI monitor...\n")
+			fmt.Fprintf(os.Stderr, "Configuration: %+v\n", cfg)
+		}
+
+		return app.Run()
 	},
 }
 
@@ -59,6 +99,14 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 
+	// Run command flags (now default behavior)
+	rootCmd.Flags().StringSliceVarP(&runPaths, "paths", "p", nil, "data paths to monitor (can be specified multiple times)")
+	rootCmd.Flags().StringVar(&runPlan, "plan", "", "subscription plan (free, pro, team)")
+	rootCmd.Flags().DurationVarP(&runRefresh, "refresh", "r", 0, "refresh interval (e.g., 1s, 500ms)")
+	rootCmd.Flags().StringVarP(&runTheme, "theme", "t", "", "UI theme (dark, light, high-contrast)")
+	rootCmd.Flags().BoolVarP(&runWatch, "watch", "w", false, "enable file watching for real-time updates")
+	rootCmd.Flags().BoolVar(&runBackground, "background", false, "run in background mode (minimal UI)")
+
 	// Bind flags to viper
 	if err := viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
 		// During initialization, print to stderr
@@ -72,6 +120,26 @@ func init() {
 	}
 	if err := viper.BindPFlag("log.verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind verbose flag: %v\n", err)
+	}
+
+	// Bind run command flags to viper
+	if err := viper.BindPFlag("app.data_paths", rootCmd.Flags().Lookup("paths")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind paths flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("app.subscription_plan", rootCmd.Flags().Lookup("plan")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind plan flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("app.refresh_interval", rootCmd.Flags().Lookup("refresh")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind refresh flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("ui.theme", rootCmd.Flags().Lookup("theme")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind theme flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("fileio.watch_enabled", rootCmd.Flags().Lookup("watch")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind watch flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("app.background_mode", rootCmd.Flags().Lookup("background")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind background flag: %v\n", err)
 	}
 }
 
@@ -149,6 +217,103 @@ func initializeConfig() error {
 		if err := os.MkdirAll(configDir, 0755); err != nil {
 			return fmt.Errorf("failed to create config directory: %w", err)
 		}
+	}
+
+	return nil
+}
+
+func loadConfiguration(cmd *cobra.Command) (*config.Config, error) {
+	// Create config loader
+	loader := config.NewLoader()
+
+	// Add default configuration paths as file sources
+	for _, path := range config.ConfigPaths() {
+		loader.AddSource(config.NewFileSource(path))
+	}
+
+	// Add environment variable source
+	loader.AddSource(config.NewEnvSource("CLAWCAT"))
+
+	// Add command line flags source  
+	loader.AddSource(config.NewFlagSource(cmd.Flags()))
+
+	// Add validator
+	loader.AddValidator(config.NewStandardValidator())
+
+	// Load configuration with defaults as fallback
+	cfg, err := loader.LoadWithDefaults()
+	if err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func applyRunFlags(cfg *config.Config) error {
+	// Apply data paths if provided
+	if len(runPaths) > 0 {
+		// Validate paths exist
+		for _, path := range runPaths {
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				return fmt.Errorf("path does not exist: %s", path)
+			}
+		}
+		cfg.Data.Paths = runPaths
+	}
+
+	// Apply subscription plan if provided
+	if runPlan != "" {
+		validPlans := []string{"free", "pro", "team"}
+		found := false
+		for _, plan := range validPlans {
+			if strings.EqualFold(runPlan, plan) {
+				cfg.Subscription.Plan = strings.ToLower(runPlan)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("invalid subscription plan: %s (valid options: %s)",
+				runPlan, strings.Join(validPlans, ", "))
+		}
+	}
+
+	// Apply refresh interval if provided
+	if runRefresh > 0 {
+		if runRefresh < 100*time.Millisecond {
+			return fmt.Errorf("refresh interval too small: %v (minimum: 100ms)", runRefresh)
+		}
+		if runRefresh > 1*time.Minute {
+			return fmt.Errorf("refresh interval too large: %v (maximum: 1m)", runRefresh)
+		}
+		cfg.UI.RefreshRate = runRefresh
+	}
+
+	// Apply theme if provided
+	if runTheme != "" {
+		validThemes := []string{"dark", "light", "high-contrast"}
+		found := false
+		for _, theme := range validThemes {
+			if strings.EqualFold(runTheme, theme) {
+				cfg.UI.Theme = strings.ToLower(runTheme)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("invalid theme: %s (valid options: %s)",
+				runTheme, strings.Join(validThemes, ", "))
+		}
+	}
+
+	// Apply watch flag
+	if runWatch {
+		cfg.Data.AutoDiscover = true
+	}
+
+	// Apply background mode
+	if runBackground {
+		cfg.UI.CompactMode = true
 	}
 
 	return nil
