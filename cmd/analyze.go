@@ -938,14 +938,17 @@ func (tf *tableFormatter) addSeparatorLine() {
 func (tf *tableFormatter) calculateWidths() {
 	// Initialize with header widths
 	for i, header := range tf.headers {
-		tf.widths[i] = len(header)
+		tf.widths[i] = runeWidth(header)
 	}
 
 	// Check row data widths
 	for _, row := range tf.rows {
 		for i, cell := range row {
-			if i < len(tf.widths) && len(cell) > tf.widths[i] {
-				tf.widths[i] = len(cell)
+			if i < len(tf.widths) {
+				cellWidth := runeWidth(cell)
+				if cellWidth > tf.widths[i] {
+					tf.widths[i] = cellWidth
+				}
 			}
 		}
 	}
@@ -1057,12 +1060,31 @@ func (tf *tableFormatter) isNumericColumn(colIndex int) bool {
 		strings.Contains(header, "cost")
 }
 
+// runeWidth calculates the display width of a string, accounting for Unicode characters
+func runeWidth(s string) int {
+	width := 0
+	for _, r := range s {
+		// Most printable ASCII characters have width 1
+		if r >= 32 && r <= 126 {
+			width++
+		} else if r == '\t' {
+			width += 8 // Assume tab width of 8
+		} else {
+			// For Unicode characters, assume width 1 for now
+			// This is a simplification - some characters may be wider
+			width++
+		}
+	}
+	return width
+}
+
 func (tf *tableFormatter) padCell(text string, width int, rightAlign bool) string {
-	if len(text) >= width {
+	textWidth := runeWidth(text)
+	if textWidth >= width {
 		return text
 	}
 
-	padding := width - len(text)
+	padding := width - textWidth
 	if rightAlign {
 		return strings.Repeat(" ", padding) + text
 	}
