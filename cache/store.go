@@ -208,7 +208,7 @@ func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
 		}
 	}
 
-	logging.LogDebugf("Cache miss (file summary): absolutePath=%s, key=%s", absolutePath, key)
+	logging.LogDebugf("Cache miss (no cached summary): absolutePath=%s", absolutePath)
 	return nil, fmt.Errorf("file summary not found in cache: %s", absolutePath)
 }
 

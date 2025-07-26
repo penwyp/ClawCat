@@ -293,7 +293,6 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 			// Check if we should use cache
 			if summary.ShouldUseCache(fileInfo.ModTime(), opts.CacheThreshold) {
 				// Use cached summary
-				logging.LogDebugf("Using cached summary for %s", filepath.Base(filePath))
 
 				// Merge processed hashes to avoid duplicates
 				summary.MergeHashes(processedHashes)
