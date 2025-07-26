@@ -1079,12 +1079,8 @@ func formatModels(models []string) string {
 		return ""
 	}
 	if len(models) == 1 {
-		return "- " + models[0]
+		return models[0]
 	}
 
-	var result []string
-	for _, model := range models {
-		result = append(result, "- "+model)
-	}
-	return strings.Join(result, "\n")
+	return strings.Join(models, ", ")
 }
