@@ -116,7 +116,7 @@ func NewModelStats(entries []models.UsageEntry) *ModelStats {
 		stats.OutputTokens += entry.OutputTokens
 		stats.CacheCreationTokens += entry.CacheCreationTokens
 		stats.CacheReadTokens += entry.CacheReadTokens
-		stats.TotalCost += entry.Cost
+		stats.TotalCost += entry.CostUSD
 
 		// Track sessions
 		if entry.SessionID != "" {

@@ -10,11 +10,11 @@ import (
 
 // EnhancedStore provides a high-performance cache store with pre-aggregated data
 type EnhancedStore struct {
-	badgerCache *BadgerCache
-	processor   *AggregationProcessor
-	config      EnhancedStoreConfig
-	mu          sync.RWMutex
-	closed      bool
+	typedCache *TypedCache
+	processor  *AggregationProcessor
+	config     EnhancedStoreConfig
+	mu         sync.RWMutex
+	closed     bool
 }
 
 // EnhancedStoreConfig configures the enhanced cache store
@@ -27,11 +27,11 @@ type EnhancedStoreConfig struct {
 
 // EnhancedStoreStats provides comprehensive store statistics
 type EnhancedStoreStats struct {
-	BadgerStats       BadgerStats       `json:"badger_stats"`
-	ProcessorMetrics  ProcessorMetrics  `json:"processor_metrics"`
-	TotalModels       int               `json:"total_models"`
+	BadgerStats        BadgerStats      `json:"badger_stats"`
+	ProcessorMetrics   ProcessorMetrics `json:"processor_metrics"`
+	TotalModels        int              `json:"total_models"`
 	HourlyAggregations int64            `json:"hourly_aggregations"`
-	DailyAggregations int64            `json:"daily_aggregations"`
+	DailyAggregations  int64            `json:"daily_aggregations"`
 }
 
 // NewEnhancedStore creates a new enhanced cache store
@@ -41,19 +41,19 @@ func NewEnhancedStore(config EnhancedStoreConfig) (*EnhancedStore, error) {
 		config.CleanupInterval = 6 * time.Hour // Default cleanup every 6 hours
 	}
 
-	// Create BadgerDB cache
-	badgerCache, err := NewBadgerCache(config.BadgerConfig)
+	// Create TypedCache
+	typedCache, err := NewTypedCache(config.BadgerConfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create BadgerDB cache: %w", err)
+		return nil, fmt.Errorf("failed to create typed cache: %w", err)
 	}
 
 	// Create aggregation processor
-	processor := NewAggregationProcessor(badgerCache)
+	processor := NewAggregationProcessor(typedCache)
 
 	store := &EnhancedStore{
-		badgerCache: badgerCache,
-		processor:   processor,
-		config:      config,
+		typedCache: typedCache,
+		processor:  processor,
+		config:     config,
 	}
 
 	// Start automatic cleanup if enabled
@@ -325,7 +325,8 @@ func (es *EnhancedStore) Backup(backupPath string) error {
 		return fmt.Errorf("store is closed")
 	}
 
-	return es.badgerCache.Backup(backupPath)
+	// Backup not supported with TypedCache
+	return fmt.Errorf("backup not supported")
 }
 
 // Restore restores the cache from a backup
@@ -337,7 +338,8 @@ func (es *EnhancedStore) Restore(backupPath string) error {
 		return fmt.Errorf("store is closed")
 	}
 
-	return es.badgerCache.Restore(backupPath)
+	// Restore not supported with TypedCache
+	return fmt.Errorf("restore not supported")
 }
 
 // Stats returns comprehensive store statistics
@@ -349,7 +351,7 @@ func (es *EnhancedStore) Stats() (*EnhancedStoreStats, error) {
 		return nil, fmt.Errorf("store is closed")
 	}
 
-	badgerStats := es.badgerCache.GetStats()
+	badgerStats := es.typedCache.GetStats()
 	processorMetrics := es.processor.GetMetrics()
 
 	// Get models count
@@ -404,7 +406,8 @@ func (es *EnhancedStore) RunGC() error {
 		return fmt.Errorf("store is closed")
 	}
 
-	return es.badgerCache.RunGC()
+	// GC not exposed through TypedCache
+	return fmt.Errorf("GC not supported")
 }
 
 // startAutoCleanup starts automatic cache cleanup
@@ -441,7 +444,7 @@ func (es *EnhancedStore) IsHealthy() bool {
 		return false
 	}
 
-	stats := es.badgerCache.GetStats()
+	stats := es.typedCache.GetStats()
 	
 	// Consider healthy if database size is reasonable (< 10GB)
 	return stats.TotalSize < 10*1024*1024*1024

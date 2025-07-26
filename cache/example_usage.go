@@ -38,7 +38,7 @@ func ExampleUsage() error {
 			OutputTokens:        800,
 			CacheCreationTokens: 0,
 			CacheReadTokens:     0,
-			Cost:                0.045,
+			CostUSD:             0.045,
 			SessionID:           "session-001",
 		},
 		{
@@ -48,7 +48,7 @@ func ExampleUsage() error {
 			OutputTokens:        1200,
 			CacheCreationTokens: 0,
 			CacheReadTokens:     0,
-			Cost:                0.012,
+			CostUSD:             0.012,
 			SessionID:           "session-002",
 		},
 		{
@@ -58,7 +58,7 @@ func ExampleUsage() error {
 			OutputTokens:        2000,
 			CacheCreationTokens: 500,
 			CacheReadTokens:     0,
-			Cost:                0.089,
+			CostUSD:             0.089,
 			SessionID:           "session-001",
 		},
 		{
@@ -68,7 +68,7 @@ func ExampleUsage() error {
 			OutputTokens:        500,
 			CacheCreationTokens: 0,
 			CacheReadTokens:     200,
-			Cost:                0.078,
+			CostUSD:             0.078,
 			SessionID:           "session-003",
 		},
 	}

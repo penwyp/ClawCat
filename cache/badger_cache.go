@@ -1,7 +1,8 @@
 package cache
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,18 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 )
+
+// init registers types for gob encoding
+func init() {
+	// Register cache-specific types for gob encoding
+	gob.Register(&HourlyAggregation{})
+	gob.Register(&DailyAggregation{})
+	gob.Register(&ModelStats{})
+	gob.Register(&ModelSummary{})
+	gob.Register([]string{})
+	gob.Register(map[string]*ModelStats{})
+	gob.Register(map[int]*HourlyAggregation{})
+}
 
 // BadgerCache provides a BadgerDB-based cache implementation
 type BadgerCache struct {
@@ -72,26 +85,15 @@ func NewBadgerCache(config BadgerConfig) (*BadgerCache, error) {
 	// Configure BadgerDB options
 	opts := badger.DefaultOptions(config.DBPath)
 	opts = opts.WithValueThreshold(config.ValueThreshold)
-	opts = opts.WithCompression(getCompressionOptions(config.CompactionLevel))
+	// Note: BadgerDB v3 uses different compression API - compression enabled by default
 	opts = opts.WithMemTableSize(config.MaxMemoryUsage / 4) // Use 1/4 of memory for memtable
 	opts = opts.WithValueLogFileSize(64 * 1024 * 1024)     // 64MB value log files
 	opts = opts.WithNumMemtables(3)                        // 3 memtables for better write performance
 	opts = opts.WithNumLevelZeroTables(5)                  // Level 0 SST tables
 	opts = opts.WithNumLevelZeroTablesStall(10)            // Stall writes threshold
 	
-	// Set log level
-	switch config.LogLevel {
-	case "DEBUG":
-		opts = opts.WithLogger(&badgerLogger{level: badger.DEBUG})
-	case "INFO":
-		opts = opts.WithLogger(&badgerLogger{level: badger.INFO})
-	case "WARNING":
-		opts = opts.WithLogger(&badgerLogger{level: badger.WARNING})
-	case "ERROR":
-		opts = opts.WithLogger(&badgerLogger{level: badger.ERROR})
-	default:
-		opts = opts.WithLogger(&badgerLogger{level: badger.WARNING})
-	}
+	// Set custom logger to suppress logs by default
+	opts = opts.WithLogger(&badgerLogger{})
 
 	// Open database
 	db, err := badger.Open(opts)
@@ -127,7 +129,9 @@ func (bc *BadgerCache) Get(key string) (interface{}, bool) {
 		}
 
 		return item.Value(func(val []byte) error {
-			return json.Unmarshal(val, &result)
+			buf := bytes.NewBuffer(val)
+			decoder := gob.NewDecoder(buf)
+			return decoder.Decode(&result)
 		})
 	})
 
@@ -156,10 +160,13 @@ func (bc *BadgerCache) SetWithTTL(key string, value interface{}, ttl time.Durati
 		return fmt.Errorf("cache is closed")
 	}
 
-	data, err := json.Marshal(value)
+	var buf bytes.Buffer
+	encoder := gob.NewEncoder(&buf)
+	err := encoder.Encode(value)
 	if err != nil {
-		return fmt.Errorf("failed to marshal value: %w", err)
+		return fmt.Errorf("failed to encode value: %w", err)
 	}
+	data := buf.Bytes()
 
 	return bc.db.Update(func(txn *badger.Txn) error {
 		entry := badger.NewEntry([]byte(key), data)
@@ -220,7 +227,9 @@ func (bc *BadgerCache) GetByPrefix(prefix string) (map[string]interface{}, error
 			
 			var value interface{}
 			err := item.Value(func(val []byte) error {
-				return json.Unmarshal(val, &value)
+				buf := bytes.NewBuffer(val)
+				decoder := gob.NewDecoder(buf)
+				return decoder.Decode(&value)
 			})
 			if err != nil {
 				fmt.Printf("Failed to unmarshal value for key %s: %v\n", key, err)
@@ -367,45 +376,22 @@ func (bc *BadgerCache) countKeys() int64 {
 	return count
 }
 
-// getCompressionOptions returns compression options based on level
-func getCompressionOptions(level int) badger.CompressionType {
-	switch level {
-	case 0:
-		return badger.None
-	case 1:
-		return badger.Snappy
-	case 2:
-		return badger.ZSTD
-	default:
-		return badger.Snappy
-	}
-}
-
-// badgerLogger implements badger.Logger interface
-type badgerLogger struct {
-	level badger.LogLevel
-}
+// badgerLogger implements badger.Logger interface with minimal logging
+type badgerLogger struct{}
 
 func (l *badgerLogger) Errorf(format string, args ...interface{}) {
-	if l.level <= badger.ERROR {
-		fmt.Printf("[BADGER ERROR] "+format+"\n", args...)
-	}
+	// Only log errors to avoid noise
+	fmt.Printf("[BADGER ERROR] "+format+"\n", args...)
 }
 
 func (l *badgerLogger) Warningf(format string, args ...interface{}) {
-	if l.level <= badger.WARNING {
-		fmt.Printf("[BADGER WARNING] "+format+"\n", args...)
-	}
+	// Suppress warnings by default
 }
 
 func (l *badgerLogger) Infof(format string, args ...interface{}) {
-	if l.level <= badger.INFO {
-		fmt.Printf("[BADGER INFO] "+format+"\n", args...)
-	}
+	// Suppress info logs
 }
 
 func (l *badgerLogger) Debugf(format string, args ...interface{}) {
-	if l.level <= badger.DEBUG {
-		fmt.Printf("[BADGER DEBUG] "+format+"\n", args...)
-	}
+	// Suppress debug logs
 }

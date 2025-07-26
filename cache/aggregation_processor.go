@@ -10,7 +10,7 @@ import (
 
 // AggregationProcessor handles the processing and caching of usage data aggregations
 type AggregationProcessor struct {
-	cache   *BadgerCache
+	cache   *TypedCache
 	keyGen  AggregationKey
 	mu      sync.RWMutex
 	metrics ProcessorMetrics
@@ -27,7 +27,7 @@ type ProcessorMetrics struct {
 }
 
 // NewAggregationProcessor creates a new aggregation processor
-func NewAggregationProcessor(cache *BadgerCache) *AggregationProcessor {
+func NewAggregationProcessor(cache *TypedCache) *AggregationProcessor {
 	return &AggregationProcessor{
 		cache:  cache,
 		keyGen: AggregationKey{},
@@ -105,16 +105,14 @@ func (ap *AggregationProcessor) processHourlyEntries(hourKey string, entries []m
 	cacheKey := ap.keyGen.HourlyKey(timestamp)
 
 	// Check if aggregation already exists
-	if existingData, exists := ap.cache.Get(cacheKey); exists {
-		if existingAgg, ok := existingData.(*HourlyAggregation); ok {
-			// Merge with existing aggregation
-			merged := MergeHourlyAggregations([]*HourlyAggregation{existingAgg, newAgg})
-			newAgg = merged
-		}
+	if existingAgg, exists := ap.cache.GetHourlyAggregation(cacheKey); exists {
+		// Merge with existing aggregation
+		merged := MergeHourlyAggregations([]*HourlyAggregation{existingAgg, newAgg})
+		newAgg = merged
 	}
 
 	// Store updated aggregation
-	return ap.cache.Set(cacheKey, newAgg)
+	return ap.cache.SetHourlyAggregation(cacheKey, newAgg)
 }
 
 // updateDailyAggregations updates daily aggregations based on new entries
@@ -158,10 +156,8 @@ func (ap *AggregationProcessor) processDailyEntries(dateKey string, entries []mo
 		hourTimestamp := date.Add(time.Duration(hour) * time.Hour)
 		hourKey := ap.keyGen.HourlyKey(hourTimestamp)
 		
-		if hourlyData, exists := ap.cache.Get(hourKey); exists {
-			if hourlyAgg, ok := hourlyData.(*HourlyAggregation); ok {
-				hourlyAggs = append(hourlyAggs, hourlyAgg)
-			}
+		if hourlyAgg, exists := ap.cache.GetHourlyAggregation(hourKey); exists {
+			hourlyAggs = append(hourlyAggs, hourlyAgg)
 		}
 	}
 
@@ -172,7 +168,7 @@ func (ap *AggregationProcessor) processDailyEntries(dateKey string, entries []mo
 	}
 
 	// Store daily aggregation
-	return ap.cache.Set(cacheKey, dailyAgg)
+	return ap.cache.SetDailyAggregation(cacheKey, dailyAgg)
 }
 
 // updateModelSummaries updates model summaries based on new entries
@@ -196,10 +192,8 @@ func (ap *AggregationProcessor) updateModelSummaries(entries []models.UsageEntry
 		
 		// Get existing summary
 		var existingSummary *ModelSummary
-		if summaryData, exists := ap.cache.Get(summaryKey); exists {
-			if summary, ok := summaryData.(*ModelSummary); ok {
-				existingSummary = summary
-			}
+		if summary, exists := ap.cache.GetModelSummary(summaryKey); exists {
+			existingSummary = summary
 		}
 
 		// Update summary with daily aggregations
@@ -207,16 +201,14 @@ func (ap *AggregationProcessor) updateModelSummaries(entries []models.UsageEntry
 			date, _ := time.Parse("2006-01-02", dateKey)
 			dailyKey := ap.keyGen.DailyKey(date)
 			
-			if dailyData, exists := ap.cache.Get(dailyKey); exists {
-				if dailyAgg, ok := dailyData.(*DailyAggregation); ok {
-					existingSummary = UpdateModelSummary(existingSummary, model, dailyAgg)
-				}
+			if dailyAgg, exists := ap.cache.GetDailyAggregation(dailyKey); exists {
+				existingSummary = UpdateModelSummary(existingSummary, model, dailyAgg)
 			}
 		}
 
 		// Store updated summary
 		if existingSummary != nil {
-			if err := ap.cache.Set(summaryKey, existingSummary); err != nil {
+			if err := ap.cache.SetModelSummary(summaryKey, existingSummary); err != nil {
 				return fmt.Errorf("failed to store model summary for %s: %w", model, err)
 			}
 		}
@@ -231,10 +223,8 @@ func (ap *AggregationProcessor) updateModelsList(entries []models.UsageEntry) er
 	modelsKey := ap.keyGen.ModelsListKey()
 	var existingModels []string
 	
-	if modelsData, exists := ap.cache.Get(modelsKey); exists {
-		if models, ok := modelsData.([]string); ok {
-			existingModels = models
-		}
+	if models, exists := ap.cache.GetModels(modelsKey); exists {
+		existingModels = models
 	}
 
 	// Create set of existing models
@@ -259,7 +249,7 @@ func (ap *AggregationProcessor) updateModelsList(entries []models.UsageEntry) er
 			newModelsList = append(newModelsList, model)
 		}
 		
-		return ap.cache.Set(modelsKey, newModelsList)
+		return ap.cache.SetModels(modelsKey, newModelsList)
 	}
 
 	return nil
@@ -271,10 +261,8 @@ func (ap *AggregationProcessor) GetHourlyAggregation(timestamp time.Time) (*Hour
 	defer ap.mu.RUnlock()
 
 	key := ap.keyGen.HourlyKey(timestamp)
-	if data, exists := ap.cache.Get(key); exists {
-		if agg, ok := data.(*HourlyAggregation); ok {
-			return agg, nil
-		}
+	if agg, exists := ap.cache.GetHourlyAggregation(key); exists {
+		return agg, nil
 	}
 
 	return nil, fmt.Errorf("hourly aggregation not found for %s", timestamp.Format("2006-01-02-15"))
@@ -286,10 +274,8 @@ func (ap *AggregationProcessor) GetDailyAggregation(date time.Time) (*DailyAggre
 	defer ap.mu.RUnlock()
 
 	key := ap.keyGen.DailyKey(date)
-	if data, exists := ap.cache.Get(key); exists {
-		if agg, ok := data.(*DailyAggregation); ok {
-			return agg, nil
-		}
+	if agg, exists := ap.cache.GetDailyAggregation(key); exists {
+		return agg, nil
 	}
 
 	return nil, fmt.Errorf("daily aggregation not found for %s", date.Format("2006-01-02"))
@@ -301,10 +287,8 @@ func (ap *AggregationProcessor) GetModelSummary(model string) (*ModelSummary, er
 	defer ap.mu.RUnlock()
 
 	key := ap.keyGen.ModelSummaryKey(model)
-	if data, exists := ap.cache.Get(key); exists {
-		if summary, ok := data.(*ModelSummary); ok {
-			return summary, nil
-		}
+	if summary, exists := ap.cache.GetModelSummary(key); exists {
+		return summary, nil
 	}
 
 	return nil, fmt.Errorf("model summary not found for %s", model)
@@ -316,10 +300,8 @@ func (ap *AggregationProcessor) GetModelsList() ([]string, error) {
 	defer ap.mu.RUnlock()
 
 	key := ap.keyGen.ModelsListKey()
-	if data, exists := ap.cache.Get(key); exists {
-		if models, ok := data.([]string); ok {
-			return models, nil
-		}
+	if models, exists := ap.cache.GetModels(key); exists {
+		return models, nil
 	}
 
 	return []string{}, nil // Return empty list if not found
