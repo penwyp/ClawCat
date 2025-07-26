@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -77,7 +78,13 @@ Examples:
 		// Reset cache if requested
 		if analyzeReset {
 			// Use simplified cache for clearing
-			simpleCache := cache.NewSimpleCacheStore(cfg.Cache.Dir)
+			cacheDir := cfg.Cache.Dir
+			if cacheDir[:2] == "~/" {
+				homeDir, _ := os.UserHomeDir()
+				cacheDir = filepath.Join(homeDir, cacheDir[2:])
+			}
+			persistPath := filepath.Join(cacheDir, "file_summaries.json")
+			simpleCache := cache.NewSimpleSummaryCache(persistPath)
 			if err := simpleCache.Clear(); err != nil {
 				return fmt.Errorf("failed to clear cache: %w", err)
 			}

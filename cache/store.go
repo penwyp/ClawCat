@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
 )
 
@@ -163,115 +162,6 @@ func (s *Store) SetCalculation(key string, value interface{}) error {
 	return s.lruCache.Set(key, value)
 }
 
-// GetFileSummary retrieves a cached file summary using L1+L2 cache strategy
-func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	key := "summary:" + absolutePath
-
-	// L1: Check memory cache first
-	if value, exists := s.lruCache.Get(key); exists {
-		if summary, ok := value.(*FileSummary); ok {
-			logging.LogDebugf("Cache hit (L1 memory): absolutePath=%s", absolutePath)
-			return summary, nil
-		}
-	}
-
-	// L2: Check disk cache if enabled
-	if s.diskCache != nil {
-		if value, exists := s.diskCache.Get(key); exists {
-			if summary, ok := value.(*FileSummary); ok {
-				logging.LogDebugf("Cache hit (L2 disk): absolutePath=%s, loading into L1", absolutePath)
-				// Load into L1 cache for faster future access
-				_ = s.lruCache.Set(key, summary)
-				return summary, nil
-			}
-		}
-	}
-
-	logging.LogDebugf("Cache miss (no cached summary): absolutePath=%s", absolutePath)
-	return nil, fmt.Errorf("file summary not found in cache: %s", absolutePath)
-}
-
-// SetFileSummary stores a file summary in L1+L2 cache
-func (s *Store) SetFileSummary(summary *FileSummary) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	key := "summary:" + summary.AbsolutePath
-
-	// Calculate size estimate for the summary
-	size := s.estimateFileSummarySize(summary)
-
-	// Store in L1 (memory cache) but not persistent to allow eviction
-	if err := s.lruCache.SetWithOptions(key, summary, size, false); err != nil {
-		return fmt.Errorf("failed to store in L1 cache: %w", err)
-	}
-	logging.LogDebugf("Stored in L1 cache: absolutePath=%s, size=%d bytes", summary.AbsolutePath, size)
-
-	// Store in L2 (disk cache) if enabled
-	if s.diskCache != nil {
-		if err := s.diskCache.Set(key, summary); err != nil {
-			// Don't fail if disk cache fails, just log the error
-			logging.LogWarnf("Failed to store in L2 disk cache: %v", err)
-		} else {
-			logging.LogDebugf("Stored in L2 disk cache: absolutePath=%s", summary.AbsolutePath)
-		}
-	}
-
-	return nil
-}
-
-// HasFileSummary checks if a file summary exists in L1 or L2 cache
-func (s *Store) HasFileSummary(absolutePath string) bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	key := "summary:" + absolutePath
-
-	// Check L1 cache first
-	if _, exists := s.lruCache.Get(key); exists {
-		return true
-	}
-
-	// Check L2 cache if enabled
-	if s.diskCache != nil {
-		if _, exists := s.diskCache.Get(key); exists {
-			return true
-		}
-	}
-
-	return false
-}
-
-// InvalidateFileSummary removes a file summary from L1+L2 cache
-func (s *Store) InvalidateFileSummary(absolutePath string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	key := "summary:" + absolutePath
-	logging.LogDebugf("Invalidating cache for: absolutePath=%s", absolutePath)
-
-	// Remove from L1 cache
-	if err := s.lruCache.Delete(key); err != nil && err.Error() != "key not found" {
-		return fmt.Errorf("failed to delete from L1 cache: %w", err)
-	} else if err == nil {
-		logging.LogDebugf("Removed from L1 cache: absolutePath=%s", absolutePath)
-	}
-
-	// Remove from L2 cache if enabled
-	if s.diskCache != nil {
-		if err := s.diskCache.Delete(key); err != nil {
-			// Don't fail if disk deletion fails, just log
-			logging.LogWarnf("Failed to delete from L2 disk cache: %v", err)
-		} else {
-			logging.LogDebugf("Removed from L2 disk cache: absolutePath=%s", absolutePath)
-		}
-	}
-
-	return nil
-}
 
 // Preload loads multiple files into cache
 func (s *Store) Preload(paths []string) error {
@@ -500,23 +390,3 @@ func (s *Store) IsHealthy() bool {
 	return memoryPercentage < 90.0
 }
 
-// estimateFileSummarySize estimates the memory size of a FileSummary
-func (s *Store) estimateFileSummarySize(summary *FileSummary) int64 {
-	size := int64(0)
-
-	// String fields
-	size += int64(len(summary.Path))
-	size += int64(len(summary.AbsolutePath))
-	size += int64(len(summary.Checksum))
-
-	// Model stats map
-	size += int64(len(summary.ModelStats)) * 200 // Rough estimate per model stat
-
-	// Processed hashes map
-	size += int64(len(summary.ProcessedHashes)) * 50 // Rough estimate per hash
-
-	// Fixed size fields and overhead
-	size += 200
-
-	return size
-}

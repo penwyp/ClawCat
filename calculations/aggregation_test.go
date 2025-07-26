@@ -182,7 +182,7 @@ func TestAggregationCache(t *testing.T) {
 
 	// 测试设置和获取
 	key := "test_key"
-	cache.Set(key, testData, time.Minute)
+	cache.Set(key, testData)
 
 	retrieved, found := cache.Get(key)
 	assert.True(t, found)
@@ -190,7 +190,7 @@ func TestAggregationCache(t *testing.T) {
 	assert.Equal(t, testData[0].Entries, retrieved[0].Entries)
 
 	// 测试过期
-	cache.Set(key, testData, time.Nanosecond)
+	cache.Set(key, testData)
 	time.Sleep(time.Millisecond) // 确保过期
 
 	_, found = cache.Get(key)

@@ -2,13 +2,15 @@ package internal
 
 import (
 	"fmt"
-	"github.com/penwyp/ClawCat/logging"
+	"os"
+	"path/filepath"
 	"sort"
 	"time"
 
 	"github.com/penwyp/ClawCat/cache"
 	"github.com/penwyp/ClawCat/config"
 	"github.com/penwyp/ClawCat/fileio"
+	"github.com/penwyp/ClawCat/logging"
 	"github.com/penwyp/ClawCat/models"
 )
 
@@ -40,8 +42,13 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 	var cacheStore fileio.CacheStore
 	if a.config.Cache.Enabled {
 		// Use simplified cache that loads all summaries into memory at startup
-		simpleCache := cache.NewSimpleCacheStore(a.config.Cache.Dir)
-		cacheStore = simpleCache
+		cacheDir := a.config.Cache.Dir
+		if cacheDir[:2] == "~/" {
+			homeDir, _ := os.UserHomeDir()
+			cacheDir = filepath.Join(homeDir, cacheDir[2:])
+		}
+		persistPath := filepath.Join(cacheDir, "file_summaries.json")
+		cacheStore = cache.NewSimpleSummaryCache(persistPath)
 	}
 
 	var allResults []models.AnalysisResult

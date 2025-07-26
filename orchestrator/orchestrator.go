@@ -3,6 +3,8 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -85,7 +87,14 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 	
 	// Set up cache if enabled
 	if cfg.Cache.Enabled {
-		cacheStore := cache.NewSimpleCacheStore(cfg.Cache.Dir)
+		// Expand cache directory path
+		cacheDir := cfg.Cache.Dir
+		if cacheDir[:2] == "~/" {
+			homeDir, _ := os.UserHomeDir()
+			cacheDir = filepath.Join(homeDir, cacheDir[2:])
+		}
+		persistPath := filepath.Join(cacheDir, "file_summaries.json")
+		cacheStore := cache.NewSimpleSummaryCache(persistPath)
 		dataManager.SetCacheStore(cacheStore, cfg.Data.SummaryCache)
 	}
 

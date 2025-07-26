@@ -9,6 +9,7 @@ import (
 
 	"github.com/penwyp/ClawCat/calculations"
 	"github.com/penwyp/ClawCat/config"
+	"github.com/penwyp/ClawCat/errors"
 	"github.com/penwyp/ClawCat/fileio"
 	"github.com/penwyp/ClawCat/models"
 	"github.com/penwyp/ClawCat/orchestrator"
