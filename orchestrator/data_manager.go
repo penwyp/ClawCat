@@ -179,7 +179,7 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 		Mode:               models.CostModeAuto,
 		IncludeRaw:         true,
 		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
-		CacheThreshold:     dm.summaryCacheConfig.Threshold,
+		IsWatchMode:        true, // DataManager is used in TUI mode with periodic updates
 	}
 
 	// Set cache store adapter if available

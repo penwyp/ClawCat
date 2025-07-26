@@ -23,8 +23,8 @@ type LoadUsageEntriesOptions struct {
 	Mode               models.CostMode // Cost calculation mode
 	IncludeRaw         bool            // Whether to return raw JSON data alongside entries
 	CacheStore         CacheStore      // Optional cache store for file summaries
-	CacheThreshold     time.Duration   // Time threshold for using cache (default: 1 hour)
 	EnableSummaryCache bool            // Whether to enable summary caching
+	IsWatchMode        bool            // Whether loading is triggered by file watch (TUI mode)
 }
 
 // CacheStore defines the interface for file summary caching
@@ -45,17 +45,12 @@ type FileSummary struct {
 	EntryCount      int
 	TotalCost       float64
 	TotalTokens     int
-	DateRange       DateRange
 	ModelStats      map[string]ModelStat
 	ProcessedAt     time.Time
 	Checksum        string
 	ProcessedHashes map[string]bool
 }
 
-type DateRange struct {
-	Start time.Time
-	End   time.Time
-}
 
 type ModelStat struct {
 	Model               string
@@ -97,10 +92,6 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 		opts.DataPath = filepath.Join(homeDir, ".claude", "projects")
 	}
 
-	// Set default cache threshold if not provided
-	if opts.CacheThreshold == 0 {
-		opts.CacheThreshold = time.Hour
-	}
 
 	// Find all JSONL files
 	jsonlFiles, err := findJSONLFiles(opts.DataPath)
@@ -327,9 +318,10 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 
 		// Check if we have a cached summary
 		if summary, err := opts.CacheStore.GetFileSummary(absPath); err == nil {
-			// Check if we should use cache
-			if summary.ShouldUseCache(fileInfo.ModTime(), opts.CacheThreshold) {
+			// Check if cache is still valid based on file mtime and size
+			if !summary.IsExpired(fileInfo.ModTime(), fileInfo.Size()) {
 				// Use cached summary
+				logging.LogDebugf("Cache hit: %s (mtime: %v, size: %d)", filepath.Base(filePath), fileInfo.ModTime(), fileInfo.Size())
 
 				// Merge processed hashes to avoid duplicates
 				summary.MergeHashes(processedHashes)
@@ -339,7 +331,9 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 
 				return entries, nil, true, nil
 			} else {
-				// File is too recent or has been modified, invalidate cache
+				// File has been modified, invalidate cache
+				logging.LogDebugf("Cache invalidated for %s: file modified (old mtime: %v, new mtime: %v, old size: %d, new size: %d)",
+					filepath.Base(filePath), summary.ModTime, fileInfo.ModTime(), summary.FileSize, fileInfo.Size())
 				opts.CacheStore.InvalidateFileSummary(absPath)
 			}
 		}
@@ -352,7 +346,8 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 	}
 
 	// If caching is enabled and we successfully processed the file, create and cache summary
-	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 {
+	// Skip caching if in watch mode (TUI) to avoid frequent writes
+	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 && !opts.IsWatchMode {
 		summary := createSummaryFromEntries(absPath, filePath, entries, processedHashes)
 		if summary != nil {
 			if err := opts.CacheStore.SetFileSummary(summary); err != nil {
@@ -360,7 +355,9 @@ func processSingleFileWithCache(filePath string, opts LoadUsageEntriesOptions, c
 			} else {
 				logging.LogDebugf("Cached summary for %s", filepath.Base(filePath))
 			}
-		}
+		} 
+	} else if opts.IsWatchMode && opts.EnableSummaryCache {
+		logging.LogDebugf("Skipping cache write for %s (watch mode)", filepath.Base(filePath))
 	}
 
 	return entries, rawEntries, false, nil
@@ -647,11 +644,6 @@ func generateEntryHash(entry models.UsageEntry) string {
 func createEntriesFromSummary(summary *FileSummary, cutoffTime *time.Time) []models.UsageEntry {
 	var entries []models.UsageEntry
 
-	// Check if the summary's date range intersects with our cutoff time
-	if cutoffTime != nil && summary.DateRange.End.Before(*cutoffTime) {
-		return entries // No entries match the time filter
-	}
-
 	// For cached summaries, we create synthetic entries based on model stats
 	// This is a simplification - in a more sophisticated implementation,
 	// we might store and retrieve actual entry data
@@ -659,7 +651,7 @@ func createEntriesFromSummary(summary *FileSummary, cutoffTime *time.Time) []mod
 		if modelStat.EntryCount > 0 {
 			// Create a representative entry for this model
 			entry := models.UsageEntry{
-				Timestamp:           summary.DateRange.Start, // Use start of range
+				Timestamp:           summary.ProcessedAt, // Use processed time as timestamp
 				Model:               modelStat.Model,
 				InputTokens:         modelStat.InputTokens,
 				OutputTokens:        modelStat.OutputTokens,
@@ -753,43 +745,14 @@ func createSummaryFromEntries(absPath, relPath string, entries []models.UsageEnt
 
 	summary.TotalCost = totalCost
 	summary.TotalTokens = totalTokens
-	summary.DateRange = DateRange{
-		Start: startTime,
-		End:   endTime,
-	}
 
 	return summary
 }
 
-// ShouldUseCache determines if cache should be used based on time since last modification
-func (fs *FileSummary) ShouldUseCache(currentModTime time.Time, cacheThreshold time.Duration) bool {
-	// If file has been modified, don't use cache
-	if fs.IsExpired(currentModTime) {
-		return false
-	}
 
-	// Smart threshold based on file characteristics
-	timeSinceModification := time.Since(currentModTime)
-	fileAge := time.Since(fs.DateRange.End)
-	
-	// For historical data (older than 7 days), use cache more aggressively
-	if fileAge > 7*24*time.Hour {
-		// Historical files can use cache even if modified recently
-		return timeSinceModification >= 5*time.Minute
-	}
-	
-	// For large files (>10MB), use shorter threshold to reduce parsing overhead
-	if fs.FileSize > 10*1024*1024 {
-		return timeSinceModification >= cacheThreshold/2
-	}
-	
-	// For recent small files, use standard threshold
-	return timeSinceModification >= cacheThreshold
-}
-
-// IsExpired checks if the summary is expired based on file modification time
-func (fs *FileSummary) IsExpired(currentModTime time.Time) bool {
-	return !fs.ModTime.Equal(currentModTime)
+// IsExpired checks if the summary is expired based on file modification time or size
+func (fs *FileSummary) IsExpired(currentModTime time.Time, currentSize int64) bool {
+	return !fs.ModTime.Equal(currentModTime) || fs.FileSize != currentSize
 }
 
 // MergeHashes merges processed hashes from summary into the target map

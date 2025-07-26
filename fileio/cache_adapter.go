@@ -23,17 +23,13 @@ func (sa *StoreAdapter) GetFileSummary(absolutePath string) (*FileSummary, error
 
 	// Convert cache.FileSummary to fileio.FileSummary
 	summary := &FileSummary{
-		Path:         cacheSummary.Path,
-		AbsolutePath: cacheSummary.AbsolutePath,
-		ModTime:      cacheSummary.ModTime,
-		FileSize:     cacheSummary.FileSize,
-		EntryCount:   cacheSummary.EntryCount,
-		TotalCost:    cacheSummary.TotalCost,
-		TotalTokens:  cacheSummary.TotalTokens,
-		DateRange: DateRange{
-			Start: cacheSummary.DateRange.Start,
-			End:   cacheSummary.DateRange.End,
-		},
+		Path:            cacheSummary.Path,
+		AbsolutePath:    cacheSummary.AbsolutePath,
+		ModTime:         cacheSummary.ModTime,
+		FileSize:        cacheSummary.FileSize,
+		EntryCount:      cacheSummary.EntryCount,
+		TotalCost:       cacheSummary.TotalCost,
+		TotalTokens:     cacheSummary.TotalTokens,
 		ProcessedAt:     cacheSummary.ProcessedAt,
 		Checksum:        cacheSummary.Checksum,
 		ProcessedHashes: cacheSummary.ProcessedHashes,
@@ -60,17 +56,13 @@ func (sa *StoreAdapter) GetFileSummary(absolutePath string) (*FileSummary, error
 func (sa *StoreAdapter) SetFileSummary(summary *FileSummary) error {
 	// Convert fileio.FileSummary to cache.FileSummary
 	cacheSummary := &cache.FileSummary{
-		Path:         summary.Path,
-		AbsolutePath: summary.AbsolutePath,
-		ModTime:      summary.ModTime,
-		FileSize:     summary.FileSize,
-		EntryCount:   summary.EntryCount,
-		TotalCost:    summary.TotalCost,
-		TotalTokens:  summary.TotalTokens,
-		DateRange: cache.DateRange{
-			Start: summary.DateRange.Start,
-			End:   summary.DateRange.End,
-		},
+		Path:            summary.Path,
+		AbsolutePath:    summary.AbsolutePath,
+		ModTime:         summary.ModTime,
+		FileSize:        summary.FileSize,
+		EntryCount:      summary.EntryCount,
+		TotalCost:       summary.TotalCost,
+		TotalTokens:     summary.TotalTokens,
 		ProcessedAt:     summary.ProcessedAt,
 		Checksum:        summary.Checksum,
 		ProcessedHashes: summary.ProcessedHashes,

@@ -284,7 +284,7 @@ func (cw *CacheWarmer) warmJSONLFile(ctx context.Context, file warmupFile) error
 	// Check if we already have a valid summary
 	if summary, err := cw.store.GetFileSummary(absPath); err == nil {
 		// Check if summary is still valid
-		if !summary.IsExpired(file.info.ModTime()) {
+		if !summary.IsExpired(file.info.ModTime(), file.info.Size()) {
 			return nil // Summary is still valid
 		}
 	}

@@ -68,7 +68,8 @@ func NewStore(config StoreConfig) *Store {
 		config.MaxFileSize = 50 * 1024 * 1024 // 50MB
 	}
 	if config.MaxMemory <= 0 {
-		config.MaxMemory = 200 * 1024 * 1024 // 200MB
+		// Use 75% of system memory by default
+		config.MaxMemory = GetRecommendedCacheSize()
 	}
 	if config.MaxDiskSize <= 0 {
 		config.MaxDiskSize = 1024 * 1024 * 1024 // 1GB
@@ -94,7 +95,7 @@ func NewStore(config StoreConfig) *Store {
 
 	// Create caches
 	fileCache := NewFileCache(config.MaxFileSize)
-	lruCache := NewLRUCache(config.MaxMemory / 2) // Allocate half memory to general cache
+	lruCache := NewLRUCache(config.MaxMemory * 75 / 100) // Allocate 75% of memory to general cache
 
 	// Create disk cache if enabled
 	var diskCache *DiskCache
@@ -193,6 +194,7 @@ func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
 	// L1: Check memory cache first
 	if value, exists := s.lruCache.Get(key); exists {
 		if summary, ok := value.(*FileSummary); ok {
+			logging.LogDebugf("Cache hit (L1 memory): absolutePath=%s", absolutePath)
 			return summary, nil
 		}
 	}
@@ -201,6 +203,7 @@ func (s *Store) GetFileSummary(absolutePath string) (*FileSummary, error) {
 	if s.diskCache != nil {
 		if value, exists := s.diskCache.Get(key); exists {
 			if summary, ok := value.(*FileSummary); ok {
+				logging.LogDebugf("Cache hit (L2 disk): absolutePath=%s, loading into L1", absolutePath)
 				// Load into L1 cache for faster future access
 				_ = s.lruCache.Set(key, summary)
 				return summary, nil
@@ -226,12 +229,15 @@ func (s *Store) SetFileSummary(summary *FileSummary) error {
 	if err := s.lruCache.SetWithOptions(key, summary, size, s.config.CalcCacheTTL, false); err != nil {
 		return fmt.Errorf("failed to store in L1 cache: %w", err)
 	}
+	logging.LogDebugf("Stored in L1 cache: absolutePath=%s, size=%d bytes", summary.AbsolutePath, size)
 
 	// Store in L2 (disk cache) if enabled
 	if s.diskCache != nil {
 		if err := s.diskCache.Set(key, summary); err != nil {
 			// Don't fail if disk cache fails, just log the error
-			fmt.Printf("Warning: Failed to store in disk cache: %v\n", err)
+			logging.LogWarnf("Failed to store in L2 disk cache: %v", err)
+		} else {
+			logging.LogDebugf("Stored in L2 disk cache: absolutePath=%s", summary.AbsolutePath)
 		}
 	}
 
@@ -266,17 +272,22 @@ func (s *Store) InvalidateFileSummary(absolutePath string) error {
 	defer s.mu.Unlock()
 
 	key := "summary:" + absolutePath
+	logging.LogDebugf("Invalidating cache for: absolutePath=%s", absolutePath)
 
 	// Remove from L1 cache
 	if err := s.lruCache.Delete(key); err != nil && err.Error() != "key not found" {
 		return fmt.Errorf("failed to delete from L1 cache: %w", err)
+	} else if err == nil {
+		logging.LogDebugf("Removed from L1 cache: absolutePath=%s", absolutePath)
 	}
 
 	// Remove from L2 cache if enabled
 	if s.diskCache != nil {
 		if err := s.diskCache.Delete(key); err != nil {
 			// Don't fail if disk deletion fails, just log
-			fmt.Printf("Warning: Failed to delete from disk cache: %v\n", err)
+			logging.LogWarnf("Failed to delete from L2 disk cache: %v", err)
+		} else {
+			logging.LogDebugf("Removed from L2 disk cache: absolutePath=%s", absolutePath)
 		}
 	}
 

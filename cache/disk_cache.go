@@ -17,7 +17,6 @@ import (
 func init() {
 	// Register types that will be stored as interfaces in CacheItem.Value
 	gob.Register(&FileSummary{})
-	gob.Register(&DateRange{})
 	gob.Register(&ModelStat{})
 }
 
@@ -468,8 +467,8 @@ func (dc *DiskCache) updateHitRate() {
 func (dc *DiskCache) getTTLForValue(value interface{}) time.Duration {
 	// Check if value is a FileSummary
 	if summary, ok := value.(*FileSummary); ok {
-		// Calculate age based on data range
-		dataAge := time.Since(summary.DateRange.End)
+		// Calculate age based on processed time
+		dataAge := time.Since(summary.ProcessedAt)
 		
 		// Historical data (>30 days): Keep for months
 		if dataAge > 30*24*time.Hour {
@@ -482,19 +481,6 @@ func (dc *DiskCache) getTTLForValue(value interface{}) time.Duration {
 		}
 		
 		// Recent data (<7 days): Standard TTL
-		return dc.ttl
-	}
-	
-	// Check if value is DateRange
-	if dr, ok := value.(*DateRange); ok {
-		dataAge := time.Since(dr.End)
-		
-		if dataAge > 30*24*time.Hour {
-			return 90 * 24 * time.Hour
-		}
-		if dataAge > 7*24*time.Hour {
-			return 30 * 24 * time.Hour
-		}
 		return dc.ttl
 	}
 	

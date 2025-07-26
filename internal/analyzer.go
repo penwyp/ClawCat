@@ -82,8 +82,8 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			DataPath:           path,
 			Mode:               models.CostModeCalculated,
 			CacheStore:         cacheStore,
-			CacheThreshold:     a.config.Data.SummaryCache.Threshold,
 			EnableSummaryCache: a.config.Data.SummaryCache.Enabled,
+			IsWatchMode:        false, // Analyze mode should write to cache
 		}
 
 		result, err := fileio.LoadUsageEntries(opts)
