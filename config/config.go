@@ -51,6 +51,9 @@ type DataConfig struct {
 	CacheEnabled  bool               `yaml:"cache_enabled" json:"cache_enabled"`
 	CacheSize     int                `yaml:"cache_size" json:"cache_size"`
 	SummaryCache  SummaryCacheConfig `yaml:"summary_cache" json:"summary_cache"`
+	PricingSource string             `yaml:"pricing_source" json:"pricing_source"`         // default, litellm
+	PricingOfflineMode bool          `yaml:"pricing_offline_mode" json:"pricing_offline_mode"` // Use cached pricing
+	Deduplication bool               `yaml:"deduplication" json:"deduplication"`           // Enable deduplication
 }
 
 // SummaryCacheConfig contains file summary caching settings
@@ -178,6 +181,9 @@ func DefaultConfig() *Config {
 				MaxSize:    10 * 1024 * 1024, // 10MB for summary cache
 				MaxEntries: 1000,             // Maximum 1000 cached summaries
 			},
+			PricingSource:      "default", // Use hardcoded pricing by default
+			PricingOfflineMode: false,     // Don't use offline mode by default
+			Deduplication:      false,     // Deduplication disabled by default
 		},
 		UI: UIConfig{
 			Theme:         "dark",

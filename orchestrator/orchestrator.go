@@ -12,6 +12,7 @@ import (
 	"github.com/penwyp/claudecat/config"
 	"github.com/penwyp/claudecat/logging"
 	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/models/pricing"
 )
 
 // MonitoringData represents the data structure passed to callbacks
@@ -85,14 +86,15 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 
 	dataManager := NewDataManager(192, dataPath) // 192 hours back
 
+	// Expand cache directory path for use in both cache and pricing
+	cacheDir := cfg.Cache.Dir
+	if cacheDir != "" && cacheDir[:2] == "~/" {
+		homeDir, _ := os.UserHomeDir()
+		cacheDir = filepath.Join(homeDir, cacheDir[2:])
+	}
+
 	// Set up cache if enabled
 	if cfg.Cache.Enabled && cfg.Data.SummaryCache.Enabled {
-		// Expand cache directory path
-		cacheDir := cfg.Cache.Dir
-		if cacheDir[:2] == "~/" {
-			homeDir, _ := os.UserHomeDir()
-			cacheDir = filepath.Join(homeDir, cacheDir[2:])
-		}
 		fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
 		if err != nil {
 			logging.LogErrorf("Failed to create file-based cache: %v", err)
@@ -101,6 +103,18 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 			dataManager.SetCacheStore(fileCache, cfg.Data.SummaryCache)
 		}
 	}
+
+	// Set up pricing provider
+	pricingProvider, err := pricing.CreatePricingProvider(&cfg.Data, cacheDir)
+	if err != nil {
+		logging.LogErrorf("Failed to create pricing provider: %v", err)
+		// Fall back to default provider
+		pricingProvider = pricing.NewDefaultProvider()
+	}
+	dataManager.SetPricingProvider(pricingProvider)
+
+	// Set deduplication flag
+	dataManager.SetDeduplication(cfg.Data.Deduplication)
 
 	return &MonitoringOrchestrator{
 		updateInterval:   updateInterval,

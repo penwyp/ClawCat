@@ -1,6 +1,7 @@
 package calculations
 
 import (
+	"context"
 	"errors"
 	"math"
 
@@ -9,8 +10,9 @@ import (
 
 // CostCalculator provides precise cost calculations with multi-currency support
 type CostCalculator struct {
-	pricing map[string]models.ModelPricing
-	rates   map[string]float64 // Currency conversion rates
+	pricing  map[string]models.ModelPricing
+	rates    map[string]float64 // Currency conversion rates
+	provider models.PricingProvider // Optional pricing provider for dynamic pricing
 }
 
 // CostResult represents the result of a cost calculation
@@ -42,6 +44,16 @@ func NewCostCalculator() *CostCalculator {
 	return &CostCalculator{
 		pricing: models.GetAllPricings(),
 		rates:   map[string]float64{"USD": 1.0}, // Default to USD
+		provider: nil,
+	}
+}
+
+// NewCostCalculatorWithProvider creates a new cost calculator with a pricing provider
+func NewCostCalculatorWithProvider(provider models.PricingProvider) *CostCalculator {
+	return &CostCalculator{
+		pricing: nil, // Will use provider instead
+		rates:   map[string]float64{"USD": 1.0}, // Default to USD
+		provider: provider,
 	}
 }
 
@@ -59,10 +71,22 @@ func (c *CostCalculator) Calculate(entry models.UsageEntry) (CostResult, error) 
 		return CostResult{}, errors.New("model name cannot be empty")
 	}
 
-	pricing, exists := c.pricing[entry.Model]
-	if !exists {
-		// Use default Sonnet pricing for unknown models
-		pricing = models.GetPricing(entry.Model)
+	var pricing models.ModelPricing
+	var err error
+	
+	// Use provider if available, otherwise fall back to static pricing
+	if c.provider != nil {
+		pricing, err = c.provider.GetPricing(context.Background(), entry.Model)
+		if err != nil {
+			return CostResult{}, err
+		}
+	} else {
+		var exists bool
+		pricing, exists = c.pricing[entry.Model]
+		if !exists {
+			// Use default Sonnet pricing for unknown models
+			pricing = models.GetPricing(entry.Model)
+		}
 	}
 
 	result := CostResult{

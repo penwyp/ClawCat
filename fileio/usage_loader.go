@@ -94,6 +94,11 @@ func extractUsageEntry(data map[string]interface{}) (models.UsageEntry, bool) {
 				entry.Model = model
 			}
 
+			// Extract message ID
+			if id, ok := message["id"].(string); ok {
+				entry.MessageID = id
+			}
+
 			// Extract usage
 			if usage, ok := message["usage"].(map[string]interface{}); ok {
 				if val, ok := usage["input_tokens"]; ok {
@@ -136,6 +141,11 @@ func extractUsageEntry(data map[string]interface{}) (models.UsageEntry, bool) {
 		}
 	}
 
+	// Extract request ID (at top level for both message types)
+	if requestID, ok := data["request_id"].(string); ok {
+		entry.RequestID = requestID
+	}
+
 	// Calculate total tokens
 	entry.TotalTokens = entry.InputTokens + entry.OutputTokens + entry.CacheCreationTokens + entry.CacheReadTokens
 
@@ -144,13 +154,15 @@ func extractUsageEntry(data map[string]interface{}) (models.UsageEntry, bool) {
 
 // LoadUsageEntriesOptions configures the usage loading behavior
 type LoadUsageEntriesOptions struct {
-	DataPath           string          // Path to Claude data directory
-	HoursBack          *int            // Only include entries from last N hours (nil = all data)
-	Mode               models.CostMode // Cost calculation mode
-	IncludeRaw         bool            // Whether to return raw JSON data alongside entries
-	CacheStore         CacheStore      // Optional cache store for file summaries
-	EnableSummaryCache bool            // Whether to enable summary caching
-	IsWatchMode        bool            // Whether loading is triggered by file watch (TUI mode)
+	DataPath           string                  // Path to Claude data directory
+	HoursBack          *int                    // Only include entries from last N hours (nil = all data)
+	Mode               models.CostMode         // Cost calculation mode
+	IncludeRaw         bool                    // Whether to return raw JSON data alongside entries
+	CacheStore         CacheStore              // Optional cache store for file summaries
+	EnableSummaryCache bool                    // Whether to enable summary caching
+	IsWatchMode        bool                    // Whether loading is triggered by file watch (TUI mode)
+	EnableDeduplication bool                   // Whether to enable deduplication across all files
+	PricingProvider    models.PricingProvider  // Optional pricing provider for cost calculations
 }
 
 // CacheStore defines the interface for file summary caching
@@ -215,6 +227,13 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	}
 	var summariesToCache []*cache.FileSummary // Collect summaries for batch writing
 
+	// Create deduplication set if enabled (only in memory, not persisted)
+	var deduplicationSet map[string]bool
+	if opts.EnableDeduplication {
+		deduplicationSet = make(map[string]bool)
+		logging.LogDebugf("Deduplication enabled, tracking unique message+request ID combinations")
+	}
+
 	if useConcurrent {
 		// Use concurrent loader
 		loader := NewConcurrentLoader(0) // Use default worker count
@@ -226,9 +245,13 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 			return nil, fmt.Errorf("concurrent loading failed: %w", err)
 		}
 
-		// Merge results
+		// Merge results with deduplication if enabled
 		var mergeErrors []error
-		allEntries, allRawEntries, mergeErrors = MergeResults(results)
+		if opts.EnableDeduplication {
+			allEntries, allRawEntries, mergeErrors = MergeResultsWithDedup(results, deduplicationSet)
+		} else {
+			allEntries, allRawEntries, mergeErrors = MergeResults(results)
+		}
 
 		// Convert errors to strings
 		for _, err := range mergeErrors {
@@ -266,7 +289,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 				logging.LogDebugf("Processing file %d/%d: %s", i+1, len(jsonlFiles), filepath.Base(filePath))
 			}
 
-			entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheWithReason(filePath, opts, cutoffTime)
+			entries, rawEntries, fromCache, missReason, err, summary := processSingleFileWithCacheAndDedup(filePath, opts, cutoffTime, deduplicationSet)
 			if err != nil {
 				if i < 5 { // Log errors for first 5 files
 					logging.LogErrorf("Error processing file %s: %v", filepath.Base(filePath), err)
@@ -385,6 +408,12 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 
 // processSingleFileWithCacheWithReason processes a single JSONL file with caching support and returns cache miss reason
 func processSingleFileWithCacheWithReason(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
+	// Call the extended version with nil deduplication set
+	return processSingleFileWithCacheAndDedup(filePath, opts, cutoffTime, nil)
+}
+
+// processSingleFileWithCacheAndDedup processes a single file with cache support and optional deduplication
+func processSingleFileWithCacheAndDedup(filePath string, opts LoadUsageEntriesOptions, cutoffTime *time.Time, deduplicationSet map[string]bool) ([]models.UsageEntry, []map[string]interface{}, bool, string, error, *cache.FileSummary) {
 	// Get absolute path for cache key
 	absPath, absErr := filepath.Abs(filePath)
 	if absErr != nil {
@@ -447,7 +476,7 @@ func processSingleFileWithCacheWithReason(filePath string, opts LoadUsageEntries
 	}
 
 	// Cache miss or caching disabled, process normally
-	entries, rawEntries, err := processSingleFile(filePath, opts.Mode, cutoffTime, opts.IncludeRaw)
+	entries, rawEntries, err := processSingleFileWithDedup(filePath, opts.Mode, cutoffTime, opts.IncludeRaw, deduplicationSet, &opts)
 	if err != nil {
 		return entries, rawEntries, false, missReason, err, nil
 	}
@@ -466,6 +495,12 @@ func processSingleFileWithCacheWithReason(filePath string, opts LoadUsageEntries
 
 // processSingleFile processes a single JSONL file
 func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.Time, includeRaw bool) ([]models.UsageEntry, []map[string]interface{}, error) {
+	// Call the extended version with nil deduplication set and no opts
+	return processSingleFileWithDedup(filePath, mode, cutoffTime, includeRaw, nil, nil)
+}
+
+// processSingleFileWithDedup processes a single JSONL file with optional deduplication
+func processSingleFileWithDedup(filePath string, mode models.CostMode, cutoffTime *time.Time, includeRaw bool, deduplicationSet map[string]bool, opts *LoadUsageEntriesOptions) ([]models.UsageEntry, []map[string]interface{}, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open file: %w", err)
@@ -515,9 +550,32 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 			continue
 		}
 
+		// Check for deduplication if enabled
+		if deduplicationSet != nil && entry.MessageID != "" && entry.RequestID != "" {
+			key := fmt.Sprintf("%s:%s", entry.MessageID, entry.RequestID)
+			if deduplicationSet[key] {
+				// Skip duplicate entry
+				logging.LogDebugf("Skipping duplicate entry with MessageID=%s, RequestID=%s", entry.MessageID, entry.RequestID)
+				continue
+			}
+			// Mark as seen
+			deduplicationSet[key] = true
+		}
+
 		// Calculate cost based on mode
-		pricing := models.GetPricing(entry.Model)
-		entry.CostUSD = entry.CalculateCost(pricing)
+		if opts != nil && opts.PricingProvider != nil {
+			// Use pricing provider if available
+			pricing, err := opts.PricingProvider.GetPricing(context.Background(), entry.Model)
+			if err != nil {
+				// Fall back to default pricing on error
+				pricing = models.GetPricing(entry.Model)
+			}
+			entry.CostUSD = entry.CalculateCost(pricing)
+		} else {
+			// Use default pricing
+			pricing := models.GetPricing(entry.Model)
+			entry.CostUSD = entry.CalculateCost(pricing)
+		}
 
 		// Normalize model name
 		entry.NormalizeModel()

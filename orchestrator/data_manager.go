@@ -34,6 +34,10 @@ type DataManager struct {
 
 	// Initial load tracking
 	initialLoadCompleted bool
+
+	// Pricing and deduplication
+	pricingProvider models.PricingProvider
+	enableDeduplication bool
 }
 
 // NewDataManager creates a new data manager with cache and fetch settings
@@ -50,6 +54,20 @@ func (dm *DataManager) SetCacheStore(cacheStore fileio.CacheStore, config config
 	defer dm.mu.Unlock()
 	dm.cacheStore = cacheStore
 	dm.summaryCacheConfig = config
+}
+
+// SetPricingProvider sets the pricing provider for cost calculations
+func (dm *DataManager) SetPricingProvider(provider models.PricingProvider) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+	dm.pricingProvider = provider
+}
+
+// SetDeduplication sets whether to enable deduplication
+func (dm *DataManager) SetDeduplication(enabled bool) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+	dm.enableDeduplication = enabled
 }
 
 // GetData gets monitoring data with caching and error handling
@@ -169,6 +187,8 @@ func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 			EnableSummaryCache: true,
 			IsWatchMode:        true, // Use cache read mode first
 			CacheStore:         dm.cacheStore,
+			EnableDeduplication: dm.enableDeduplication,
+			PricingProvider:    dm.pricingProvider,
 		}
 
 		resultCache, err := fileio.LoadUsageEntries(optsCache)
@@ -216,6 +236,8 @@ func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 		IncludeRaw:         true,
 		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
 		IsWatchMode:        false, // Initial load can write to cache
+		EnableDeduplication: dm.enableDeduplication,
+		PricingProvider:    dm.pricingProvider,
 	}
 
 	// Set cache store if available
@@ -257,6 +279,8 @@ func (dm *DataManager) analyzeUsageWatchMode() (*AnalysisResult, error) {
 		IncludeRaw:         true,
 		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
 		IsWatchMode:        true, // Watch mode - no cache writing
+		EnableDeduplication: dm.enableDeduplication,
+		PricingProvider:    dm.pricingProvider,
 	}
 
 	// Set cache store if available

@@ -27,6 +27,10 @@ var (
 	runTheme      string
 	runWatch      bool
 	runBackground bool
+	// New pricing and deduplication flags
+	pricingSource      string
+	pricingOffline     bool
+	enableDeduplication bool
 )
 
 var rootCmd = &cobra.Command{
@@ -113,6 +117,11 @@ func init() {
 	rootCmd.Flags().StringVarP(&runTheme, "theme", "t", "", "UI theme (dark, light, high-contrast)")
 	rootCmd.Flags().BoolVarP(&runWatch, "watch", "w", false, "enable file watching for real-time updates")
 	rootCmd.Flags().BoolVar(&runBackground, "background", false, "run in background mode (minimal UI)")
+	
+	// Pricing and deduplication flags
+	rootCmd.Flags().StringVar(&pricingSource, "pricing-source", "", "pricing source (default, litellm)")
+	rootCmd.Flags().BoolVar(&pricingOffline, "pricing-offline", false, "use cached pricing data for offline mode")
+	rootCmd.Flags().BoolVar(&enableDeduplication, "deduplication", false, "enable deduplication of entries across all files")
 
 	// Bind flags to viper
 	if err := viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
@@ -147,6 +156,17 @@ func init() {
 	}
 	if err := viper.BindPFlag("app.background_mode", rootCmd.Flags().Lookup("background")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind background flag: %v\n", err)
+	}
+	
+	// Bind pricing and deduplication flags
+	if err := viper.BindPFlag("data.pricing_source", rootCmd.Flags().Lookup("pricing-source")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind pricing-source flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("data.pricing_offline_mode", rootCmd.Flags().Lookup("pricing-offline")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind pricing-offline flag: %v\n", err)
+	}
+	if err := viper.BindPFlag("data.deduplication", rootCmd.Flags().Lookup("deduplication")); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to bind deduplication flag: %v\n", err)
 	}
 }
 
@@ -320,6 +340,33 @@ func applyRunFlags(cfg *config.Config) error {
 	// Apply background mode
 	if runBackground {
 		cfg.UI.CompactMode = true
+	}
+
+	// Apply pricing source if provided
+	if pricingSource != "" {
+		validSources := []string{"default", "litellm"}
+		found := false
+		for _, source := range validSources {
+			if strings.EqualFold(pricingSource, source) {
+				cfg.Data.PricingSource = strings.ToLower(pricingSource)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("invalid pricing source: %s (valid options: %s)",
+				pricingSource, strings.Join(validSources, ", "))
+		}
+	}
+
+	// Apply pricing offline mode if set
+	if pricingOffline {
+		cfg.Data.PricingOfflineMode = true
+	}
+
+	// Apply deduplication if set
+	if enableDeduplication {
+		cfg.Data.Deduplication = true
 	}
 
 	return nil

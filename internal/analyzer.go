@@ -12,6 +12,7 @@ import (
 	"github.com/penwyp/claudecat/fileio"
 	"github.com/penwyp/claudecat/logging"
 	"github.com/penwyp/claudecat/models"
+	"github.com/penwyp/claudecat/models/pricing"
 )
 
 // Analyzer provides data analysis functionality
@@ -38,15 +39,16 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 
 	logging.LogInfof("Starting analysis of %d paths: %v", len(paths), paths)
 
+	// Expand cache directory path for use in both cache and pricing
+	cacheDir := a.config.Cache.Dir
+	if cacheDir != "" && cacheDir[:2] == "~/" {
+		homeDir, _ := os.UserHomeDir()
+		cacheDir = filepath.Join(homeDir, cacheDir[2:])
+	}
+
 	// Create BadgerDB cache store if caching is enabled
 	var cacheStore fileio.CacheStore
 	if a.config.Cache.Enabled && a.config.Data.SummaryCache.Enabled {
-		cacheDir := a.config.Cache.Dir
-		if cacheDir[:2] == "~/" {
-			homeDir, _ := os.UserHomeDir()
-			cacheDir = filepath.Join(homeDir, cacheDir[2:])
-		}
-
 		// Use file-based cache with memory preloading
 		fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
 		if err != nil {
@@ -55,6 +57,14 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 		} else {
 			cacheStore = fileCache
 		}
+	}
+
+	// Create pricing provider
+	pricingProvider, err := pricing.CreatePricingProvider(&a.config.Data, cacheDir)
+	if err != nil {
+		logging.LogErrorf("Failed to create pricing provider: %v", err)
+		// Fall back to default provider
+		pricingProvider = pricing.NewDefaultProvider()
 	}
 
 	var allResults []models.AnalysisResult
@@ -66,6 +76,8 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			CacheStore:         cacheStore,
 			EnableSummaryCache: a.config.Data.SummaryCache.Enabled,
 			IsWatchMode:        false, // Analyze mode should write to cache
+			EnableDeduplication: a.config.Data.Deduplication,
+			PricingProvider:    pricingProvider,
 		}
 
 		result, err := fileio.LoadUsageEntries(opts)
