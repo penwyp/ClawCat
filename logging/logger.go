@@ -2,8 +2,8 @@ package logging
 
 import (
 	"context"
-	"github.com/bytedance/sonic"
 	"fmt"
+	"github.com/bytedance/sonic"
 	"io"
 	"log"
 	"os"

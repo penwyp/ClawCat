@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/penwyp/claudecat/logging"
@@ -24,11 +24,11 @@ type FileBasedSummaryCache struct {
 
 // FileBasedCacheStats tracks cache statistics
 type FileBasedCacheStats struct {
-	Hits      int64
-	Misses    int64
-	Writes    int64
-	Deletes   int64
-	Errors    int64
+	Hits       int64
+	Misses     int64
+	Writes     int64
+	Deletes    int64
+	Errors     int64
 	MemoryHits int64 // Hits from memory cache
 }
 
@@ -118,7 +118,7 @@ func (c *FileBasedSummaryCache) getCacheFilePath(absolutePath string) string {
 // GetFileSummary retrieves a file summary from cache
 func (c *FileBasedSummaryCache) GetFileSummary(absolutePath string) (*FileSummary, error) {
 	c.mu.RLock()
-	
+
 	// Check memory cache first
 	if summary, exists := c.memCache[absolutePath]; exists {
 		c.stats.MemoryHits++

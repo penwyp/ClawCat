@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/bytedance/sonic"
@@ -483,48 +482,230 @@ func outputAnalysisResults(results []models.AnalysisResult) error {
 }
 
 func outputTable(results []models.AnalysisResult) error {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-
-	// Header
-	if analyzeGroupBy != "" {
-		fmt.Fprintln(w, "Group\tModel\tEntries\tInput Tokens\tOutput Tokens\tCache Creation\tCache Read\tTotal Tokens\tCost (USD)")
-	} else {
-		fmt.Fprintln(w, "Timestamp\tModel\tSession\tInput Tokens\tOutput Tokens\tCache Creation\tCache Read\tTotal Tokens\tCost (USD)")
+	if len(results) == 0 {
+		fmt.Println("No data to display.")
+		return nil
 	}
 
-	// Data rows
-	for i, result := range results {
-		if analyzeGroupBy != "" {
-			// Add blank line after TOTAL row when using breakdown (except for the last row)
-			if analyzeBreakdown && i > 0 && results[i-1].Model == "TOTAL" && result.Model != "TOTAL" && i < len(results) {
-				fmt.Fprintln(w, "")
-			}
+	if analyzeBreakdown {
+		return outputTableWithBreakdown(results)
+	}
+	return outputTableWithoutBreakdown(results)
+}
 
-			fmt.Fprintf(w, "%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t$%.4f\n",
-				result.GroupKey,
-				result.Model,
-				result.Count,
-				result.InputTokens,
-				result.OutputTokens,
-				result.CacheCreationTokens,
-				result.CacheReadTokens,
-				result.TotalTokens,
-				result.CostUSD)
+func outputTableWithoutBreakdown(results []models.AnalysisResult) error {
+	// Group results by date and aggregate models
+	dateGroups := make(map[string]*dateGroup)
+
+	for _, result := range results {
+		var dateKey string
+		if analyzeGroupBy == "day" {
+			dateKey = result.GroupKey
 		} else {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t$%.4f\n",
-				result.Timestamp.Format("2006-01-02 15:04:05"),
-				result.Model,
-				result.SessionID,
-				result.InputTokens,
-				result.OutputTokens,
-				result.CacheCreationTokens,
-				result.CacheReadTokens,
-				result.TotalTokens,
-				result.CostUSD)
+			dateKey = result.Timestamp.Format("2006-01-02")
+		}
+
+		if dateGroups[dateKey] == nil {
+			dateGroups[dateKey] = &dateGroup{
+				date:   dateKey,
+				models: make(map[string]bool),
+			}
+		}
+
+		group := dateGroups[dateKey]
+		group.models[result.Model] = true
+		group.inputTokens += result.InputTokens
+		group.outputTokens += result.OutputTokens
+		group.cacheCreationTokens += result.CacheCreationTokens
+		group.cacheReadTokens += result.CacheReadTokens
+		group.totalTokens += result.TotalTokens
+		group.costUSD += result.CostUSD
+	}
+
+	// Create table
+	headers := []string{"Date", "Models", "Input", "Output", "Cache Create", "Cache Read", "Total Tokens", "Cost (USD)"}
+	table := newTableFormatter(headers)
+
+	// Sort dates
+	var dates []string
+	for date := range dateGroups {
+		dates = append(dates, date)
+	}
+	sort.Strings(dates)
+
+	// Add rows
+	for _, date := range dates {
+		group := dateGroups[date]
+
+		// Convert models map to sorted slice
+		var modelList []string
+		for model := range group.models {
+			modelList = append(modelList, model)
+		}
+		sort.Strings(modelList)
+
+		row := []string{
+			date,
+			formatModels(modelList),
+			formatWithCommas(group.inputTokens),
+			formatWithCommas(group.outputTokens),
+			formatWithCommas(group.cacheCreationTokens),
+			formatWithCommas(group.cacheReadTokens),
+			formatWithCommas(group.totalTokens),
+			formatCost(group.costUSD),
+		}
+		table.addRow(row)
+	}
+
+	fmt.Print(table.render())
+	return nil
+}
+
+func outputTableWithBreakdown(results []models.AnalysisResult) error {
+	// Group results by date, then by model
+	dateGroups := make(map[string]*dateGroupWithModels)
+
+	for _, result := range results {
+		var dateKey string
+		if analyzeGroupBy == "day" {
+			dateKey = result.GroupKey
+		} else {
+			dateKey = result.Timestamp.Format("2006-01-02")
+		}
+
+		if dateGroups[dateKey] == nil {
+			dateGroups[dateKey] = &dateGroupWithModels{
+				date:       dateKey,
+				modelStats: make(map[string]*modelStat),
+			}
+		}
+
+		group := dateGroups[dateKey]
+
+		// Skip TOTAL rows from breakdown grouping as we'll calculate our own totals
+		if result.Model == "TOTAL" {
+			continue
+		}
+
+		if group.modelStats[result.Model] == nil {
+			group.modelStats[result.Model] = &modelStat{}
+		}
+
+		stat := group.modelStats[result.Model]
+		stat.inputTokens += result.InputTokens
+		stat.outputTokens += result.OutputTokens
+		stat.cacheCreationTokens += result.CacheCreationTokens
+		stat.cacheReadTokens += result.CacheReadTokens
+		stat.totalTokens += result.TotalTokens
+		stat.costUSD += result.CostUSD
+
+		// Update group totals
+		group.totalInputTokens += result.InputTokens
+		group.totalOutputTokens += result.OutputTokens
+		group.totalCacheCreationTokens += result.CacheCreationTokens
+		group.totalCacheReadTokens += result.CacheReadTokens
+		group.totalTotalTokens += result.TotalTokens
+		group.totalCostUSD += result.CostUSD
+	}
+
+	// Create table
+	headers := []string{"Date", "Models", "Input", "Output", "Cache Create", "Cache Read", "Total Tokens", "Cost (USD)"}
+	table := newTableFormatter(headers)
+
+	// Sort dates
+	var dates []string
+	for date := range dateGroups {
+		dates = append(dates, date)
+	}
+	sort.Strings(dates)
+
+	// Add rows with breakdown
+	for i, date := range dates {
+		group := dateGroups[date]
+
+		// Sort models
+		var modelNames []string
+		for model := range group.modelStats {
+			modelNames = append(modelNames, model)
+		}
+		sort.Strings(modelNames)
+
+		// Convert models to string list
+		var modelList []string
+		for _, model := range modelNames {
+			modelList = append(modelList, model)
+		}
+
+		// Add main date row with aggregated data
+		row := []string{
+			date,
+			formatModels(modelList),
+			formatWithCommas(group.totalInputTokens),
+			formatWithCommas(group.totalOutputTokens),
+			formatWithCommas(group.totalCacheCreationTokens),
+			formatWithCommas(group.totalCacheReadTokens),
+			formatWithCommas(group.totalTotalTokens),
+			formatCost(group.totalCostUSD),
+		}
+		table.addRow(row)
+
+		// Add model breakdown rows
+		for _, model := range modelNames {
+			stat := group.modelStats[model]
+			breakdownRow := []string{
+				"",
+				"└─ " + model,
+				formatWithCommas(stat.inputTokens),
+				formatWithCommas(stat.outputTokens),
+				formatWithCommas(stat.cacheCreationTokens),
+				formatWithCommas(stat.cacheReadTokens),
+				formatWithCommas(stat.totalTokens),
+				formatCost(stat.costUSD),
+			}
+			table.addRow(breakdownRow)
+		}
+
+		// Add separator row between dates (except for the last one)
+		if i < len(dates)-1 {
+			separatorRow := make([]string, len(headers))
+			table.addRow(separatorRow)
 		}
 	}
 
-	return w.Flush()
+	fmt.Print(table.render())
+	return nil
+}
+
+// Helper types for grouping data
+type dateGroup struct {
+	date                string
+	models              map[string]bool
+	inputTokens         int
+	outputTokens        int
+	cacheCreationTokens int
+	cacheReadTokens     int
+	totalTokens         int
+	costUSD             float64
+}
+
+type modelStat struct {
+	inputTokens         int
+	outputTokens        int
+	cacheCreationTokens int
+	cacheReadTokens     int
+	totalTokens         int
+	costUSD             float64
+}
+
+type dateGroupWithModels struct {
+	date                     string
+	modelStats               map[string]*modelStat
+	totalInputTokens         int
+	totalOutputTokens        int
+	totalCacheCreationTokens int
+	totalCacheReadTokens     int
+	totalTotalTokens         int
+	totalCostUSD             float64
 }
 
 func outputJSON(results []models.AnalysisResult) error {
@@ -709,4 +890,201 @@ func parseTimeString(timeStr string) (time.Time, error) {
 	}
 
 	return time.Time{}, fmt.Errorf("unable to parse time: %s", timeStr)
+}
+
+// Table formatting utilities for bordered tables
+
+type tableFormatter struct {
+	headers []string
+	rows    [][]string
+	widths  []int
+}
+
+func newTableFormatter(headers []string) *tableFormatter {
+	return &tableFormatter{
+		headers: headers,
+		rows:    make([][]string, 0),
+		widths:  make([]int, len(headers)),
+	}
+}
+
+func (tf *tableFormatter) addRow(row []string) {
+	// Ensure row has same length as headers
+	if len(row) < len(tf.headers) {
+		extendedRow := make([]string, len(tf.headers))
+		copy(extendedRow, row)
+		row = extendedRow
+	} else if len(row) > len(tf.headers) {
+		row = row[:len(tf.headers)]
+	}
+
+	tf.rows = append(tf.rows, row)
+}
+
+func (tf *tableFormatter) calculateWidths() {
+	// Initialize with header widths
+	for i, header := range tf.headers {
+		tf.widths[i] = len(header)
+	}
+
+	// Check row data widths
+	for _, row := range tf.rows {
+		for i, cell := range row {
+			if i < len(tf.widths) && len(cell) > tf.widths[i] {
+				tf.widths[i] = len(cell)
+			}
+		}
+	}
+}
+
+func (tf *tableFormatter) render() string {
+	if len(tf.headers) == 0 {
+		return ""
+	}
+
+	tf.calculateWidths()
+	var lines []string
+
+	// Top border
+	lines = append(lines, tf.renderTopBorder())
+
+	// Headers
+	lines = append(lines, tf.renderRow(tf.headers))
+
+	// Header separator
+	lines = append(lines, tf.renderSeparator())
+
+	// Data rows
+	for _, row := range tf.rows {
+		lines = append(lines, tf.renderRow(row))
+	}
+
+	// Bottom border
+	lines = append(lines, tf.renderBottomBorder())
+
+	return strings.Join(lines, "\n")
+}
+
+func (tf *tableFormatter) renderTopBorder() string {
+	var parts []string
+	parts = append(parts, "┌")
+
+	for i, width := range tf.widths {
+		parts = append(parts, strings.Repeat("─", width+2)) // +2 for padding
+		if i < len(tf.widths)-1 {
+			parts = append(parts, "┬")
+		}
+	}
+
+	parts = append(parts, "┐")
+	return strings.Join(parts, "")
+}
+
+func (tf *tableFormatter) renderBottomBorder() string {
+	var parts []string
+	parts = append(parts, "└")
+
+	for i, width := range tf.widths {
+		parts = append(parts, strings.Repeat("─", width+2)) // +2 for padding
+		if i < len(tf.widths)-1 {
+			parts = append(parts, "┴")
+		}
+	}
+
+	parts = append(parts, "┘")
+	return strings.Join(parts, "")
+}
+
+func (tf *tableFormatter) renderSeparator() string {
+	var parts []string
+	parts = append(parts, "├")
+
+	for i, width := range tf.widths {
+		parts = append(parts, strings.Repeat("─", width+2)) // +2 for padding
+		if i < len(tf.widths)-1 {
+			parts = append(parts, "┼")
+		}
+	}
+
+	parts = append(parts, "┤")
+	return strings.Join(parts, "")
+}
+
+func (tf *tableFormatter) renderRow(row []string) string {
+	var parts []string
+	parts = append(parts, "│")
+
+	for i, cell := range row {
+		if i < len(tf.widths) {
+			// Right-align numeric columns (tokens and cost), left-align others
+			padded := tf.padCell(cell, tf.widths[i], tf.isNumericColumn(i))
+			parts = append(parts, " "+padded+" ")
+			parts = append(parts, "│")
+		}
+	}
+
+	return strings.Join(parts, "")
+}
+
+func (tf *tableFormatter) isNumericColumn(colIndex int) bool {
+	if colIndex >= len(tf.headers) {
+		return false
+	}
+
+	header := strings.ToLower(tf.headers[colIndex])
+	return strings.Contains(header, "input") ||
+		strings.Contains(header, "output") ||
+		strings.Contains(header, "cache") ||
+		strings.Contains(header, "tokens") ||
+		strings.Contains(header, "cost")
+}
+
+func (tf *tableFormatter) padCell(text string, width int, rightAlign bool) string {
+	if len(text) >= width {
+		return text
+	}
+
+	padding := width - len(text)
+	if rightAlign {
+		return strings.Repeat(" ", padding) + text
+	}
+	return text + strings.Repeat(" ", padding)
+}
+
+// Number formatting functions
+
+func formatWithCommas(n int) string {
+	str := strconv.Itoa(n)
+	if len(str) <= 3 {
+		return str
+	}
+
+	var result []byte
+	for i, digit := range []byte(str) {
+		if i > 0 && (len(str)-i)%3 == 0 {
+			result = append(result, ',')
+		}
+		result = append(result, digit)
+	}
+
+	return string(result)
+}
+
+func formatCost(cost float64) string {
+	return fmt.Sprintf("$%.2f", cost)
+}
+
+func formatModels(models []string) string {
+	if len(models) == 0 {
+		return ""
+	}
+	if len(models) == 1 {
+		return "- " + models[0]
+	}
+
+	var result []string
+	for _, model := range models {
+		result = append(result, "- "+model)
+	}
+	return strings.Join(result, "\n")
 }

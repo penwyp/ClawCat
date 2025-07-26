@@ -57,8 +57,8 @@ func hasAssistantMessages(filePath string) bool {
 							if tokens, ok := val.(float64); ok && tokens > 0 {
 								return true
 							}
-							}
 						}
+					}
 				}
 			}
 		}
@@ -170,24 +170,24 @@ type LoadUsageEntriesResult struct {
 
 // LoadMetadata contains information about the loading process
 type LoadMetadata struct {
-	FilesProcessed   int                      `json:"files_processed"`
-	EntriesLoaded    int                      `json:"entries_loaded"`
-	EntriesFiltered  int                      `json:"entries_filtered"`
-	LoadDuration     time.Duration            `json:"load_duration"`
-	ProcessingErrors []string                 `json:"processing_errors,omitempty"`
-	CacheMissReasons map[string]int           `json:"cache_miss_reasons,omitempty"`
-	CacheStats       *CachePerformanceStats   `json:"cache_stats,omitempty"`
+	FilesProcessed   int                    `json:"files_processed"`
+	EntriesLoaded    int                    `json:"entries_loaded"`
+	EntriesFiltered  int                    `json:"entries_filtered"`
+	LoadDuration     time.Duration          `json:"load_duration"`
+	ProcessingErrors []string               `json:"processing_errors,omitempty"`
+	CacheMissReasons map[string]int         `json:"cache_miss_reasons,omitempty"`
+	CacheStats       *CachePerformanceStats `json:"cache_stats,omitempty"`
 }
 
 // CachePerformanceStats tracks cache performance metrics
 type CachePerformanceStats struct {
-	Hits                 int     `json:"hits"`
-	Misses               int     `json:"misses"`
-	HitRate              float64 `json:"hit_rate"`
-	NewFiles             int     `json:"new_files"`
-	ModifiedFiles        int     `json:"modified_files"`
-	NoAssistantMessages  int     `json:"no_assistant_messages"`
-	OtherMisses          int     `json:"other_misses"`
+	Hits                int     `json:"hits"`
+	Misses              int     `json:"misses"`
+	HitRate             float64 `json:"hit_rate"`
+	NewFiles            int     `json:"new_files"`
+	ModifiedFiles       int     `json:"modified_files"`
+	NoAssistantMessages int     `json:"no_assistant_messages"`
+	OtherMisses         int     `json:"other_misses"`
 }
 
 // LoadUsageEntries loads and converts JSONL files to UsageEntry objects
@@ -208,10 +208,10 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	var processingErrors []string
 	var cacheHits, cacheMisses int
 	cacheMissReasons := map[string]int{
-		"new_file":             0,
-		"modified_file":        0,
+		"new_file":              0,
+		"modified_file":         0,
 		"no_assistant_messages": 0,
-		"other":                0,
+		"other":                 0,
 	}
 	var summariesToCache []*cache.FileSummary // Collect summaries for batch writing
 
@@ -292,7 +292,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 			if opts.IncludeRaw && rawEntries != nil {
 				allRawEntries = append(allRawEntries, rawEntries...)
 			}
-			
+
 			// Collect summary for batch writing
 			if summary != nil {
 				summariesToCache = append(summariesToCache, summary)
@@ -307,7 +307,9 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 
 	// Batch write summaries if we have any
 	if len(summariesToCache) > 0 && opts.EnableSummaryCache && opts.CacheStore != nil {
-		if batcher, ok := opts.CacheStore.(interface{ BatchSet([]*cache.FileSummary) error }); ok {
+		if batcher, ok := opts.CacheStore.(interface {
+			BatchSet([]*cache.FileSummary) error
+		}); ok {
 			if err := batcher.BatchSet(summariesToCache); err != nil {
 				logging.LogWarnf("Failed to batch write %d summaries: %v", len(summariesToCache), err)
 			} else {
@@ -388,7 +390,7 @@ func processSingleFileWithCacheWithReason(filePath string, opts LoadUsageEntries
 	if absErr != nil {
 		absPath = filePath // fallback to relative path
 	}
-	
+
 	var summary *cache.FileSummary // Declare at the top for return
 
 	// Check if caching is enabled
@@ -472,7 +474,7 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 
 	var entries []models.UsageEntry
 	var rawEntries []map[string]interface{}
-	
+
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 0, 64*1024), 10*1024*1024) // 10MB max line size
 
@@ -483,7 +485,7 @@ func processSingleFile(filePath string, mode models.CostMode, cutoffTime *time.T
 	for scanner.Scan() {
 		lineNumber++
 		line := scanner.Text()
-		
+
 		// Skip empty lines
 		if strings.TrimSpace(line) == "" {
 			continue
@@ -597,7 +599,7 @@ func createEntriesFromSummary(summary *cache.FileSummary, cutoffTime *time.Time)
 							Timestamp:           hourTime.Add(time.Duration(i) * time.Minute),
 							Model:               modelStat.Model,
 							InputTokens:         inputTokens,
-							OutputTokens:          outputTokens,
+							OutputTokens:        outputTokens,
 							CacheCreationTokens: cacheCreationTokens,
 							CacheReadTokens:     cacheReadTokens,
 							TotalTokens:         inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens,
@@ -663,7 +665,7 @@ func createEntriesFromSummary(summary *cache.FileSummary, cutoffTime *time.Time)
 							Timestamp:           dayTime.Add(time.Duration(i) * time.Hour),
 							Model:               modelStat.Model,
 							InputTokens:         inputTokens,
-							OutputTokens:          outputTokens,
+							OutputTokens:        outputTokens,
 							CacheCreationTokens: cacheCreationTokens,
 							CacheReadTokens:     cacheReadTokens,
 							TotalTokens:         inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens,

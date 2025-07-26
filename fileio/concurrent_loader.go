@@ -26,8 +26,8 @@ type FileResult struct {
 	Entries     []models.UsageEntry
 	RawEntries  []map[string]interface{}
 	FromCache   bool
-	MissReason  string                    // Reason for cache miss
-	Summary     *cache.FileSummary        // Summary to cache (if any)
+	MissReason  string             // Reason for cache miss
+	Summary     *cache.FileSummary // Summary to cache (if any)
 	Error       error
 	ProcessTime time.Duration
 }
