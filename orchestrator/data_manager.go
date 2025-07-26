@@ -2,6 +2,8 @@ package orchestrator
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -29,6 +31,9 @@ type DataManager struct {
 	// Summary cache store
 	cacheStore         fileio.CacheStore
 	summaryCacheConfig config.SummaryCacheConfig
+
+	// Initial load tracking
+	initialLoadCompleted bool
 }
 
 // NewDataManager creates a new data manager with cache and fetch settings
@@ -50,7 +55,17 @@ func (dm *DataManager) SetCacheStore(cacheStore fileio.CacheStore, config config
 // GetData gets monitoring data with caching and error handling
 func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 	dm.mu.RLock()
-	// Check cache validity
+	// Check if this is the first load
+	isInitialLoad := !dm.initialLoadCompleted
+	dm.mu.RUnlock()
+
+	// For initial load, always fetch fresh data but allow cache writing
+	if isInitialLoad {
+		return dm.performInitialLoad()
+	}
+
+	dm.mu.RLock()
+	// Check cache validity for subsequent loads
 	if !forceRefresh {
 		result := dm.cache
 		dm.mu.RUnlock()
@@ -58,12 +73,12 @@ func (dm *DataManager) GetData(forceRefresh bool) (*AnalysisResult, error) {
 	}
 	dm.mu.RUnlock()
 
-	// Fetch fresh data with retries
+	// Fetch fresh data with retries (watch mode - no cache writing)
 	maxRetries := 3
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		logging.LogDebugf("Fetching fresh usage data (attempt %d/%d)", attempt+1, maxRetries)
 
-		data, err := dm.analyzeUsage()
+		data, err := dm.analyzeUsageWatchMode()
 		if err != nil {
 			dm.mu.Lock()
 			dm.lastError = err
@@ -137,18 +152,70 @@ func (dm *DataManager) GetLastSuccessfulFetchTime() time.Time {
 	return dm.lastSuccessfulFetch
 }
 
-// analyzeUsage performs the equivalent of Claude Monitor's analyze_usage function
-func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
-	_ = time.Now() // startTime was unused
+// performInitialLoad performs initial data loading with cache writing allowed
+func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
+	logging.LogInfo("Performing initial data load with cache support")
+	
+	// First try to load from cache to check if we have cached data
+	if dm.cacheStore != nil && dm.summaryCacheConfig.Enabled {
+		logging.LogInfo("Checking for existing cached data...")
+		
+		// Load with cache first to check cache status
+		optsCache := fileio.LoadUsageEntriesOptions{
+			DataPath:           dm.dataPath,
+			HoursBack:          &dm.hoursBack,
+			Mode:               models.CostModeAuto,
+			IncludeRaw:         true,
+			EnableSummaryCache: true,
+			IsWatchMode:        true, // Use cache read mode first
+			CacheStore:         dm.cacheStore,
+		}
 
-	// Load usage entries with cache support
+		resultCache, err := fileio.LoadUsageEntries(optsCache)
+		if err == nil && len(resultCache.Entries) > 0 {
+			// We have cached data, check if files have changed
+			logging.LogInfof("Found %d cached entries, checking for file changes...", len(resultCache.Entries))
+			
+			hasChanges, err := dm.checkForFileChanges(&resultCache.Metadata)
+			if err != nil {
+				logging.LogWarnf("Error checking for file changes: %v, will reload data", err)
+				hasChanges = true // Assume changes if we can't check
+			}
+			
+			if !hasChanges {
+				logging.LogInfo("No file changes detected, using cached data")
+				data, err := dm.processUsageData(resultCache, "initial-cached")
+				if err != nil {
+					return nil, err
+				}
+				
+				// Mark initial load as completed and update cache
+				dm.mu.Lock()
+				dm.initialLoadCompleted = true
+				dm.cache = data
+				dm.cacheTimestamp = time.Now()
+				dm.lastSuccessfulFetch = time.Now()
+				dm.lastError = nil
+				dm.mu.Unlock()
+				
+				logging.LogInfo("Initial data load completed using cache")
+				return data, nil
+			} else {
+				logging.LogInfo("File changes detected, reloading and updating cache...")
+			}
+		} else {
+			logging.LogInfo("No cached data found or cache load failed, performing fresh load")
+		}
+	}
+	
+	// Load usage entries with cache support and allow cache writing for initial load
 	opts := fileio.LoadUsageEntriesOptions{
 		DataPath:           dm.dataPath,
 		HoursBack:          &dm.hoursBack,
 		Mode:               models.CostModeAuto,
 		IncludeRaw:         true,
 		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
-		IsWatchMode:        true, // DataManager is used in TUI mode with periodic updates
+		IsWatchMode:        false, // Initial load can write to cache
 	}
 
 	// Set cache store if available
@@ -158,25 +225,71 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 
 	result, err := fileio.LoadUsageEntries(opts)
 	if err != nil {
-		logging.LogErrorf("Error loading usage entries from %s: %v", dm.dataPath, err)
+		logging.LogErrorf("Error loading usage entries from %s during initial load: %v", dm.dataPath, err)
 		return nil, fmt.Errorf("failed to load usage entries: %w", err)
 	}
 
-	logging.LogInfof("Loaded %d usage entries from %s", len(result.Entries), dm.dataPath)
+	data, err := dm.processUsageData(result, "initial")
+	if err != nil {
+		return nil, err
+	}
+
+	// Mark initial load as completed and update cache
+	dm.mu.Lock()
+	dm.initialLoadCompleted = true
+	dm.cache = data
+	dm.cacheTimestamp = time.Now()
+	dm.lastSuccessfulFetch = time.Now()
+	dm.lastError = nil
+	dm.mu.Unlock()
+
+	logging.LogInfo("Initial data load completed successfully")
+	return data, nil
+}
+
+// analyzeUsageWatchMode performs analysis in watch mode (no cache writing)
+func (dm *DataManager) analyzeUsageWatchMode() (*AnalysisResult, error) {
+	// Load usage entries in watch mode - no cache writing
+	opts := fileio.LoadUsageEntriesOptions{
+		DataPath:           dm.dataPath,
+		HoursBack:          &dm.hoursBack,
+		Mode:               models.CostModeAuto,
+		IncludeRaw:         true,
+		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
+		IsWatchMode:        true, // Watch mode - no cache writing
+	}
+
+	// Set cache store if available
+	if dm.cacheStore != nil {
+		opts.CacheStore = dm.cacheStore
+	}
+
+	result, err := fileio.LoadUsageEntries(opts)
+	if err != nil {
+		logging.LogErrorf("Error loading usage entries from %s in watch mode: %v", dm.dataPath, err)
+		return nil, fmt.Errorf("failed to load usage entries: %w", err)
+	}
+
+	return dm.processUsageData(result, "watch")
+}
+
+// processUsageData processes loaded usage data into analysis result
+func (dm *DataManager) processUsageData(result *fileio.LoadUsageEntriesResult, mode string) (*AnalysisResult, error) {
+	logging.LogInfof("Loaded %d usage entries from %s (%s mode)", len(result.Entries), dm.dataPath, mode)
 	if len(result.Entries) == 0 {
 		logging.LogWarnf("No usage entries found in %s", dm.dataPath)
 		return nil, fmt.Errorf("no usage entries found")
 	}
 
 	loadTime := result.Metadata.LoadDuration
-	logging.LogInfof("Data loaded in %.3fs", loadTime.Seconds())
+	logging.LogInfof("Data loaded in %.3fs (%s mode)", loadTime.Seconds(), mode)
 
 	// Transform entries to blocks using SessionAnalyzer
 	transformStart := time.Now()
 	analyzer := sessions.NewSessionAnalyzer(5) // 5-hour sessions
 	blocks := analyzer.TransformToBlocks(result.Entries)
 	transformTime := time.Since(transformStart)
-	logging.LogInfof("Created %d blocks in %.3fs", len(blocks), transformTime.Seconds())
+	logging.LogInfof("Created %d blocks in %.3fs (%s mode)", len(blocks), transformTime.Seconds(), mode)
 
 	// Detect limits if we have raw entries
 	var limitsDetected int
@@ -222,8 +335,56 @@ func (dm *DataManager) analyzeUsage() (*AnalysisResult, error) {
 		Metadata: metadata,
 	}
 
-	logging.LogInfof("Analysis completed, returning %d blocks", len(blocks))
+	logging.LogInfof("Analysis completed, returning %d blocks (%s mode)", len(blocks), mode)
 	return analysisResult, nil
+}
+
+// checkForFileChanges checks if any files in the data path have changed since the cached metadata
+func (dm *DataManager) checkForFileChanges(cachedMetadata *fileio.LoadMetadata) (bool, error) {
+	logging.LogDebug("Checking for file changes since last cache...")
+	
+	// Walk through the data path to find all .jsonl files
+	var hasChanges bool
+	
+	err := filepath.Walk(dm.dataPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			logging.LogWarnf("Error accessing path %s: %v", path, err)
+			return nil // Continue walking, don't fail entirely
+		}
+		
+		// Skip directories and non-jsonl files
+		if info.IsDir() || filepath.Ext(path) != ".jsonl" {
+			return nil
+		}
+		
+		// Check if this file was processed in the cached metadata
+		// For now, use a simple heuristic: if the file's modification time
+		// is newer than the cache load time, consider it changed
+		// Since LoadMetadata doesn't have CacheLoadTime, we'll use a different approach
+		// We'll check if any file is newer than 1 minute ago (simple heuristic)
+		oneMinuteAgo := time.Now().Add(-1 * time.Minute)
+		
+		if info.ModTime().After(oneMinuteAgo) {
+			logging.LogDebugf("File %s modified recently (%s)", 
+				filepath.Base(path), info.ModTime())
+			hasChanges = true
+			return filepath.SkipDir // Exit early
+		}
+		
+		return nil
+	})
+	
+	if err != nil {
+		return true, fmt.Errorf("error walking data path: %w", err)
+	}
+	
+	if hasChanges {
+		logging.LogDebug("File changes detected")
+	} else {
+		logging.LogDebug("No file changes detected")
+	}
+	
+	return hasChanges, nil
 }
 
 // isLimitInBlockTimerange checks if a limit detection falls within a block's time range
