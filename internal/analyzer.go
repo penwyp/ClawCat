@@ -48,15 +48,13 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 
 	// Create BadgerDB cache store if caching is enabled
 	var cacheStore fileio.CacheStore
-	if a.config.Cache.Enabled && a.config.Data.SummaryCache.Enabled {
-		// Use file-based cache with memory preloading
-		fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
-		if err != nil {
-			logging.LogErrorf("Failed to create file-based cache: %v", err)
-			// Cache is disabled on error
-		} else {
-			cacheStore = fileCache
-		}
+	// Use file-based cache with memory preloading
+	fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
+	if err != nil {
+		logging.LogErrorf("Failed to create file-based cache: %v", err)
+		// Cache is disabled on error
+	} else {
+		cacheStore = fileCache
 	}
 
 	// Create pricing provider
@@ -74,7 +72,6 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			DataPath:            path,
 			Mode:                models.CostModeCalculated,
 			CacheStore:          cacheStore,
-			EnableSummaryCache:  a.config.Data.SummaryCache.Enabled,
 			EnableDeduplication: a.config.Data.Deduplication,
 			PricingProvider:     pricingProvider,
 		}

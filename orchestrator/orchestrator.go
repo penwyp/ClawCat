@@ -94,14 +94,12 @@ func NewMonitoringOrchestrator(updateInterval time.Duration, dataPath string, cf
 	}
 
 	// Set up cache if enabled
-	if cfg.Cache.Enabled && cfg.Data.SummaryCache.Enabled {
-		fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
-		if err != nil {
-			logging.LogErrorf("Failed to create file-based cache: %v", err)
-			// Cache is disabled on error
-		} else {
-			dataManager.SetCacheStore(fileCache, cfg.Data.SummaryCache)
-		}
+	fileCache, err := cache.NewFileBasedSummaryCache(cacheDir)
+	if err != nil {
+		logging.LogErrorf("Failed to create file-based cache: %v", err)
+		// Cache is disabled on error
+	} else {
+		dataManager.SetCacheStore(fileCache, cfg.Data.SummaryCache)
 	}
 
 	// Set up pricing provider

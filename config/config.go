@@ -58,7 +58,6 @@ type DataConfig struct {
 
 // SummaryCacheConfig contains file summary caching settings
 type SummaryCacheConfig struct {
-	Enabled    bool          `yaml:"enabled" json:"enabled"`
 	Threshold  time.Duration `yaml:"threshold" json:"threshold"`     // Time threshold for using cache
 	MaxSize    int64         `yaml:"max_size" json:"max_size"`       // Maximum cache size in bytes
 	MaxEntries int           `yaml:"max_entries" json:"max_entries"` // Maximum number of cached summaries
@@ -69,7 +68,6 @@ type CacheConfig struct {
 	Dir         string `yaml:"dir" json:"dir"`                     // Cache directory path
 	MaxMemory   int64  `yaml:"max_memory" json:"max_memory"`       // L1 memory cache size
 	MaxDiskSize int64  `yaml:"max_disk_size" json:"max_disk_size"` // L2 disk cache size
-	Enabled     bool   `yaml:"enabled" json:"enabled"`             // Enable cache system
 }
 
 // UIConfig contains user interface settings
@@ -178,7 +176,6 @@ func DefaultConfig() *Config {
 			CacheEnabled:  true,
 			CacheSize:     50, // 50MB
 			SummaryCache: SummaryCacheConfig{
-				Enabled:    true,
 				Threshold:  30 * time.Minute, // Use cache for files not modified in last 30 minutes
 				MaxSize:    10 * 1024 * 1024, // 10MB for summary cache
 				MaxEntries: 1000,             // Maximum 1000 cached summaries
@@ -217,7 +214,6 @@ func DefaultConfig() *Config {
 			Dir:         "~/.cache/claudecat",
 			MaxMemory:   200 * 1024 * 1024,  // 200MB
 			MaxDiskSize: 1024 * 1024 * 1024, // 1GB
-			Enabled:     true,
 		},
 		Debug: DebugConfig{
 			Enabled: false,

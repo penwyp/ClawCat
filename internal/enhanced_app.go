@@ -33,11 +33,11 @@ type EnhancedApplication struct {
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	metrics       *Metrics
-	logger        logging.LoggerInterface
-	currentData   orchestrator.MonitoringData
+	metrics        *Metrics
+	logger         logging.LoggerInterface
+	currentData    orchestrator.MonitoringData
 	currentMetrics *calculations.RealtimeMetrics
-	dataMutex     sync.RWMutex
+	dataMutex      sync.RWMutex
 
 	// Application state
 	running bool
@@ -124,13 +124,11 @@ func (ea *EnhancedApplication) bootstrap() error {
 	// Initialize cache with configuration
 	ea.cache = cache.NewStore(cache.StoreConfig{
 		MaxFileSize:       10 * 1024 * 1024,            // 10MB
-		MaxMemory:         ea.config.Cache.MaxMemory,   // From config
 		MaxDiskSize:       ea.config.Cache.MaxDiskSize, // From config
 		DiskCacheDir:      ea.config.Cache.Dir,         // From config
 		CompressionLevel:  6,
 		EnableMetrics:     true,
 		EnableCompression: true,
-		EnableDiskCache:   ea.config.Cache.Enabled, // Enable disk cache from config
 	})
 
 	// Initialize metrics calculator
@@ -215,13 +213,13 @@ func (ea *EnhancedApplication) runInteractive() error {
 		case <-ticker.C:
 			// Clear screen and move cursor to top
 			fmt.Print("\033[H\033[2J")
-			
+
 			// Get current data
 			ea.dataMutex.RLock()
 			metrics := ea.currentMetrics
 			blocks := ea.currentData.Data.Blocks
 			ea.dataMutex.RUnlock()
-			
+
 			// Format and print
 			output := ea.formatter.Format(metrics, blocks)
 			fmt.Print(output)

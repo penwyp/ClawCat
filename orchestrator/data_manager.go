@@ -17,10 +17,10 @@ import (
 
 // FileTracker tracks a file in the session window
 type FileTracker struct {
-	Path             string
-	LastModTime      time.Time
-	LastCacheUpdate  time.Time
-	InSessionWindow  bool
+	Path            string
+	LastModTime     time.Time
+	LastCacheUpdate time.Time
+	InSessionWindow bool
 }
 
 // DataManager manages data fetching and caching for monitoring
@@ -49,10 +49,10 @@ type DataManager struct {
 	enableDeduplication bool
 
 	// Session window tracking
-	activeSessionFiles   map[string]*FileTracker
-	fileTrackerMutex     sync.RWMutex
-	cacheUpdateTicker    *time.Ticker
-	cacheUpdateStop      chan struct{}
+	activeSessionFiles map[string]*FileTracker
+	fileTrackerMutex   sync.RWMutex
+	cacheUpdateTicker  *time.Ticker
+	cacheUpdateStop    chan struct{}
 }
 
 // NewDataManager creates a new data manager with cache and fetch settings
@@ -201,7 +201,7 @@ func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 	logging.LogInfo("Performing initial data load with cache support")
 
 	// First try to load from cache to check if we have cached data
-	if dm.cacheStore != nil && dm.summaryCacheConfig.Enabled {
+	if dm.cacheStore != nil {
 		logging.LogInfo("Checking for existing cached data...")
 
 		// Load with cache first to check cache status
@@ -210,7 +210,6 @@ func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 			HoursBack:           &dm.hoursBack,
 			Mode:                models.CostModeAuto,
 			IncludeRaw:          true,
-			EnableSummaryCache:  true,
 			CacheStore:          dm.cacheStore,
 			EnableDeduplication: dm.enableDeduplication,
 			PricingProvider:     dm.pricingProvider,
@@ -259,7 +258,6 @@ func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 		HoursBack:           &dm.hoursBack,
 		Mode:                models.CostModeAuto,
 		IncludeRaw:          true,
-		EnableSummaryCache:  dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
 		EnableDeduplication: dm.enableDeduplication,
 		PricingProvider:     dm.pricingProvider,
 	}
@@ -301,7 +299,6 @@ func (dm *DataManager) analyzeUsageWatchMode() (*AnalysisResult, error) {
 		HoursBack:           &dm.hoursBack,
 		Mode:                models.CostModeAuto,
 		IncludeRaw:          true,
-		EnableSummaryCache:  dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
 		EnableDeduplication: dm.enableDeduplication,
 		PricingProvider:     dm.pricingProvider,
 	}
@@ -448,35 +445,35 @@ func (dm *DataManager) updateSessionWindowFiles(blocks []models.SessionBlock) {
 	// Find active session blocks
 	var activeBlocks []models.SessionBlock
 	now := time.Now()
-	
+
 	for _, block := range blocks {
 		// Consider blocks active if they are marked as active or ended within the last 5 hours
 		if block.IsActive || (now.Sub(block.EndTime) < 5*time.Hour) {
 			activeBlocks = append(activeBlocks, block)
 		}
 	}
-	
+
 	dm.fileTrackerMutex.Lock()
 	defer dm.fileTrackerMutex.Unlock()
-	
+
 	// Reset all files' session window status
 	for _, tracker := range dm.activeSessionFiles {
 		tracker.InSessionWindow = false
 	}
-	
+
 	// Scan all JSONL files
 	files, err := fileio.DiscoverFiles(dm.dataPath)
 	if err != nil {
 		logging.LogErrorf("Failed to discover files: %v", err)
 		return
 	}
-	
+
 	for _, file := range files {
 		info, err := os.Stat(file)
 		if err != nil {
 			continue
 		}
-		
+
 		// Check if file modification time is within any active session window
 		for _, block := range activeBlocks {
 			// Add 30 minutes buffer after session end to catch late writes
@@ -495,7 +492,7 @@ func (dm *DataManager) updateSessionWindowFiles(blocks []models.SessionBlock) {
 			}
 		}
 	}
-	
+
 	logging.LogDebugf("Session window files updated: %d files in active window", dm.countActiveWindowFiles())
 }
 
@@ -515,10 +512,10 @@ func (dm *DataManager) startCacheUpdater(ctx context.Context) {
 	if dm.cacheUpdateTicker != nil {
 		return // Already running
 	}
-	
+
 	dm.cacheUpdateTicker = time.NewTicker(1 * time.Minute)
 	dm.cacheUpdateStop = make(chan struct{})
-	
+
 	go func() {
 		logging.LogInfo("Cache updater started")
 		for {
@@ -552,7 +549,7 @@ func (dm *DataManager) stopCacheUpdater() {
 func (dm *DataManager) updateSessionWindowCaches() {
 	dm.fileTrackerMutex.RLock()
 	filesToUpdate := make([]string, 0)
-	
+
 	for path, tracker := range dm.activeSessionFiles {
 		// Update cache if file is in session window and hasn't been updated recently
 		if tracker.InSessionWindow && time.Since(tracker.LastCacheUpdate) > 1*time.Minute {
@@ -560,13 +557,13 @@ func (dm *DataManager) updateSessionWindowCaches() {
 		}
 	}
 	dm.fileTrackerMutex.RUnlock()
-	
+
 	if len(filesToUpdate) == 0 {
 		return
 	}
-	
+
 	logging.LogDebugf("Updating cache for %d session window files", len(filesToUpdate))
-	
+
 	// Update each file's cache
 	for _, file := range filesToUpdate {
 		if err := dm.updateFileCache(file); err != nil {
@@ -582,22 +579,21 @@ func (dm *DataManager) updateFileCache(filePath string) error {
 	if err != nil {
 		return fmt.Errorf("file no longer exists: %w", err)
 	}
-	
+
 	// Only process single file
 	opts := fileio.LoadUsageEntriesOptions{
 		DataPath:            filePath,
-		EnableSummaryCache:  dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
 		CacheStore:          dm.cacheStore,
 		EnableDeduplication: dm.enableDeduplication,
 		PricingProvider:     dm.pricingProvider,
 	}
-	
+
 	// This will automatically update the cache since we removed IsWatchMode
 	result, err := fileio.LoadUsageEntries(opts)
 	if err != nil {
 		return fmt.Errorf("failed to load file: %w", err)
 	}
-	
+
 	// Update tracker
 	dm.fileTrackerMutex.Lock()
 	if tracker, exists := dm.activeSessionFiles[filePath]; exists {
@@ -605,7 +601,7 @@ func (dm *DataManager) updateFileCache(filePath string) error {
 		tracker.LastModTime = info.ModTime()
 	}
 	dm.fileTrackerMutex.Unlock()
-	
+
 	logging.LogDebugf("Updated cache for %s (%d entries)", filepath.Base(filePath), len(result.Entries))
 	return nil
 }

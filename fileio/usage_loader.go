@@ -72,10 +72,10 @@ func hasAssistantMessages(filePath string) bool {
 func extractProjectFromPath(filePath string) string {
 	// Get the directory path
 	dir := filepath.Dir(filePath)
-	
+
 	// Get the project directory name (last component)
 	projectDir := filepath.Base(dir)
-	
+
 	// Handle the special format where paths are converted to dashes
 	// Format: -Users-user-path-to-project
 	if strings.HasPrefix(projectDir, "-") {
@@ -90,7 +90,7 @@ func extractProjectFromPath(filePath string) string {
 			}
 		}
 	}
-	
+
 	// If not in the expected format, just return the directory name
 	return projectDir
 }
@@ -226,7 +226,6 @@ type LoadUsageEntriesOptions struct {
 	Mode                models.CostMode        // Cost calculation mode
 	IncludeRaw          bool                   // Whether to return raw JSON data alongside entries
 	CacheStore          CacheStore             // Optional cache store for file summaries
-	EnableSummaryCache  bool                   // Whether to enable summary caching
 	EnableDeduplication bool                   // Whether to enable deduplication across all files
 	PricingProvider     models.PricingProvider // Optional pricing provider for cost calculations
 }
@@ -395,7 +394,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	})
 
 	// Batch write summaries if we have any
-	if len(summariesToCache) > 0 && opts.EnableSummaryCache && opts.CacheStore != nil {
+	if len(summariesToCache) > 0 && opts.CacheStore != nil {
 		if batcher, ok := opts.CacheStore.(interface {
 			BatchSet([]*cache.FileSummary) error
 		}); ok {
@@ -421,7 +420,7 @@ func LoadUsageEntries(opts LoadUsageEntriesOptions) (*LoadUsageEntriesResult, er
 	}
 
 	// Log cache performance
-	if opts.EnableSummaryCache && opts.CacheStore != nil {
+	if opts.CacheStore != nil {
 		logging.LogInfof("Cache performance: hits=%d, misses=%d (rate=%.1f%%)",
 			cacheHits, cacheMisses, hitRate*100)
 		if cacheMisses > 0 {
@@ -489,7 +488,7 @@ func processSingleFileWithCacheAndDedup(filePath string, opts LoadUsageEntriesOp
 	var summary *cache.FileSummary // Declare at the top for return
 
 	// Check if caching is enabled
-	if opts.EnableSummaryCache && opts.CacheStore != nil {
+	if opts.CacheStore != nil {
 		// Get file info first
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
@@ -535,7 +534,7 @@ func processSingleFileWithCacheAndDedup(filePath string, opts LoadUsageEntriesOp
 
 	// Determine miss reason
 	missReason := "other"
-	if opts.EnableSummaryCache && opts.CacheStore != nil {
+	if opts.CacheStore != nil {
 		if _, err := opts.CacheStore.GetFileSummary(absPath); err != nil {
 			missReason = "new_file"
 		} else {
@@ -550,7 +549,7 @@ func processSingleFileWithCacheAndDedup(filePath string, opts LoadUsageEntriesOp
 	}
 
 	// If caching is enabled and we successfully processed the file, create and cache summary
-	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 {
+	if opts.CacheStore != nil && len(entries) > 0 {
 		// Get file info if we don't have it yet
 		if fileInfo, err := os.Stat(filePath); err == nil {
 			summary = createSummaryFromEntries(absPath, filePath, entries, fileInfo)
@@ -646,7 +645,7 @@ func processSingleFileWithDedup(filePath string, mode models.CostMode, cutoffTim
 
 		// Normalize model name
 		entry.NormalizeModel()
-		
+
 		// Extract project from file path
 		entry.Project = extractProjectFromPath(filePath)
 
