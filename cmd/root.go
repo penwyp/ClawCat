@@ -27,19 +27,18 @@ var (
 	runTheme      string
 	runWatch      bool
 	runBackground bool
-	// New pricing and deduplication flags
+	// pricing and deduplication flags
 	pricingSource       string
 	pricingOffline      bool
 	enableDeduplication bool
 	// Monitor view flags
-	viewMode   string
 	timezone   string
 	timeFormat string
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "claudecat",
-	Short: "Claude Code Usage Monitor",
+	Short: "Claude Code Cat For Usage Monitor",
 	Long: `claudecat is a high-performance console application for monitoring Claude AI token usage and costs.
 
 It provides real-time monitoring, session analysis, cost calculations, and data export
@@ -119,12 +118,11 @@ func init() {
 	// Global pricing flags (moved from analyze command)
 	rootCmd.PersistentFlags().StringVar(&pricingSource, "pricing-source", "", "pricing source (default, litellm)")
 	rootCmd.PersistentFlags().BoolVar(&pricingOffline, "pricing-offline", false, "use cached pricing data for offline mode")
-	
+
 	// Pricing and deduplication flags
 	rootCmd.Flags().BoolVar(&enableDeduplication, "deduplication", false, "enable deduplication of entries across all files")
 
 	// Monitor view flags
-	rootCmd.Flags().StringVar(&viewMode, "view", "", "view mode (dashboard or monitor)")
 	rootCmd.Flags().StringVar(&timezone, "timezone", "", "timezone for display (e.g., Asia/Shanghai)")
 	rootCmd.Flags().StringVar(&timeFormat, "time-format", "", "time format (12h or 24h)")
 
@@ -163,23 +161,20 @@ func init() {
 		fmt.Fprintf(os.Stderr, "Failed to bind background flag: %v\n", err)
 	}
 
-	// Bind global pricing flags  
+	// Bind global pricing flags
 	if err := viper.BindPFlag("data.pricing_source", rootCmd.PersistentFlags().Lookup("pricing-source")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind pricing-source flag: %v\n", err)
 	}
 	if err := viper.BindPFlag("data.pricing_offline_mode", rootCmd.PersistentFlags().Lookup("pricing-offline")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind pricing-offline flag: %v\n", err)
 	}
-	
+
 	// Bind deduplication flag
 	if err := viper.BindPFlag("data.deduplication", rootCmd.Flags().Lookup("deduplication")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind deduplication flag: %v\n", err)
 	}
 
 	// Bind monitor view flags
-	if err := viper.BindPFlag("ui.view_mode", rootCmd.Flags().Lookup("view")); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to bind view flag: %v\n", err)
-	}
 	if err := viper.BindPFlag("ui.timezone", rootCmd.Flags().Lookup("timezone")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind timezone flag: %v\n", err)
 	}
@@ -385,26 +380,6 @@ func applyRunFlags(cfg *config.Config) error {
 	// Apply deduplication if set
 	if enableDeduplication {
 		cfg.Data.Deduplication = true
-	}
-
-	// Apply view mode if provided
-	if viewMode != "" {
-		validModes := []string{"dashboard", "monitor"}
-		found := false
-		for _, mode := range validModes {
-			if strings.EqualFold(viewMode, mode) {
-				cfg.UI.ViewMode = strings.ToLower(viewMode)
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("invalid view mode: %s (valid options: %s)",
-				viewMode, strings.Join(validModes, ", "))
-		}
-	} else if runPlan == "max5" && cfg.UI.ViewMode == "" {
-		// Default to monitor view for max5 plan
-		cfg.UI.ViewMode = "monitor"
 	}
 
 	// Apply timezone if provided
