@@ -97,14 +97,14 @@ func init() {
 	// Disable default completion command
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
-	// Disable help command by setting a hidden command that returns error
-	rootCmd.SetHelpCommand(&cobra.Command{
-		Use:    "no-help",
-		Hidden: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Printf("Error: unknown command \"help\" for \"claudecat\"\n")
-			cmd.Printf("Run 'claudecat --help' for usage.\n")
-		},
+	// Completely disable help functionality
+	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
+	rootCmd.PersistentFlags().BoolP("help", "h", false, "help for claudecat")
+	rootCmd.PersistentFlags().MarkHidden("help")
+	
+	// Override help function to do nothing
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		// Completely disable help output
 	})
 
 	// Global flags
@@ -122,9 +122,11 @@ func init() {
 	rootCmd.Flags().BoolVarP(&runWatch, "watch", "w", false, "enable file watching for real-time updates")
 	rootCmd.Flags().BoolVar(&runBackground, "background", false, "run in background mode (minimal UI)")
 
+	// Global pricing flags (moved from analyze command)
+	rootCmd.PersistentFlags().StringVar(&pricingSource, "pricing-source", "", "pricing source (default, litellm)")
+	rootCmd.PersistentFlags().BoolVar(&pricingOffline, "pricing-offline", false, "use cached pricing data for offline mode")
+	
 	// Pricing and deduplication flags
-	rootCmd.Flags().StringVar(&pricingSource, "pricing-source", "", "pricing source (default, litellm)")
-	rootCmd.Flags().BoolVar(&pricingOffline, "pricing-offline", false, "use cached pricing data for offline mode")
 	rootCmd.Flags().BoolVar(&enableDeduplication, "deduplication", false, "enable deduplication of entries across all files")
 
 	// Monitor view flags
@@ -167,13 +169,15 @@ func init() {
 		fmt.Fprintf(os.Stderr, "Failed to bind background flag: %v\n", err)
 	}
 
-	// Bind pricing and deduplication flags
-	if err := viper.BindPFlag("data.pricing_source", rootCmd.Flags().Lookup("pricing-source")); err != nil {
+	// Bind global pricing flags  
+	if err := viper.BindPFlag("data.pricing_source", rootCmd.PersistentFlags().Lookup("pricing-source")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind pricing-source flag: %v\n", err)
 	}
-	if err := viper.BindPFlag("data.pricing_offline_mode", rootCmd.Flags().Lookup("pricing-offline")); err != nil {
+	if err := viper.BindPFlag("data.pricing_offline_mode", rootCmd.PersistentFlags().Lookup("pricing-offline")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind pricing-offline flag: %v\n", err)
 	}
+	
+	// Bind deduplication flag
 	if err := viper.BindPFlag("data.deduplication", rootCmd.Flags().Lookup("deduplication")); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to bind deduplication flag: %v\n", err)
 	}
