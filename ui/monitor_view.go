@@ -71,10 +71,20 @@ func (v *MonitorView) View() string {
 	lines = append(lines, "")
 
 	// Main content based on state
-	if v.metrics == nil || v.metrics.CurrentTokens == 0 {
-		lines = append(lines, v.renderNoActiveSession()...)
-	} else {
+	hasActiveSession := false
+	if v.blocks != nil {
+		for _, block := range v.blocks {
+			if block.IsActive {
+				hasActiveSession = true
+				break
+			}
+		}
+	}
+	
+	if hasActiveSession {
 		lines = append(lines, v.renderActiveSession()...)
+	} else {
+		lines = append(lines, v.renderNoActiveSession()...)
 	}
 
 	// Footer
@@ -122,16 +132,53 @@ func (v *MonitorView) renderHeader() []string {
 func (v *MonitorView) renderNoActiveSession() []string {
 	var lines []string
 
-	// Empty progress bar
-	emptyBar := v.renderWideProgressBar(0, "🟨")
-	lines = append(lines, fmt.Sprintf("📊 Token Usage:    %s", emptyBar))
+	// Show metrics from the most recent session if available
+	tokensUsed := 0
+	costUsed := 0.0
+	messagesUsed := 0
+	
+	if v.metrics != nil {
+		tokensUsed = v.metrics.CurrentTokens
+		costUsed = v.metrics.CurrentCost
+		// Get message count from metrics or recent inactive session
+		if len(v.blocks) > 0 {
+			// Find the most recent session (active or not)
+			for i := len(v.blocks) - 1; i >= 0; i-- {
+				if !v.blocks[i].IsGap {
+					messagesUsed = v.blocks[i].SentMessagesCount
+					break
+				}
+			}
+		}
+	}
+
+	// Calculate usage percentage
+	tokenUsage := 0.0
+	if v.tokenLimit > 0 && tokensUsed > 0 {
+		tokenUsage = float64(tokensUsed) / float64(v.tokenLimit) * 100
+	}
+
+	// Progress bar
+	progressBar := v.renderWideProgressBar(tokenUsage, "🟨")
+	lines = append(lines, fmt.Sprintf("📊 Token Usage:    %s", progressBar))
 	lines = append(lines, "")
 
-	// Stats with zero values
-	lines = append(lines, fmt.Sprintf("🎯 Tokens:         0 / ~%s (0 left)", v.formatNumber(v.tokenLimit)))
+	// Stats - show actual values if any tokens were used
+	if tokensUsed > 0 {
+		lines = append(lines, fmt.Sprintf("🎯 Tokens:         %s / ~%s (%s left)", 
+			v.formatNumber(tokensUsed), 
+			v.formatNumber(v.tokenLimit),
+			v.formatNumber(v.tokenLimit-tokensUsed)))
+		lines = append(lines, fmt.Sprintf("💲 Session Cost:   $%.2f", costUsed))
+		lines = append(lines, fmt.Sprintf("📨 Sent Messages:  %d messages", messagesUsed))
+	} else {
+		lines = append(lines, fmt.Sprintf("🎯 Tokens:         0 / ~%s (0 left)", v.formatNumber(v.tokenLimit)))
+		lines = append(lines, "💲 Session Cost:   $0.00")
+		lines = append(lines, "📨 Sent Messages:  0 messages")
+	}
+	
 	lines = append(lines, "🔥 Burn Rate:      0.0 tokens/min")
-	lines = append(lines, "💲 Cost Rate:      $0.00 $/min")
-	lines = append(lines, "📨 Sent Messages:  0 messages")
+	lines = append(lines, "💵 Cost Rate:      $0.00 $/min")
 	lines = append(lines, "")
 
 	return lines
@@ -177,128 +224,89 @@ func (v *MonitorView) renderActiveSession() []string {
 	timeRemaining := totalMinutes - elapsed
 
 	// Styles for different elements
-	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))
-	valueStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF")).Bold(true)
 	separatorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#444444"))
-	headerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00D9FF")).Bold(true)
-	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Italic(true)
 
-	// For custom plan, show P90 limits section
-	if v.plan == "custom" || v.plan == "pro" || v.plan == "max5" || v.plan == "max20" {
-		lines = append(lines, headerStyle.Render("📊 Session-Based Dynamic Limits"))
-		lines = append(lines, descStyle.Render("Based on your historical usage patterns when hitting limits (P90)"))
-		lines = append(lines, separatorStyle.Render(strings.Repeat("─", 60)))
-		
-		// Cost Usage
-		costBar := v.renderWideProgressBar(costUsage, v.getColorIndicator(costUsage))
-		costLabel := labelStyle.Render("💰 Cost Usage:")
-		costValue := valueStyle.Render(fmt.Sprintf("$%.2f / $%.2f", v.metrics.CurrentCost, v.costLimitP90))
-		percentageStr := v.getPercentageStyle(costUsage).Render(fmt.Sprintf("%5.1f%%", costUsage))
-		lines = append(lines, fmt.Sprintf("%-25s %s %s    %s", costLabel, costBar, percentageStr, costValue))
-		lines = append(lines, "")
-		
-		// Token Usage
-		tokenBar := v.renderWideProgressBar(tokenUsage, v.getColorIndicator(tokenUsage))
-		tokenLabel := labelStyle.Render("📊 Token Usage:")
-		tokenValue := valueStyle.Render(fmt.Sprintf("%s / %s", v.formatNumber(v.metrics.CurrentTokens), v.formatNumber(v.tokenLimit)))
-		percentageStr = v.getPercentageStyle(tokenUsage).Render(fmt.Sprintf("%5.1f%%", tokenUsage))
-		lines = append(lines, fmt.Sprintf("%-25s %s %s    %s", tokenLabel, tokenBar, percentageStr, tokenValue))
-		lines = append(lines, "")
-		
-		// Messages Usage
-		messagesBar := v.renderWideProgressBar(messagesUsage, v.getColorIndicator(messagesUsage))
-		messagesLabel := labelStyle.Render("📨 Messages Usage:")
-		messagesValue := valueStyle.Render(fmt.Sprintf("%d / %d", messageCount, v.messagesLimitP90))
-		percentageStr = v.getPercentageStyle(messagesUsage).Render(fmt.Sprintf("%5.1f%%", messagesUsage))
-		lines = append(lines, fmt.Sprintf("%-25s %s %s    %s", messagesLabel, messagesBar, percentageStr, messagesValue))
-		lines = append(lines, separatorStyle.Render(strings.Repeat("─", 60)))
-		
-		// Time to Reset
-		timeBar := v.renderWideProgressBar(timePercentage, "")
-		hours := int(timeRemaining / 60)
-		mins := int(timeRemaining) % 60
-		timeLabel := labelStyle.Render("⏱️  Time to Reset:")
-		timeValue := valueStyle.Render(fmt.Sprintf("%dh %dm", hours, mins))
-		lines = append(lines, fmt.Sprintf("%-25s %s %s", timeLabel, timeBar, timeValue))
-		lines = append(lines, "")
-		
-		// Model Distribution
-		modelBar := v.renderModelDistribution()
-		modelLabel := labelStyle.Render("🤖 Model Distribution:")
-		lines = append(lines, fmt.Sprintf("%-25s %s", modelLabel, modelBar))
-		lines = append(lines, separatorStyle.Render(strings.Repeat("─", 60)))
-		
-		// Burn Rate
-		velocityEmoji := v.getVelocityEmoji(burnRate)
-		burnLabel := labelStyle.Render("🔥 Burn Rate:")
-		burnValue := valueStyle.Render(fmt.Sprintf("%.1f tokens/min", burnRate))
-		lines = append(lines, fmt.Sprintf("%-25s %s %s", burnLabel, burnValue, velocityEmoji))
-		
-		// Cost Rate
-		costRate := v.calculateCostRate()
-		costRateLabel := labelStyle.Render("💲 Cost Rate:")
-		costRateValue := valueStyle.Render(fmt.Sprintf("$%.4f $/min", costRate))
-		lines = append(lines, fmt.Sprintf("%-25s %s", costRateLabel, costRateValue))
+	// Always show the unified format regardless of plan
+	lines = append(lines, "")
+	lines = append(lines, "")
+	
+	// Cost Usage
+	costIndicator := v.getColorIndicator(costUsage)
+	costBar := v.renderWideProgressBar(costUsage, "")
+	lines = append(lines, fmt.Sprintf("💰 Cost Usage:           %s %s %.1f%%    $%.2f / $%.2f",
+		costIndicator, costBar, costUsage, v.metrics.CurrentCost, v.costLimitP90))
+	lines = append(lines, "")
+	
+	// Token Usage
+	tokenIndicator := v.getColorIndicator(tokenUsage)
+	tokenBar := v.renderWideProgressBar(tokenUsage, "")
+	lines = append(lines, fmt.Sprintf("📊 Token Usage:          %s %s %.1f%%    %s / %s",
+		tokenIndicator, tokenBar, tokenUsage, 
+		v.formatNumberWithCommas(v.metrics.CurrentTokens), 
+		v.formatNumberWithCommas(v.tokenLimit)))
+	lines = append(lines, "")
+	
+	// Messages Usage
+	messagesIndicator := v.getColorIndicator(messagesUsage)
+	messagesBar := v.renderWideProgressBar(messagesUsage, "")
+	lines = append(lines, fmt.Sprintf("📨 Messages Usage:       %s %s %.1f%%    %d / %s",
+		messagesIndicator, messagesBar, messagesUsage, messageCount, 
+		v.formatNumberWithCommas(v.messagesLimitP90)))
+	lines = append(lines, separatorStyle.Render(strings.Repeat("─", 60)))
+	
+	// Time to Reset
+	timeIndicator := ""
+	if timePercentage >= 60 {
+		timeIndicator = "🟡"
 	} else {
-		// Simple view for other plans
-		tokenBar := v.renderProgressBar(tokenUsage)
-		lines = append(lines, fmt.Sprintf("📊 Token Usage:    %s", tokenBar))
-		lines = append(lines, "")
-		
-		lines = append(lines, fmt.Sprintf("🎯 Tokens:         %s / ~%s (%s left)",
-			v.formatNumber(v.metrics.CurrentTokens),
-			v.formatNumber(v.tokenLimit),
-			v.formatNumber(v.tokenLimit-v.metrics.CurrentTokens)))
-		
-		velocityEmoji := v.getVelocityEmoji(burnRate)
-		lines = append(lines, fmt.Sprintf("🔥 Burn Rate:      %.1f tokens/min %s", burnRate, velocityEmoji))
-		
-		lines = append(lines, fmt.Sprintf("💲 Session Cost:   $%.2f", v.metrics.CurrentCost))
-		lines = append(lines, fmt.Sprintf("📨 Sent Messages:  %d messages", messageCount))
-		
-		if modelBar := v.renderModelDistribution(); modelBar != "" {
-			lines = append(lines, fmt.Sprintf("🤖 Model Usage:    %s", modelBar))
-		}
-		lines = append(lines, "")
-		
-		timeBar := v.renderTimeProgress(elapsed, totalMinutes)
-		lines = append(lines, fmt.Sprintf("⏱️  Time to Reset:  %s", timeBar))
-		lines = append(lines, "")
+		timeIndicator = "  "
 	}
+	timeBar := v.renderWideProgressBar(timePercentage, "")
+	hours := int(timeRemaining / 60)
+	mins := int(timeRemaining) % 60
+	lines = append(lines, fmt.Sprintf("⏱️  Time to Reset:       %s %s %dh %dm",
+		timeIndicator, timeBar, hours, mins))
+	lines = append(lines, "")
+	
+	// Model Distribution
+	modelBar := v.renderModelDistributionSimple()
+	lines = append(lines, fmt.Sprintf("🤖 Model Distribution:   🤖 %s", modelBar))
+	lines = append(lines, separatorStyle.Render(strings.Repeat("─", 60)))
+	
+	// Burn Rate with arrow emoji
+	lines = append(lines, fmt.Sprintf("🔥 Burn Rate:              %.1f tokens/min ➡️", burnRate))
+	
+	// Cost Rate
+	costRate := v.calculateCostRate()
+	lines = append(lines, fmt.Sprintf("💲 Cost Rate:              $%.4f $/min", costRate))
 
 	// Predictions
 	lines = append(lines, "")
-	predictionHeader := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF69B4")).
-		Bold(true).
-		Render("🔮 Predictions:")
-	lines = append(lines, predictionHeader)
-	
-	predictionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))
-	timeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00D9FF")).Bold(true)
+	lines = append(lines, "🔮 Predictions:")
 	
 	// Calculate when tokens will run out
 	if burnRate > 0 {
 		minutesUntilOut := float64(v.tokenLimit-v.metrics.CurrentTokens) / burnRate
 		runOutTime := time.Now().Add(time.Duration(minutesUntilOut) * time.Minute)
-		lines = append(lines, predictionStyle.Render("   Tokens will run out: ") + timeStyle.Render(v.formatTime(runOutTime)))
+		lines = append(lines, fmt.Sprintf("   Tokens will run out: %s", v.formatTimeShort(runOutTime)))
 	} else {
-		lines = append(lines, predictionStyle.Render("   Tokens will run out: ") + timeStyle.Render("--:--:--"))
+		lines = append(lines, "   Tokens will run out: --:--")
 	}
 	
 	// Reset time
 	resetTime := sessionStart.Add(5 * time.Hour)
-	lines = append(lines, predictionStyle.Render("   Limit resets at:     ") + timeStyle.Render(v.formatTime(resetTime)))
+	lines = append(lines, fmt.Sprintf("   Limit resets at:     %s", v.formatTimeShort(resetTime)))
 	lines = append(lines, "")
 	
-	// Check if limit exceeded and show warning
-	if v.isLimitExceeded() {
-		warningStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF0000")).
-			Bold(true).
-			Blink(true)
-		lines = append(lines, "")
-		lines = append(lines, warningStyle.Render("⚠️  You have exceeded the maximum cost limit!"))
+	// Check if cost limit will be exceeded before reset
+	if burnRate > 0 && costRate > 0 {
+		// Calculate if cost limit will be exceeded before session reset
+		minutesUntilCostLimit := (v.costLimitP90 - v.metrics.CurrentCost) / costRate
+		minutesUntilReset := timeRemaining
+		
+		if minutesUntilCostLimit < minutesUntilReset {
+			lines = append(lines, "⏰ Cost limit will be exceeded before reset!")
+		}
 	}
 
 	return lines
@@ -312,7 +320,18 @@ func (v *MonitorView) renderFooter() string {
 	statusText := "No active session"
 	statusColor := lipgloss.Color("#FFAA00")
 	
-	if v.metrics != nil && v.metrics.CurrentTokens > 0 {
+	// Check for active sessions based on blocks
+	hasActiveSession := false
+	if v.blocks != nil {
+		for _, block := range v.blocks {
+			if block.IsActive {
+				hasActiveSession = true
+				break
+			}
+		}
+	}
+	
+	if hasActiveSession {
 		statusIcon = "🟢" // Green for active session
 		statusText = "Active session"
 		statusColor = lipgloss.Color("#00FF00")
@@ -494,6 +513,52 @@ func (v *MonitorView) renderModelDistribution() string {
 	return fmt.Sprintf("[%s] %s", barSegments, strings.Join(labels, labelSeparator))
 }
 
+// renderModelDistributionSimple renders a simplified model distribution for the main view
+func (v *MonitorView) renderModelDistributionSimple() string {
+	if v.metrics == nil || len(v.metrics.ModelDistribution) == 0 {
+		return "[No model data]"
+	}
+
+	// Find the dominant model
+	maxModel := ""
+	maxPercentage := 0.0
+	
+	for model, metrics := range v.metrics.ModelDistribution {
+		percentage := 0.0
+		if v.metrics.CurrentTokens > 0 {
+			percentage = float64(metrics.TokenCount) / float64(v.metrics.CurrentTokens) * 100
+		}
+		if percentage > maxPercentage {
+			maxPercentage = percentage
+			maxModel = model
+		}
+	}
+	
+	// Get model display name
+	displayName := "Unknown"
+	if strings.Contains(maxModel, "opus") {
+		displayName = "Opus"
+	} else if strings.Contains(maxModel, "sonnet") {
+		displayName = "Sonnet"
+	} else if strings.Contains(maxModel, "haiku") {
+		displayName = "Haiku"
+	}
+	
+	// Create the progress bar
+	width := 50
+	filled := int(maxPercentage * float64(width) / 100)
+	if filled > width {
+		filled = width
+	}
+	if filled < 0 {
+		filled = 0
+	}
+	
+	bar := strings.Repeat("█", filled) + strings.Repeat("⋯", width-filled)
+	
+	return fmt.Sprintf("[%s] %s %.1f%%", bar, displayName, maxPercentage)
+}
+
 // getColorIndicator returns the appropriate color indicator based on percentage
 func (v *MonitorView) getColorIndicator(percentage float64) string {
 	if percentage < 50 {
@@ -566,6 +631,24 @@ func (v *MonitorView) formatNumber(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
+// formatNumberWithCommas formats numbers with commas for thousands
+func (v *MonitorView) formatNumberWithCommas(n int) string {
+	if n < 1000 {
+		return fmt.Sprintf("%d", n)
+	}
+	
+	// Convert to string and add commas
+	str := fmt.Sprintf("%d", n)
+	result := ""
+	for i, digit := range str {
+		if i > 0 && (len(str)-i)%3 == 0 {
+			result += ","
+		}
+		result += string(digit)
+	}
+	return result
+}
+
 // isLimitExceeded checks if any limit has been exceeded
 func (v *MonitorView) isLimitExceeded() bool {
 	if v.metrics == nil {
@@ -612,6 +695,21 @@ func (v *MonitorView) formatTime(t time.Time) string {
 		return t.Format("15:04:05")
 	}
 	return t.Format("3:04:05 PM")
+}
+
+// formatTimeShort formats time in short format (HH:MM)
+func (v *MonitorView) formatTimeShort(t time.Time) string {
+	// Convert to configured timezone
+	loc, err := time.LoadLocation(v.timezone)
+	if err != nil {
+		loc = time.UTC
+	}
+	t = t.In(loc)
+
+	if v.timeFormat == "24h" {
+		return t.Format("15:04")
+	}
+	return t.Format("3:04 PM")
 }
 
 // UpdateStats updates the view statistics
