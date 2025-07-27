@@ -377,14 +377,6 @@ func (ea *EnhancedApplication) getDataPath() string {
 	homeDir, _ := os.UserHomeDir()
 	defaultPaths := []string{
 		fmt.Sprintf("%s/.claude/projects", homeDir),
-		fmt.Sprintf("%s/.config/claude/projects", homeDir),
-		fmt.Sprintf("%s/Library/Application Support/claude/projects", homeDir),
-	}
-
-	// Also check test data path for development/testing
-	testDataPath := "/Users/penwyp/Dat/worktree/claude_data_snapshot/projects"
-	if _, err := os.Stat(testDataPath); err == nil {
-		defaultPaths = append([]string{testDataPath}, defaultPaths...)
 	}
 
 	for _, path := range defaultPaths {

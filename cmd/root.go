@@ -97,15 +97,9 @@ func init() {
 	// Disable default completion command
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
-	// Completely disable help functionality
+	// Disable help subcommand but allow -h/--help flags
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 	rootCmd.PersistentFlags().BoolP("help", "h", false, "help for claudecat")
-	rootCmd.PersistentFlags().MarkHidden("help")
-	
-	// Override help function to do nothing
-	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		// Completely disable help output
-	})
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.claudecat.yaml)")
