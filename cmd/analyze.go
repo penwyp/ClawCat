@@ -330,20 +330,16 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 		}
 
 		// Create aggregated result
-		// Extract the actual group key (remove model part if present)
-		displayKey := groupKey
-		if idx := strings.LastIndex(groupKey, "|"); idx != -1 && analyzeGroupBy != "all" && analyzeGroupBy != "model" && analyzeGroupBy != "session" {
-			displayKey = groupKey[:idx]
-		}
-
 		agg := models.AnalysisResult{
-			GroupKey:  displayKey,
-			Model:     groupResults[0].Model,
+			GroupKey:  groupKey,
+			Model:     "", // Clear model since we're aggregating across models
 			Timestamp: groupResults[0].Timestamp,
 			SessionID: groupResults[0].SessionID,
+			Project:   groupResults[0].Project,
 		}
 
-		// Aggregate values
+		// Aggregate values and collect unique models
+		modelSet := make(map[string]bool)
 		for _, result := range groupResults {
 			agg.InputTokens += result.InputTokens
 			agg.OutputTokens += result.OutputTokens
@@ -351,6 +347,19 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 			agg.CacheReadTokens += result.CacheReadTokens
 			agg.TotalTokens += result.TotalTokens
 			agg.CostUSD += result.CostUSD
+			if result.Model != "" {
+				modelSet[result.Model] = true
+			}
+		}
+		
+		// For time-based groupings, set the model to a comma-separated list
+		if analyzeGroupBy == "hour" || analyzeGroupBy == "day" || analyzeGroupBy == "week" || analyzeGroupBy == "month" {
+			var models []string
+			for model := range modelSet {
+				models = append(models, model)
+			}
+			sortModelsByPreference(models)
+			agg.Model = strings.Join(models, ", ")
 		}
 
 		agg.Count = len(groupResults)
@@ -518,71 +527,78 @@ func outputTable(results []models.AnalysisResult) error {
 }
 
 func outputTableWithoutBreakdown(results []models.AnalysisResult) error {
-	// Group results by date and aggregate models
-	dateGroups := make(map[string]*dateGroup)
-
-	for _, result := range results {
-		var dateKey string
-		if analyzeGroupBy == "day" {
-			dateKey = result.GroupKey
-		} else {
-			dateKey = result.Timestamp.Format("2006-01-02")
-		}
-
-		if dateGroups[dateKey] == nil {
-			dateGroups[dateKey] = &dateGroup{
-				date:   dateKey,
-				models: make(map[string]bool),
-			}
-		}
-
-		group := dateGroups[dateKey]
-		group.models[result.Model] = true
-		group.inputTokens += result.InputTokens
-		group.outputTokens += result.OutputTokens
-		group.cacheCreationTokens += result.CacheCreationTokens
-		group.cacheReadTokens += result.CacheReadTokens
-		group.totalTokens += result.TotalTokens
-		group.costUSD += result.CostUSD
+	// Determine the primary grouping column header
+	var groupColumnHeader string
+	switch analyzeGroupBy {
+	case "project":
+		groupColumnHeader = "Project"
+	case "model":
+		groupColumnHeader = "Model"
+	case "session":
+		groupColumnHeader = "Session"
+	case "hour", "day", "week", "month":
+		groupColumnHeader = "Date"
+	default:
+		groupColumnHeader = "Group"
 	}
 
-	// Create table
-	headers := []string{"Date", "Models", "Input", "Output", "Cache Create", "Cache Read", "Total Tokens", "Cost (USD)"}
+	// Create table headers
+	headers := []string{groupColumnHeader, "Input", "Output", "Cache Create", "Cache Read", "Total Tokens", "Cost (USD)"}
+	if analyzeGroupBy != "model" && analyzeGroupBy != "project" {
+		// Add Models column for time-based groupings
+		headers = []string{groupColumnHeader, "Models", "Input", "Output", "Cache Create", "Cache Read", "Total Tokens", "Cost (USD)"}
+	}
 	table := newTableFormatter(headers)
 
-	// Sort dates
-	var dates []string
-	for date := range dateGroups {
-		dates = append(dates, date)
-	}
-	sort.Strings(dates)
+	// For all groupings, we can use the aggregated results directly
+	if analyzeGroupBy != "model" && analyzeGroupBy != "project" && analyzeGroupBy != "session" {
+		// Time-based groupings - add Models column
+		// Sort results by group key
+		sort.Slice(results, func(i, j int) bool {
+			return results[i].GroupKey < results[j].GroupKey
+		})
 
-	// Add rows
-	for _, date := range dates {
-		group := dateGroups[date]
-
-		// Convert models map to sorted slice
-		var modelList []string
-		for model := range group.models {
-			modelList = append(modelList, model)
+		// Add rows directly from results
+		for _, result := range results {
+			row := []string{
+				result.GroupKey,
+				result.Model, // This contains the comma-separated list of models
+				formatWithCommas(result.InputTokens),
+				formatWithCommas(result.OutputTokens),
+				formatWithCommas(result.CacheCreationTokens),
+				formatWithCommas(result.CacheReadTokens),
+				formatWithCommas(result.TotalTokens),
+				formatCost(result.CostUSD),
+			}
+			table.addRow(row)
 		}
-		sortModelsByPreference(modelList)
 
-		row := []string{
-			date,
-			formatModels(modelList),
-			formatWithCommas(group.inputTokens),
-			formatWithCommas(group.outputTokens),
-			formatWithCommas(group.cacheCreationTokens),
-			formatWithCommas(group.cacheReadTokens),
-			formatWithCommas(group.totalTokens),
-			formatCost(group.costUSD),
+		// Add summary row
+		addSummaryRowWithModels(table, results)
+	} else {
+		// For non-time-based groupings (model, project, session)
+		// Sort results by group key
+		sort.Slice(results, func(i, j int) bool {
+			return results[i].GroupKey < results[j].GroupKey
+		})
+
+		// Add rows directly from results
+		for _, result := range results {
+			row := []string{
+				result.GroupKey,
+				formatWithCommas(result.InputTokens),
+				formatWithCommas(result.OutputTokens),
+				formatWithCommas(result.CacheCreationTokens),
+				formatWithCommas(result.CacheReadTokens),
+				formatWithCommas(result.TotalTokens),
+				formatCost(result.CostUSD),
+			}
+			table.addRow(row)
 		}
-		table.addRow(row)
-	}
 
-	// Add summary row
-	addSummaryRow(table, dateGroups)
+		// Add summary row for non-time-based groupings
+		addSummaryRowSimple(table, results)
+	}
 
 	fmt.Print(table.render())
 	return nil
@@ -1196,6 +1212,83 @@ func addSummaryRow(table *tableFormatter, dateGroups map[string]*dateGroup) {
 
 		for model := range group.models {
 			allModels[model] = true
+		}
+	}
+
+	// Convert models map to sorted slice
+	var modelList []string
+	for model := range allModels {
+		modelList = append(modelList, model)
+	}
+	sortModelsByPreference(modelList)
+
+	// Add separator line before TOTAL
+	table.addSeparatorLine()
+
+	// Add summary row
+	summaryRow := []string{
+		"TOTAL",
+		formatModels(modelList),
+		formatWithCommas(totalInput),
+		formatWithCommas(totalOutput),
+		formatWithCommas(totalCacheCreation),
+		formatWithCommas(totalCacheRead),
+		formatWithCommas(totalTokens),
+		formatCost(totalCost),
+	}
+	table.addRow(summaryRow)
+}
+
+// addSummaryRowSimple adds a summary row for non-time-based groupings
+func addSummaryRowSimple(table *tableFormatter, results []models.AnalysisResult) {
+	var totalInput, totalOutput, totalCacheCreation, totalCacheRead, totalTokens int
+	var totalCost float64
+
+	for _, result := range results {
+		totalInput += result.InputTokens
+		totalOutput += result.OutputTokens
+		totalCacheCreation += result.CacheCreationTokens
+		totalCacheRead += result.CacheReadTokens
+		totalTokens += result.TotalTokens
+		totalCost += result.CostUSD
+	}
+
+	// Add separator line before TOTAL
+	table.addSeparatorLine()
+
+	// Add summary row
+	summaryRow := []string{
+		"TOTAL",
+		formatWithCommas(totalInput),
+		formatWithCommas(totalOutput),
+		formatWithCommas(totalCacheCreation),
+		formatWithCommas(totalCacheRead),
+		formatWithCommas(totalTokens),
+		formatCost(totalCost),
+	}
+	table.addRow(summaryRow)
+}
+
+// addSummaryRowWithModels adds a summary row for time-based groupings with models column
+func addSummaryRowWithModels(table *tableFormatter, results []models.AnalysisResult) {
+	var totalInput, totalOutput, totalCacheCreation, totalCacheRead, totalTokens int
+	var totalCost float64
+	allModels := make(map[string]bool)
+
+	for _, result := range results {
+		totalInput += result.InputTokens
+		totalOutput += result.OutputTokens
+		totalCacheCreation += result.CacheCreationTokens
+		totalCacheRead += result.CacheReadTokens
+		totalTokens += result.TotalTokens
+		totalCost += result.CostUSD
+		
+		// Extract models from the comma-separated list
+		if result.Model != "" {
+			models := strings.Split(result.Model, ", ")
+			for _, model := range models {
+				allModels[strings.TrimSpace(model)] = true
+			}
 		}
 	}
 
