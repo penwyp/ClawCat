@@ -3,6 +3,8 @@ package pricing
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/penwyp/claudecat/logging"
 	"github.com/penwyp/claudecat/models"
@@ -13,14 +15,20 @@ type CachedProvider struct {
 	provider     models.PricingProvider
 	cacheManager *CacheManager
 	useOffline   bool
+	
+	// Synchronization for cache updates
+	updateMu       sync.Mutex
+	lastUpdateTime time.Time
+	updateInterval time.Duration
 }
 
 // NewCachedProvider creates a new cached pricing provider
 func NewCachedProvider(provider models.PricingProvider, cacheManager *CacheManager, useOffline bool) *CachedProvider {
 	return &CachedProvider{
-		provider:     provider,
-		cacheManager: cacheManager,
-		useOffline:   useOffline,
+		provider:       provider,
+		cacheManager:   cacheManager,
+		useOffline:     useOffline,
+		updateInterval: 1 * time.Minute, // Default: update cache at most once per minute
 	}
 }
 
@@ -63,17 +71,7 @@ func (p *CachedProvider) GetPricing(ctx context.Context, modelName string) (mode
 
 	// If not in offline mode and provider succeeded, update cache
 	if !p.useOffline && p.provider.GetProviderName() != "default" {
-		go func() {
-			// Update cache in background
-			allPricing, err := p.provider.GetAllPricings(context.Background())
-			if err == nil {
-				if err := p.cacheManager.SavePricing(context.Background(), p.provider.GetProviderName(), allPricing); err != nil {
-					logging.LogDebugf("Failed to update pricing cache: %v", err)
-				} else {
-					logging.LogDebugf("Updated pricing cache from %s provider", p.provider.GetProviderName())
-				}
-			}
-		}()
+		go p.updateCacheIfNeeded()
 	}
 
 	return pricing, nil
@@ -108,11 +106,7 @@ func (p *CachedProvider) GetAllPricings(ctx context.Context) (map[string]models.
 
 	// If not in offline mode and provider succeeded, update cache
 	if !p.useOffline && p.provider.GetProviderName() != "default" {
-		if err := p.cacheManager.SavePricing(ctx, p.provider.GetProviderName(), pricing); err != nil {
-			logging.LogDebugf("Failed to update pricing cache: %v", err)
-		} else {
-			logging.LogDebugf("Updated pricing cache from %s provider", p.provider.GetProviderName())
-		}
+		go p.updateCacheIfNeeded()
 	}
 
 	return pricing, nil
@@ -144,4 +138,32 @@ func (p *CachedProvider) GetProviderName() string {
 		return fmt.Sprintf("%s-offline", p.provider.GetProviderName())
 	}
 	return fmt.Sprintf("%s-cached", p.provider.GetProviderName())
+}
+
+// updateCacheIfNeeded updates the cache if enough time has passed since last update
+func (p *CachedProvider) updateCacheIfNeeded() {
+	p.updateMu.Lock()
+	defer p.updateMu.Unlock()
+	
+	// Check if enough time has passed since last update
+	now := time.Now()
+	if !p.lastUpdateTime.IsZero() && now.Sub(p.lastUpdateTime) < p.updateInterval {
+		// Skip update - too soon
+		return
+	}
+	
+	// Update cache
+	ctx := context.Background()
+	allPricing, err := p.provider.GetAllPricings(ctx)
+	if err != nil {
+		logging.LogDebugf("Failed to fetch pricing data for cache update: %v", err)
+		return
+	}
+	
+	if err := p.cacheManager.SavePricing(ctx, p.provider.GetProviderName(), allPricing); err != nil {
+		logging.LogDebugf("Failed to update pricing cache: %v", err)
+	} else {
+		logging.LogDebugf("Updated pricing cache from %s provider", p.provider.GetProviderName())
+		p.lastUpdateTime = now
+	}
 }

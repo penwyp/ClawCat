@@ -141,6 +141,7 @@ func init() {
 	analyzeCmd.Flags().StringVar(&analyzePricingSource, "pricing-source", "", "pricing source (default, litellm)")
 	analyzeCmd.Flags().BoolVar(&analyzePricingOffline, "pricing-offline", false, "use cached pricing data for offline mode")
 	analyzeCmd.Flags().BoolVar(&analyzeEnableDeduplication, "deduplication", false, "enable deduplication of entries across all files")
+	_ = analyzeCmd.Flags().MarkHidden("deduplication")
 
 	// Bind to viper
 	_ = viper.BindPFlag("analyze.output", analyzeCmd.Flags().Lookup("output"))
