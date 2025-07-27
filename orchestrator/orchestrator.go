@@ -226,7 +226,9 @@ func (mo *MonitoringOrchestrator) WaitForInitialData(timeout time.Duration) bool
 // monitoringLoop is the main monitoring loop
 func (mo *MonitoringOrchestrator) monitoringLoop() {
 	// Initial fetch
-	mo.fetchAndProcessData(false)
+	if _, err := mo.fetchAndProcessData(false); err != nil {
+		logging.LogErrorf("Initial data fetch failed: %v", err)
+	}
 
 	ticker := time.NewTicker(mo.updateInterval)
 	defer ticker.Stop()
@@ -236,7 +238,9 @@ func (mo *MonitoringOrchestrator) monitoringLoop() {
 		case <-mo.stopEvent.Done():
 			return
 		case <-ticker.C:
-			mo.fetchAndProcessData(false)
+			if _, err := mo.fetchAndProcessData(false); err != nil {
+				logging.LogErrorf("Periodic data fetch failed: %v", err)
+			}
 		}
 	}
 }

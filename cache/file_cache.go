@@ -105,7 +105,10 @@ func (c *FileBasedSummaryCache) preloadSummaries() error {
 func (c *FileBasedSummaryCache) getCacheFilePath(absolutePath string) string {
 	// Calculate MD5 hash of the absolute path
 	h := md5.New()
-	io.WriteString(h, absolutePath)
+	if _, err := io.WriteString(h, absolutePath); err != nil {
+		// This should never fail for hash operations, but handle gracefully
+		logging.LogWarnf("Failed to write to hash: %v", err)
+	}
 	hash := fmt.Sprintf("%x", h.Sum(nil))
 
 	// Use first 2 characters as subdirectory for better file system performance
@@ -290,7 +293,7 @@ func (c *FileBasedSummaryCache) GetStats() map[string]interface{} {
 	var totalCost float64
 	var totalTokens int64
 
-	filepath.Walk(c.baseDir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(c.baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return nil
 		}
@@ -299,7 +302,9 @@ func (c *FileBasedSummaryCache) GetStats() map[string]interface{} {
 			totalSize += info.Size()
 		}
 		return nil
-	})
+	}); err != nil {
+		logging.LogWarnf("Failed to walk cache directory %s: %v", c.baseDir, err)
+	}
 
 	// Get stats from memory cache
 	for _, summary := range c.memCache {

@@ -10,27 +10,27 @@ import (
 
 // P90Config contains configuration for P90 calculation
 type P90Config struct {
-	CommonLimits      []int
-	LimitThreshold    float64
-	DefaultMinLimit   int
-	CacheTTLSeconds   int
+	CommonLimits    []int
+	LimitThreshold  float64
+	DefaultMinLimit int
+	CacheTTLSeconds int
 }
 
 // DefaultP90Config returns the default P90 configuration
 func DefaultP90Config() P90Config {
 	return P90Config{
 		CommonLimits:    []int{1000000, 2000000, 8000000}, // Pro: 1M, Max5: 2M, Max20: 8M
-		LimitThreshold:  0.95,                               // 95% threshold for limit detection
-		DefaultMinLimit: 1000000,                            // Default to Pro limit
-		CacheTTLSeconds: 3600,                               // 1 hour cache
+		LimitThreshold:  0.95,                             // 95% threshold for limit detection
+		DefaultMinLimit: 1000000,                          // Default to Pro limit
+		CacheTTLSeconds: 3600,                             // 1 hour cache
 	}
 }
 
 // P90Calculator calculates P90 token limits from historical session data
 type P90Calculator struct {
-	config    P90Config
-	cache     *p90Cache
-	cacheMu   sync.RWMutex
+	config  P90Config
+	cache   *p90Cache
+	cacheMu sync.RWMutex
 }
 
 // p90Cache stores cached P90 calculations
@@ -89,7 +89,7 @@ func (p *P90Calculator) CalculateP90Limit(blocks []models.SessionBlock, useCache
 func (p *P90Calculator) calculateP90FromBlocks(blocks []models.SessionBlock) int {
 	// First try to get sessions that hit limits
 	limitSessions := p.extractLimitSessions(blocks)
-	
+
 	// If no limit sessions, use all completed sessions
 	if len(limitSessions) == 0 {
 		limitSessions = p.extractAllCompletedSessions(blocks)
@@ -213,7 +213,7 @@ func (p *P90Calculator) GetMessagesP90(blocks []models.SessionBlock) int {
 	var messages []int
 
 	for _, block := range blocks {
-		// Skip gaps and active sessions  
+		// Skip gaps and active sessions
 		if block.IsGap || block.IsActive {
 			continue
 		}

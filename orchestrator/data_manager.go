@@ -36,7 +36,7 @@ type DataManager struct {
 	initialLoadCompleted bool
 
 	// Pricing and deduplication
-	pricingProvider models.PricingProvider
+	pricingProvider     models.PricingProvider
 	enableDeduplication bool
 }
 
@@ -173,42 +173,42 @@ func (dm *DataManager) GetLastSuccessfulFetchTime() time.Time {
 // performInitialLoad performs initial data loading with cache writing allowed
 func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 	logging.LogInfo("Performing initial data load with cache support")
-	
+
 	// First try to load from cache to check if we have cached data
 	if dm.cacheStore != nil && dm.summaryCacheConfig.Enabled {
 		logging.LogInfo("Checking for existing cached data...")
-		
+
 		// Load with cache first to check cache status
 		optsCache := fileio.LoadUsageEntriesOptions{
-			DataPath:           dm.dataPath,
-			HoursBack:          &dm.hoursBack,
-			Mode:               models.CostModeAuto,
-			IncludeRaw:         true,
-			EnableSummaryCache: true,
-			IsWatchMode:        true, // Use cache read mode first
-			CacheStore:         dm.cacheStore,
+			DataPath:            dm.dataPath,
+			HoursBack:           &dm.hoursBack,
+			Mode:                models.CostModeAuto,
+			IncludeRaw:          true,
+			EnableSummaryCache:  true,
+			IsWatchMode:         true, // Use cache read mode first
+			CacheStore:          dm.cacheStore,
 			EnableDeduplication: dm.enableDeduplication,
-			PricingProvider:    dm.pricingProvider,
+			PricingProvider:     dm.pricingProvider,
 		}
 
 		resultCache, err := fileio.LoadUsageEntries(optsCache)
 		if err == nil && len(resultCache.Entries) > 0 {
 			// We have cached data, check if files have changed
 			logging.LogInfof("Found %d cached entries, checking for file changes...", len(resultCache.Entries))
-			
+
 			hasChanges, err := dm.checkForFileChanges(&resultCache.Metadata)
 			if err != nil {
 				logging.LogWarnf("Error checking for file changes: %v, will reload data", err)
 				hasChanges = true // Assume changes if we can't check
 			}
-			
+
 			if !hasChanges {
 				logging.LogInfo("No file changes detected, using cached data")
 				data, err := dm.processUsageData(resultCache, "initial-cached")
 				if err != nil {
 					return nil, err
 				}
-				
+
 				// Mark initial load as completed and update cache
 				dm.mu.Lock()
 				dm.initialLoadCompleted = true
@@ -217,7 +217,7 @@ func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 				dm.lastSuccessfulFetch = time.Now()
 				dm.lastError = nil
 				dm.mu.Unlock()
-				
+
 				logging.LogInfo("Initial data load completed using cache")
 				return data, nil
 			} else {
@@ -227,17 +227,17 @@ func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 			logging.LogInfo("No cached data found or cache load failed, performing fresh load")
 		}
 	}
-	
+
 	// Load usage entries with cache support and allow cache writing for initial load
 	opts := fileio.LoadUsageEntriesOptions{
-		DataPath:           dm.dataPath,
-		HoursBack:          &dm.hoursBack,
-		Mode:               models.CostModeAuto,
-		IncludeRaw:         true,
-		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
-		IsWatchMode:        false, // Initial load can write to cache
+		DataPath:            dm.dataPath,
+		HoursBack:           &dm.hoursBack,
+		Mode:                models.CostModeAuto,
+		IncludeRaw:          true,
+		EnableSummaryCache:  dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
+		IsWatchMode:         false, // Initial load can write to cache
 		EnableDeduplication: dm.enableDeduplication,
-		PricingProvider:    dm.pricingProvider,
+		PricingProvider:     dm.pricingProvider,
 	}
 
 	// Set cache store if available
@@ -273,14 +273,14 @@ func (dm *DataManager) performInitialLoad() (*AnalysisResult, error) {
 func (dm *DataManager) analyzeUsageWatchMode() (*AnalysisResult, error) {
 	// Load usage entries in watch mode - no cache writing
 	opts := fileio.LoadUsageEntriesOptions{
-		DataPath:           dm.dataPath,
-		HoursBack:          &dm.hoursBack,
-		Mode:               models.CostModeAuto,
-		IncludeRaw:         true,
-		EnableSummaryCache: dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
-		IsWatchMode:        true, // Watch mode - no cache writing
+		DataPath:            dm.dataPath,
+		HoursBack:           &dm.hoursBack,
+		Mode:                models.CostModeAuto,
+		IncludeRaw:          true,
+		EnableSummaryCache:  dm.cacheStore != nil && dm.summaryCacheConfig.Enabled,
+		IsWatchMode:         true, // Watch mode - no cache writing
 		EnableDeduplication: dm.enableDeduplication,
-		PricingProvider:    dm.pricingProvider,
+		PricingProvider:     dm.pricingProvider,
 	}
 
 	// Set cache store if available
@@ -366,48 +366,48 @@ func (dm *DataManager) processUsageData(result *fileio.LoadUsageEntriesResult, m
 // checkForFileChanges checks if any files in the data path have changed since the cached metadata
 func (dm *DataManager) checkForFileChanges(cachedMetadata *fileio.LoadMetadata) (bool, error) {
 	logging.LogDebug("Checking for file changes since last cache...")
-	
+
 	// Walk through the data path to find all .jsonl files
 	var hasChanges bool
-	
+
 	err := filepath.Walk(dm.dataPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			logging.LogWarnf("Error accessing path %s: %v", path, err)
 			return nil // Continue walking, don't fail entirely
 		}
-		
+
 		// Skip directories and non-jsonl files
 		if info.IsDir() || filepath.Ext(path) != ".jsonl" {
 			return nil
 		}
-		
+
 		// Check if this file was processed in the cached metadata
 		// For now, use a simple heuristic: if the file's modification time
 		// is newer than the cache load time, consider it changed
 		// Since LoadMetadata doesn't have CacheLoadTime, we'll use a different approach
 		// We'll check if any file is newer than 1 minute ago (simple heuristic)
 		oneMinuteAgo := time.Now().Add(-1 * time.Minute)
-		
+
 		if info.ModTime().After(oneMinuteAgo) {
-			logging.LogDebugf("File %s modified recently (%s)", 
+			logging.LogDebugf("File %s modified recently (%s)",
 				filepath.Base(path), info.ModTime())
 			hasChanges = true
 			return filepath.SkipDir // Exit early
 		}
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return true, fmt.Errorf("error walking data path: %w", err)
 	}
-	
+
 	if hasChanges {
 		logging.LogDebug("File changes detected")
 	} else {
 		logging.LogDebug("No file changes detected")
 	}
-	
+
 	return hasChanges, nil
 }
 

@@ -67,6 +67,45 @@ func hasAssistantMessages(filePath string) bool {
 	return false
 }
 
+// convertRawToUsageEntry converts raw JSON data to a UsageEntry with cost calculation
+func convertRawToUsageEntry(data map[string]interface{}, mode models.CostMode) (models.UsageEntry, error) {
+	entry, hasUsage := extractUsageEntry(data)
+	if !hasUsage {
+		// Check the type to provide better error message
+		if typeStr, ok := data["type"].(string); ok && typeStr == "user" {
+			return entry, fmt.Errorf("not an assistant message: type=%s", typeStr)
+		}
+		return entry, fmt.Errorf("no usage data found")
+	}
+
+	// Extract additional fields for testing/legacy compatibility
+	if sessionID, ok := data["sessionId"].(string); ok {
+		entry.SessionID = sessionID
+	}
+	if sessionID, ok := data["session_id"].(string); ok {
+		entry.SessionID = sessionID
+	}
+	if msgID, ok := data["message_id"].(string); ok && entry.MessageID == "" {
+		entry.MessageID = msgID
+	}
+	if reqID, ok := data["request_id"].(string); ok && entry.RequestID == "" {
+		entry.RequestID = reqID
+	}
+	// Also try top-level requestId for conversation log format
+	if reqID, ok := data["requestId"].(string); ok && entry.RequestID == "" {
+		entry.RequestID = reqID
+	}
+
+	// Calculate cost
+	pricing := models.GetPricing(entry.Model)
+	entry.CostUSD = entry.CalculateCost(pricing)
+
+	// Don't normalize model name in tests - preserve original
+	// entry.NormalizeModel()
+
+	return entry, nil
+}
+
 // extractUsageEntry extracts usage entry from JSON data
 func extractUsageEntry(data map[string]interface{}) (models.UsageEntry, bool) {
 	var entry models.UsageEntry
@@ -84,7 +123,7 @@ func extractUsageEntry(data map[string]interface{}) (models.UsageEntry, bool) {
 	}
 
 	// Handle different message types
-	typeStr, _ := data["type"].(string)
+	typeStr, hasType := data["type"].(string)
 
 	if typeStr == "assistant" {
 		// Claude Code session format
@@ -117,8 +156,8 @@ func extractUsageEntry(data map[string]interface{}) (models.UsageEntry, bool) {
 				}
 			}
 		}
-	} else if typeStr == "message" {
-		// Direct API format
+	} else if typeStr == "message" || !hasType {
+		// Direct API format or legacy format (no type field)
 		if model, ok := data["model"].(string); ok {
 			entry.Model = model
 		}
@@ -154,15 +193,15 @@ func extractUsageEntry(data map[string]interface{}) (models.UsageEntry, bool) {
 
 // LoadUsageEntriesOptions configures the usage loading behavior
 type LoadUsageEntriesOptions struct {
-	DataPath           string                  // Path to Claude data directory
-	HoursBack          *int                    // Only include entries from last N hours (nil = all data)
-	Mode               models.CostMode         // Cost calculation mode
-	IncludeRaw         bool                    // Whether to return raw JSON data alongside entries
-	CacheStore         CacheStore              // Optional cache store for file summaries
-	EnableSummaryCache bool                    // Whether to enable summary caching
-	IsWatchMode        bool                    // Whether loading is triggered by file watch (TUI mode)
+	DataPath            string                 // Path to Claude data directory
+	HoursBack           *int                   // Only include entries from last N hours (nil = all data)
+	Mode                models.CostMode        // Cost calculation mode
+	IncludeRaw          bool                   // Whether to return raw JSON data alongside entries
+	CacheStore          CacheStore             // Optional cache store for file summaries
+	EnableSummaryCache  bool                   // Whether to enable summary caching
+	IsWatchMode         bool                   // Whether loading is triggered by file watch (TUI mode)
 	EnableDeduplication bool                   // Whether to enable deduplication across all files
-	PricingProvider    models.PricingProvider  // Optional pricing provider for cost calculations
+	PricingProvider     models.PricingProvider // Optional pricing provider for cost calculations
 }
 
 // CacheStore defines the interface for file summary caching
@@ -448,7 +487,9 @@ func processSingleFileWithCacheAndDedup(filePath string, opts LoadUsageEntriesOp
 				// File has been modified, invalidate cache
 				logging.LogDebugf("Cache miss for %s: file modified (old mtime: %v, new mtime: %v, old size: %d, new size: %d)",
 					filepath.Base(filePath), cachedSummary.ModTime, fileInfo.ModTime(), cachedSummary.FileSize, fileInfo.Size())
-				opts.CacheStore.InvalidateFileSummary(absPath)
+				if err := opts.CacheStore.InvalidateFileSummary(absPath); err != nil {
+					logging.LogWarnf("Failed to invalidate cache for %s: %v", filepath.Base(filePath), err)
+				}
 				// Continue to process the file and track as modified
 			}
 		} else {

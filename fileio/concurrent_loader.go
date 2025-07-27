@@ -101,14 +101,14 @@ func (cl *ConcurrentLoader) LoadFiles(ctx context.Context, files []string, opts 
 
 	// Feed files to workers
 	go func() {
+		defer close(fileChan)
 		for _, file := range files {
 			select {
 			case fileChan <- file:
 			case <-ctx.Done():
-				break
+				return
 			}
 		}
-		close(fileChan)
 	}()
 
 	// Wait for all workers to complete

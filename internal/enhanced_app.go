@@ -280,7 +280,7 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 				ModelDistribution: modelDistribution,
 			}
 			ea.ui.SendMessage(ui.RealtimeMetricsMsg{Metrics: realtimeMetrics})
-			
+
 			// Also send blocks for monitor view
 			ea.ui.SendMessage(ui.SessionBlocksMsg{Blocks: data.Data.Blocks})
 		}

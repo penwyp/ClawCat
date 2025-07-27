@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/penwyp/claudecat/logging"
 	"log"
 	"os"
 	"path/filepath"
@@ -31,6 +32,7 @@ func main() {
 	fmt.Println("claudecat Consistency Validation")
 	fmt.Println("==============================")
 
+	logging.InitLogger("DEBUG", "/tmp/claudecat.validate.log", true)
 	// Get data path from command line or use default
 	dataPath := getDataPath()
 	fmt.Printf("Using data path: %s\n\n", dataPath)

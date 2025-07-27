@@ -35,8 +35,8 @@ var (
 	analyzeBreakdown bool
 	analyzeReset     bool
 	// Pricing and deduplication flags
-	analyzePricingSource      string
-	analyzePricingOffline     bool
+	analyzePricingSource       string
+	analyzePricingOffline      bool
 	analyzeEnableDeduplication bool
 )
 
@@ -1175,22 +1175,22 @@ func sortModelsByPreference(models []string) {
 // Lower numbers have higher priority
 func getModelPriority(model string) int {
 	modelLower := strings.ToLower(model)
-	
+
 	// Opus models (highest priority)
 	if strings.Contains(modelLower, "opus") {
 		return 1
 	}
-	
-	// Sonnet models (medium priority)  
+
+	// Sonnet models (medium priority)
 	if strings.Contains(modelLower, "sonnet") {
 		return 2
 	}
-	
+
 	// Haiku models
 	if strings.Contains(modelLower, "haiku") {
 		return 3
 	}
-	
+
 	// Other models (lowest priority)
 	return 4
 }
@@ -1208,7 +1208,7 @@ func addSummaryRow(table *tableFormatter, dateGroups map[string]*dateGroup) {
 		totalCacheRead += group.cacheReadTokens
 		totalTokens += group.totalTokens
 		totalCost += group.costUSD
-		
+
 		for model := range group.models {
 			allModels[model] = true
 		}

@@ -9,13 +9,13 @@ import (
 type PricingProvider interface {
 	// GetPricing returns the pricing for a specific model
 	GetPricing(ctx context.Context, modelName string) (ModelPricing, error)
-	
+
 	// GetAllPricings returns all available model pricings
 	GetAllPricings(ctx context.Context) (map[string]ModelPricing, error)
-	
+
 	// RefreshPricing forces a refresh of pricing data (for remote providers)
 	RefreshPricing(ctx context.Context) error
-	
+
 	// GetProviderName returns the name of this pricing provider
 	GetProviderName() string
 }

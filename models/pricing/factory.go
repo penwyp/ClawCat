@@ -11,7 +11,7 @@ import (
 func CreatePricingProvider(cfg *config.DataConfig, cacheDir string) (models.PricingProvider, error) {
 	// Create base provider based on source
 	var baseProvider models.PricingProvider
-	
+
 	switch cfg.PricingSource {
 	case "default", "":
 		baseProvider = NewDefaultProvider()
@@ -20,16 +20,16 @@ func CreatePricingProvider(cfg *config.DataConfig, cacheDir string) (models.Pric
 	default:
 		return nil, fmt.Errorf("unknown pricing source: %s", cfg.PricingSource)
 	}
-	
+
 	// If offline mode or non-default provider, wrap with caching
 	if cfg.PricingOfflineMode || cfg.PricingSource != "default" {
 		cacheManager, err := NewCacheManager(cacheDir)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create cache manager: %w", err)
 		}
-		
+
 		return NewCachedProvider(baseProvider, cacheManager, cfg.PricingOfflineMode), nil
 	}
-	
+
 	return baseProvider, nil
 }

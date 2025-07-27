@@ -44,16 +44,16 @@ type AppConfig struct {
 
 // DataConfig contains data source and processing settings
 type DataConfig struct {
-	Paths         []string           `yaml:"paths" json:"paths"`
-	AutoDiscover  bool               `yaml:"auto_discover" json:"auto_discover"`
-	WatchInterval time.Duration      `yaml:"watch_interval" json:"watch_interval"`
-	MaxFileSize   int64              `yaml:"max_file_size" json:"max_file_size"`
-	CacheEnabled  bool               `yaml:"cache_enabled" json:"cache_enabled"`
-	CacheSize     int                `yaml:"cache_size" json:"cache_size"`
-	SummaryCache  SummaryCacheConfig `yaml:"summary_cache" json:"summary_cache"`
-	PricingSource string             `yaml:"pricing_source" json:"pricing_source"`         // default, litellm
-	PricingOfflineMode bool          `yaml:"pricing_offline_mode" json:"pricing_offline_mode"` // Use cached pricing
-	Deduplication bool               `yaml:"deduplication" json:"deduplication"`           // Enable deduplication
+	Paths              []string           `yaml:"paths" json:"paths"`
+	AutoDiscover       bool               `yaml:"auto_discover" json:"auto_discover"`
+	WatchInterval      time.Duration      `yaml:"watch_interval" json:"watch_interval"`
+	MaxFileSize        int64              `yaml:"max_file_size" json:"max_file_size"`
+	CacheEnabled       bool               `yaml:"cache_enabled" json:"cache_enabled"`
+	CacheSize          int                `yaml:"cache_size" json:"cache_size"`
+	SummaryCache       SummaryCacheConfig `yaml:"summary_cache" json:"summary_cache"`
+	PricingSource      string             `yaml:"pricing_source" json:"pricing_source"`             // default, litellm
+	PricingOfflineMode bool               `yaml:"pricing_offline_mode" json:"pricing_offline_mode"` // Use cached pricing
+	Deduplication      bool               `yaml:"deduplication" json:"deduplication"`               // Enable deduplication
 }
 
 // SummaryCacheConfig contains file summary caching settings
@@ -83,8 +83,8 @@ type UIConfig struct {
 	DateFormat    string        `yaml:"date_format" json:"date_format"`
 	TimeFormat    string        `yaml:"time_format" json:"time_format"`
 	NoColor       bool          `yaml:"no_color" json:"no_color"`
-	ViewMode      string        `yaml:"view_mode" json:"view_mode"`       // "dashboard" or "monitor"
-	Timezone      string        `yaml:"timezone" json:"timezone"`         // Timezone for display
+	ViewMode      string        `yaml:"view_mode" json:"view_mode"` // "dashboard" or "monitor"
+	Timezone      string        `yaml:"timezone" json:"timezone"`   // Timezone for display
 }
 
 // PerformanceConfig contains performance tuning settings

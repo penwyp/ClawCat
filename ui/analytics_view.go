@@ -12,15 +12,15 @@ import (
 
 // AnalyticsView represents the analytics view (combined monitor + analytics)
 type AnalyticsView struct {
-	sessions     []*sessions.Session
-	entries      []models.UsageEntry
-	blocks       []models.SessionBlock
-	monitor      *MonitorView  // Embedded monitor view
-	width        int
-	height       int
-	config       Config
-	styles       Styles
-	metrics      *calculations.RealtimeMetrics
+	sessions []*sessions.Session
+	entries  []models.UsageEntry
+	blocks   []models.SessionBlock
+	monitor  *MonitorView // Embedded monitor view
+	width    int
+	height   int
+	config   Config
+	styles   Styles
+	metrics  *calculations.RealtimeMetrics
 }
 
 // NewAnalyticsView creates a new analytics view
@@ -77,7 +77,7 @@ func (a *AnalyticsView) View() string {
 func (a *AnalyticsView) UpdateData(sessions []*sessions.Session, entries []models.UsageEntry) {
 	a.sessions = sessions
 	a.entries = entries
-	
+
 	// Also update monitor view if we have blocks
 	if a.monitor != nil && len(a.blocks) > 0 {
 		a.monitor.UpdateBlocks(a.blocks)
@@ -117,7 +117,7 @@ func (a *AnalyticsView) Resize(width, height int) {
 func (a *AnalyticsView) UpdateConfig(config Config) {
 	a.config = config
 	a.styles = NewStyles(GetThemeByName(config.Theme))
-	
+
 	// Also update monitor view config
 	if a.monitor != nil {
 		a.monitor.UpdateConfig(config)

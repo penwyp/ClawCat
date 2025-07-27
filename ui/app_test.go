@@ -52,7 +52,9 @@ func TestApp_UpdateConfig(t *testing.T) {
 	app := NewApp(DefaultConfig)
 
 	// Stop the app to prevent hanging on Send
-	app.Stop()
+	if err := app.Stop(); err != nil {
+		t.Errorf("Failed to stop app: %v", err)
+	}
 
 	newConfig := Config{
 		RefreshRate:   3 * time.Second,

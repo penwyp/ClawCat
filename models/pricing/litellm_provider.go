@@ -28,10 +28,10 @@ type LiteLLMProvider struct {
 
 // liteLLMModel represents the structure of a model in LiteLLM's pricing data
 type liteLLMModel struct {
-	InputCostPerToken              *float64 `json:"input_cost_per_token"`
-	OutputCostPerToken             *float64 `json:"output_cost_per_token"`
-	CacheCreationInputTokenCost    *float64 `json:"cache_creation_input_token_cost"`
-	CacheReadInputTokenCost        *float64 `json:"cache_read_input_token_cost"`
+	InputCostPerToken           *float64 `json:"input_cost_per_token"`
+	OutputCostPerToken          *float64 `json:"output_cost_per_token"`
+	CacheCreationInputTokenCost *float64 `json:"cache_creation_input_token_cost"`
+	CacheReadInputTokenCost     *float64 `json:"cache_read_input_token_cost"`
 }
 
 // NewLiteLLMProvider creates a new LiteLLM pricing provider

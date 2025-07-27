@@ -14,19 +14,19 @@ import (
 // MonitorView represents the Claude Code Usage Monitor view
 // This view matches the exact layout of Claude-Code-Usage-Monitor
 type MonitorView struct {
-	config          Config
-	stats           Statistics
-	metrics         *calculations.RealtimeMetrics
-	blocks          []models.SessionBlock
-	width           int
-	height          int
-	styles          Styles
-	p90Calculator   *calculations.P90Calculator
-	timezone        string
-	timeFormat      string // "12h" or "24h"
-	plan            string
-	tokenLimit      int
-	costLimitP90    float64
+	config           Config
+	stats            Statistics
+	metrics          *calculations.RealtimeMetrics
+	blocks           []models.SessionBlock
+	width            int
+	height           int
+	styles           Styles
+	p90Calculator    *calculations.P90Calculator
+	timezone         string
+	timeFormat       string // "12h" or "24h"
+	plan             string
+	tokenLimit       int
+	costLimitP90     float64
 	messagesLimitP90 int
 }
 
@@ -43,12 +43,12 @@ func NewMonitorView(config Config) *MonitorView {
 	}
 
 	return &MonitorView{
-		config:          config,
-		styles:          NewStyles(GetThemeByName(config.Theme)),
-		p90Calculator:   calculations.NewP90Calculator(),
-		timezone:        timezone,
-		timeFormat:      timeFormat,
-		plan:            strings.ToLower(config.SubscriptionPlan),
+		config:        config,
+		styles:        NewStyles(GetThemeByName(config.Theme)),
+		p90Calculator: calculations.NewP90Calculator(),
+		timezone:      timezone,
+		timeFormat:    timeFormat,
+		plan:          strings.ToLower(config.SubscriptionPlan),
 	}
 }
 
@@ -80,7 +80,7 @@ func (v *MonitorView) View() string {
 			}
 		}
 	}
-	
+
 	if hasActiveSession {
 		lines = append(lines, v.renderActiveSession()...)
 	} else {
@@ -136,7 +136,7 @@ func (v *MonitorView) renderNoActiveSession() []string {
 	tokensUsed := 0
 	costUsed := 0.0
 	messagesUsed := 0
-	
+
 	if v.metrics != nil {
 		tokensUsed = v.metrics.CurrentTokens
 		costUsed = v.metrics.CurrentCost
@@ -165,8 +165,8 @@ func (v *MonitorView) renderNoActiveSession() []string {
 
 	// Stats - show actual values if any tokens were used
 	if tokensUsed > 0 {
-		lines = append(lines, fmt.Sprintf("🎯 Tokens:         %s / ~%s (%s left)", 
-			v.formatNumber(tokensUsed), 
+		lines = append(lines, fmt.Sprintf("🎯 Tokens:         %s / ~%s (%s left)",
+			v.formatNumber(tokensUsed),
 			v.formatNumber(v.tokenLimit),
 			v.formatNumber(v.tokenLimit-tokensUsed)))
 		lines = append(lines, fmt.Sprintf("💲 Session Cost:   $%.2f", costUsed))
@@ -176,7 +176,7 @@ func (v *MonitorView) renderNoActiveSession() []string {
 		lines = append(lines, "💲 Session Cost:   $0.00")
 		lines = append(lines, "📨 Sent Messages:  0 messages")
 	}
-	
+
 	lines = append(lines, "🔥 Burn Rate:      0.0 tokens/min")
 	lines = append(lines, "💵 Cost Rate:      $0.00 $/min")
 	lines = append(lines, "")
@@ -194,7 +194,7 @@ func (v *MonitorView) renderActiveSession() []string {
 	// Calculate percentages
 	tokenUsage := float64(v.metrics.CurrentTokens) / float64(v.tokenLimit) * 100
 	costUsage := v.metrics.CurrentCost / v.costLimitP90 * 100
-	
+
 	// Get message count from current active session
 	messageCount := 0
 	if len(v.blocks) > 0 {
@@ -217,7 +217,7 @@ func (v *MonitorView) renderActiveSession() []string {
 			}
 		}
 	}
-	
+
 	elapsed := time.Since(sessionStart).Minutes()
 	totalMinutes := 300.0 // 5 hours
 	timePercentage := (elapsed / totalMinutes) * 100
@@ -229,31 +229,31 @@ func (v *MonitorView) renderActiveSession() []string {
 	// Always show the unified format regardless of plan
 	lines = append(lines, "")
 	lines = append(lines, "")
-	
+
 	// Cost Usage
 	costIndicator := v.getColorIndicator(costUsage)
 	costBar := v.renderWideProgressBar(costUsage, "")
 	lines = append(lines, fmt.Sprintf("💰 Cost Usage:           %s %s %.1f%%    $%.2f / $%.2f",
 		costIndicator, costBar, costUsage, v.metrics.CurrentCost, v.costLimitP90))
 	lines = append(lines, "")
-	
+
 	// Token Usage
 	tokenIndicator := v.getColorIndicator(tokenUsage)
 	tokenBar := v.renderWideProgressBar(tokenUsage, "")
 	lines = append(lines, fmt.Sprintf("📊 Token Usage:          %s %s %.1f%%    %s / %s",
-		tokenIndicator, tokenBar, tokenUsage, 
-		v.formatNumberWithCommas(v.metrics.CurrentTokens), 
+		tokenIndicator, tokenBar, tokenUsage,
+		v.formatNumberWithCommas(v.metrics.CurrentTokens),
 		v.formatNumberWithCommas(v.tokenLimit)))
 	lines = append(lines, "")
-	
+
 	// Messages Usage
 	messagesIndicator := v.getColorIndicator(messagesUsage)
 	messagesBar := v.renderWideProgressBar(messagesUsage, "")
 	lines = append(lines, fmt.Sprintf("📨 Messages Usage:       %s %s %.1f%%    %d / %s",
-		messagesIndicator, messagesBar, messagesUsage, messageCount, 
+		messagesIndicator, messagesBar, messagesUsage, messageCount,
 		v.formatNumberWithCommas(v.messagesLimitP90)))
 	lines = append(lines, separatorStyle.Render(strings.Repeat("─", 60)))
-	
+
 	// Time to Reset
 	timeIndicator := ""
 	if timePercentage >= 60 {
@@ -267,15 +267,15 @@ func (v *MonitorView) renderActiveSession() []string {
 	lines = append(lines, fmt.Sprintf("⏱️  Time to Reset:       %s %s %dh %dm",
 		timeIndicator, timeBar, hours, mins))
 	lines = append(lines, "")
-	
+
 	// Model Distribution
 	modelBar := v.renderModelDistributionSimple()
 	lines = append(lines, fmt.Sprintf("🤖 Model Distribution:   🤖 %s", modelBar))
 	lines = append(lines, separatorStyle.Render(strings.Repeat("─", 60)))
-	
+
 	// Burn Rate with arrow emoji
 	lines = append(lines, fmt.Sprintf("🔥 Burn Rate:              %.1f tokens/min ➡️", burnRate))
-	
+
 	// Cost Rate
 	costRate := v.calculateCostRate()
 	lines = append(lines, fmt.Sprintf("💲 Cost Rate:              $%.4f $/min", costRate))
@@ -283,7 +283,7 @@ func (v *MonitorView) renderActiveSession() []string {
 	// Predictions
 	lines = append(lines, "")
 	lines = append(lines, "🔮 Predictions:")
-	
+
 	// Calculate when tokens will run out
 	if burnRate > 0 {
 		minutesUntilOut := float64(v.tokenLimit-v.metrics.CurrentTokens) / burnRate
@@ -292,18 +292,18 @@ func (v *MonitorView) renderActiveSession() []string {
 	} else {
 		lines = append(lines, "   Tokens will run out: --:--")
 	}
-	
+
 	// Reset time
 	resetTime := sessionStart.Add(5 * time.Hour)
 	lines = append(lines, fmt.Sprintf("   Limit resets at:     %s", v.formatTimeShort(resetTime)))
 	lines = append(lines, "")
-	
+
 	// Check if cost limit will be exceeded before reset
 	if burnRate > 0 && costRate > 0 {
 		// Calculate if cost limit will be exceeded before session reset
 		minutesUntilCostLimit := (v.costLimitP90 - v.metrics.CurrentCost) / costRate
 		minutesUntilReset := timeRemaining
-		
+
 		if minutesUntilCostLimit < minutesUntilReset {
 			lines = append(lines, "⏰ Cost limit will be exceeded before reset!")
 		}
@@ -315,11 +315,11 @@ func (v *MonitorView) renderActiveSession() []string {
 // renderFooter renders the footer
 func (v *MonitorView) renderFooter() string {
 	currentTime := v.formatTime(time.Now())
-	
+
 	statusIcon := "🟨" // Yellow for no active session
 	statusText := "No active session"
 	statusColor := lipgloss.Color("#FFAA00")
-	
+
 	// Check for active sessions based on blocks
 	hasActiveSession := false
 	if v.blocks != nil {
@@ -330,20 +330,20 @@ func (v *MonitorView) renderFooter() string {
 			}
 		}
 	}
-	
+
 	if hasActiveSession {
 		statusIcon = "🟢" // Green for active session
 		statusText = "Active session"
 		statusColor = lipgloss.Color("#00FF00")
 	}
-	
+
 	timeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#AAAAAA"))
 	statusStyle := lipgloss.NewStyle().Foreground(statusColor).Bold(true)
 	exitStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Italic(true)
-	
-	return fmt.Sprintf("⏰ %s 📝 %s | %s %s", 
-		timeStyle.Render(currentTime), 
-		statusStyle.Render(statusText), 
+
+	return fmt.Sprintf("⏰ %s 📝 %s | %s %s",
+		timeStyle.Render(currentTime),
+		statusStyle.Render(statusText),
 		exitStyle.Render("Ctrl+C to exit"),
 		statusIcon)
 }
@@ -373,144 +373,11 @@ func (v *MonitorView) renderWideProgressBar(percentage float64, colorIndicator s
 	filledBar := barStyle.Render(strings.Repeat("█", filled))
 	emptyBar := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333")).Render(strings.Repeat("⋯", width-filled))
 	bar := filledBar + emptyBar
-	
+
 	if colorIndicator == "" {
 		return fmt.Sprintf("[%s]", bar)
 	}
 	return fmt.Sprintf("%s [%s]", colorIndicator, bar)
-}
-
-// renderProgressBar renders a standard progress bar
-func (v *MonitorView) renderProgressBar(percentage float64) string {
-	width := 20
-	filled := int(percentage * float64(width) / 100)
-	if filled > width {
-		filled = width
-	}
-	if filled < 0 {
-		filled = 0
-	}
-
-	bar := strings.Repeat("█", filled) + strings.Repeat("⋯", width-filled)
-	return fmt.Sprintf("[%s] %.1f%%", bar, percentage)
-}
-
-// renderTimeProgress renders time progress bar
-func (v *MonitorView) renderTimeProgress(elapsed, total float64) string {
-	percentage := (elapsed / total) * 100
-	if percentage > 100 {
-		percentage = 100
-	}
-	
-	width := 20
-	filled := int(percentage * float64(width) / 100)
-	bar := strings.Repeat("█", filled) + strings.Repeat("⋯", width-filled)
-	
-	remaining := total - elapsed
-	hours := int(remaining / 60)
-	mins := int(remaining) % 60
-	
-	return fmt.Sprintf("[%s] %dh %dm", bar, hours, mins)
-}
-
-// renderModelDistribution renders model usage distribution
-func (v *MonitorView) renderModelDistribution() string {
-	if v.metrics == nil || len(v.metrics.ModelDistribution) == 0 {
-		return "[No model data]"
-	}
-
-	// Create a visual bar with colored segments for each model
-	width := 50
-	labels := []string{}
-	
-	// Sort models for consistent ordering
-	type modelData struct {
-		name       string
-		percentage float64
-		color      string
-	}
-	
-	models := []modelData{}
-	totalPercentage := float64(0)
-	
-	for model, metrics := range v.metrics.ModelDistribution {
-		percentage := float64(0)
-		if v.metrics.CurrentTokens > 0 {
-			percentage = float64(metrics.TokenCount) / float64(v.metrics.CurrentTokens) * 100
-		}
-		totalPercentage += percentage
-		
-		// Determine model type and color
-		displayName := ""
-		color := ""
-		if strings.Contains(model, "opus") {
-			displayName = "Opus"
-			color = "█" // Will be orange in the real terminal
-		} else if strings.Contains(model, "sonnet") {
-			displayName = "Sonnet"
-			color = "█" // Will be blue in the real terminal
-		} else if strings.Contains(model, "haiku") {
-			displayName = "Haiku"
-			color = "█" // Will be green in the real terminal
-		} else {
-			displayName = "Other"
-			color = "█"
-		}
-		
-		models = append(models, modelData{
-			name:       displayName,
-			percentage: percentage,
-			color:      color,
-		})
-	}
-	
-	// Sort by percentage (highest first)
-	for i := 0; i < len(models)-1; i++ {
-		for j := 0; j < len(models)-i-1; j++ {
-			if models[j].percentage < models[j+1].percentage {
-				models[j], models[j+1] = models[j+1], models[j]
-			}
-		}
-	}
-	
-	// Build the bar with colors
-	barSegments := ""
-	totalFilledWidth := 0
-	
-	for _, model := range models {
-		segmentWidth := int(model.percentage * float64(width) / 100)
-		if segmentWidth > 0 {
-			// Choose color based on model type
-			var style lipgloss.Style
-			switch model.name {
-			case "Opus":
-				style = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF8800")) // Orange
-			case "Sonnet":
-				style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00AAFF")) // Blue
-			case "Haiku":
-				style = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")) // Green
-			default:
-				style = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")) // Gray
-			}
-			barSegments += style.Render(strings.Repeat("█", segmentWidth))
-			totalFilledWidth += segmentWidth
-		}
-		
-		// Create styled label
-		labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#CCCCCC"))
-		labels = append(labels, labelStyle.Render(fmt.Sprintf("%s %.1f%%", model.name, model.percentage)))
-	}
-	
-	// Fill remaining space if needed
-	remainingWidth := width - totalFilledWidth
-	if remainingWidth > 0 {
-		emptyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#333333"))
-		barSegments += emptyStyle.Render(strings.Repeat("⋯", remainingWidth))
-	}
-	
-	// Combine bar and labels
-	labelSeparator := lipgloss.NewStyle().Foreground(lipgloss.Color("#666666")).Render(" | ")
-	return fmt.Sprintf("[%s] %s", barSegments, strings.Join(labels, labelSeparator))
 }
 
 // renderModelDistributionSimple renders a simplified model distribution for the main view
@@ -522,7 +389,7 @@ func (v *MonitorView) renderModelDistributionSimple() string {
 	// Find the dominant model
 	maxModel := ""
 	maxPercentage := 0.0
-	
+
 	for model, metrics := range v.metrics.ModelDistribution {
 		percentage := 0.0
 		if v.metrics.CurrentTokens > 0 {
@@ -533,7 +400,7 @@ func (v *MonitorView) renderModelDistributionSimple() string {
 			maxModel = model
 		}
 	}
-	
+
 	// Get model display name
 	displayName := "Unknown"
 	if strings.Contains(maxModel, "opus") {
@@ -543,7 +410,7 @@ func (v *MonitorView) renderModelDistributionSimple() string {
 	} else if strings.Contains(maxModel, "haiku") {
 		displayName = "Haiku"
 	}
-	
+
 	// Create the progress bar
 	width := 50
 	filled := int(maxPercentage * float64(width) / 100)
@@ -553,9 +420,9 @@ func (v *MonitorView) renderModelDistributionSimple() string {
 	if filled < 0 {
 		filled = 0
 	}
-	
+
 	bar := strings.Repeat("█", filled) + strings.Repeat("⋯", width-filled)
-	
+
 	return fmt.Sprintf("[%s] %s %.1f%%", bar, displayName, maxPercentage)
 }
 
@@ -567,32 +434,6 @@ func (v *MonitorView) getColorIndicator(percentage float64) string {
 		return "🟡"
 	} else {
 		return "🔴"
-	}
-}
-
-// getPercentageStyle returns a lipgloss style based on percentage
-func (v *MonitorView) getPercentageStyle(percentage float64) lipgloss.Style {
-	if percentage >= 80 {
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#FF4444")).Bold(true)
-	} else if percentage >= 50 {
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#FFAA00")).Bold(true)
-	} else {
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF00")).Bold(true)
-	}
-}
-
-// getVelocityEmoji returns the appropriate velocity emoji based on burn rate
-func (v *MonitorView) getVelocityEmoji(burnRate float64) string {
-	if burnRate < 50 {
-		return "🐌" // Snail - very slow
-	} else if burnRate < 100 {
-		return "🚶" // Walking - slow
-	} else if burnRate < 200 {
-		return "🏃" // Running - moderate
-	} else if burnRate < 500 {
-		return "🚗" // Car - fast
-	} else {
-		return "🚀" // Rocket - very fast
 	}
 }
 
@@ -636,7 +477,7 @@ func (v *MonitorView) formatNumberWithCommas(n int) string {
 	if n < 1000 {
 		return fmt.Sprintf("%d", n)
 	}
-	
+
 	// Convert to string and add commas
 	str := fmt.Sprintf("%d", n)
 	result := ""
@@ -647,39 +488,6 @@ func (v *MonitorView) formatNumberWithCommas(n int) string {
 		result += string(digit)
 	}
 	return result
-}
-
-// isLimitExceeded checks if any limit has been exceeded
-func (v *MonitorView) isLimitExceeded() bool {
-	if v.metrics == nil {
-		return false
-	}
-
-	// Check token limit
-	if v.metrics.CurrentTokens > v.tokenLimit {
-		return true
-	}
-
-	// Check cost limit
-	if v.metrics.CurrentCost > v.costLimitP90 {
-		return true
-	}
-
-	// Check messages limit
-	messageCount := 0
-	if len(v.blocks) > 0 {
-		for _, block := range v.blocks {
-			if block.IsActive {
-				messageCount = block.SentMessagesCount
-				break
-			}
-		}
-	}
-	if messageCount > v.messagesLimitP90 {
-		return true
-	}
-
-	return false
 }
 
 // formatTime formats time according to the configured format
@@ -725,7 +533,7 @@ func (v *MonitorView) UpdateMetrics(metrics *calculations.RealtimeMetrics) {
 // UpdateBlocks updates session blocks for calculations
 func (v *MonitorView) UpdateBlocks(blocks []models.SessionBlock) {
 	v.blocks = blocks
-	
+
 	// Calculate P90 limits if on custom plan
 	if v.plan == "custom" {
 		v.tokenLimit = v.p90Calculator.CalculateP90Limit(blocks, true)
@@ -765,7 +573,7 @@ func (v *MonitorView) UpdateConfig(config Config) {
 	v.config = config
 	v.styles = NewStyles(GetThemeByName(config.Theme))
 	v.plan = strings.ToLower(config.SubscriptionPlan)
-	
+
 	if config.Timezone != "" && config.Timezone != "auto" {
 		v.timezone = config.Timezone
 	}

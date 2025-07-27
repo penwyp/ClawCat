@@ -15,9 +15,9 @@ import (
 type ViewType int
 
 const (
-	ViewMonitor ViewType = iota  // Default view
-	ViewAnalytics                // Combined view (monitor + analytics)
-	ViewCount                    // Keep track of total views
+	ViewMonitor   ViewType = iota // Default view
+	ViewAnalytics                 // Combined view (monitor + analytics)
+	ViewCount                     // Keep track of total views
 )
 
 // Model represents the application state
@@ -74,7 +74,7 @@ func NewModel(cfg Config) Model {
 	m := Model{
 		config:        cfg,
 		view:          ViewMonitor, // Default to monitor view
-		ready:         true, // Set ready to true initially to avoid stuck loading
+		ready:         true,        // Set ready to true initially to avoid stuck loading
 		loading:       true,
 		keys:          DefaultKeyMap(),
 		styles:        NewStyles(DefaultTheme()),
@@ -147,7 +147,7 @@ func (m *Model) UpdateEntries(entries []models.UsageEntry) {
 	if len(entries) > 0 {
 		analyzer := sessions.NewSessionAnalyzer(5) // 5-hour sessions
 		m.blocks = analyzer.TransformToBlocks(entries)
-		
+
 		// Update monitor view with blocks
 		if m.monitor != nil {
 			m.monitor.UpdateBlocks(m.blocks)

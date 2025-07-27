@@ -14,79 +14,55 @@ func TestNewModel(t *testing.T) {
 	model := NewModel(config)
 
 	assert.Equal(t, config, model.config)
-	assert.Equal(t, ViewDashboard, model.view)
-	assert.False(t, model.ready)
+	assert.Equal(t, ViewMonitor, model.view)
+	assert.True(t, model.ready)
 	assert.True(t, model.loading)
 	assert.NotNil(t, model.keys)
 	assert.NotNil(t, model.styles)
 	assert.NotNil(t, model.spinner)
-	assert.NotNil(t, model.dashboard)
-	assert.NotNil(t, model.sessionList)
+	assert.NotNil(t, model.monitor)
 	assert.NotNil(t, model.analytics)
-	assert.NotNil(t, model.help)
 }
 
 func TestModel_SwitchView(t *testing.T) {
 	model := NewModel(DefaultConfig)
 
 	// Test valid view switches
-	model.SwitchView(ViewSessions)
-	assert.Equal(t, ViewSessions, model.view)
-
 	model.SwitchView(ViewAnalytics)
 	assert.Equal(t, ViewAnalytics, model.view)
 
-	model.SwitchView(ViewHelp)
-	assert.Equal(t, ViewHelp, model.view)
-
-	model.SwitchView(ViewDashboard)
-	assert.Equal(t, ViewDashboard, model.view)
+	model.SwitchView(ViewMonitor)
+	assert.Equal(t, ViewMonitor, model.view)
 }
 
 func TestModel_NextView(t *testing.T) {
 	model := NewModel(DefaultConfig)
 
-	// Start at Dashboard (0)
-	assert.Equal(t, ViewDashboard, model.view)
+	// Start at Monitor (0)
+	assert.Equal(t, ViewMonitor, model.view)
 
-	// Next should be Sessions (1)
-	model.NextView()
-	assert.Equal(t, ViewSessions, model.view)
-
-	// Next should be Analytics (2)
+	// Next should be Analytics (1)
 	model.NextView()
 	assert.Equal(t, ViewAnalytics, model.view)
 
-	// Next should be Help (3)
+	// Next should wrap back to Monitor (0)
 	model.NextView()
-	assert.Equal(t, ViewHelp, model.view)
-
-	// Next should wrap back to Dashboard (0)
-	model.NextView()
-	assert.Equal(t, ViewDashboard, model.view)
+	assert.Equal(t, ViewMonitor, model.view)
 }
 
 func TestModel_PrevView(t *testing.T) {
 	model := NewModel(DefaultConfig)
 
-	// Start at Dashboard (0)
-	assert.Equal(t, ViewDashboard, model.view)
+	// Start at Monitor (0)
+	assert.Equal(t, ViewMonitor, model.view)
 
-	// Previous should wrap to Help (3)
-	model.PrevView()
-	assert.Equal(t, ViewHelp, model.view)
-
-	// Previous should be Analytics (2)
+	// Previous should wrap to Analytics (1)
 	model.PrevView()
 	assert.Equal(t, ViewAnalytics, model.view)
 
-	// Previous should be Sessions (1)
+	// Previous should wrap back to Monitor (0)
 	model.PrevView()
-	assert.Equal(t, ViewSessions, model.view)
-
-	// Previous should be Dashboard (0)
-	model.PrevView()
-	assert.Equal(t, ViewDashboard, model.view)
+	assert.Equal(t, ViewMonitor, model.view)
 }
 
 func TestModel_GetCurrentView(t *testing.T) {
@@ -96,10 +72,8 @@ func TestModel_GetCurrentView(t *testing.T) {
 		view     ViewType
 		expected string
 	}{
-		{ViewDashboard, "Dashboard"},
-		{ViewSessions, "Sessions"},
+		{ViewMonitor, "Monitor"},
 		{ViewAnalytics, "Analytics"},
-		{ViewHelp, "Help"},
 	}
 
 	for _, tc := range testCases {

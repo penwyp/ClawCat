@@ -21,8 +21,8 @@ type CacheManager struct {
 
 // PricingCache represents the cached pricing data
 type PricingCache struct {
-	Source    string                        `json:"source"`
-	UpdatedAt time.Time                     `json:"updated_at"`
+	Source    string                         `json:"source"`
+	UpdatedAt time.Time                      `json:"updated_at"`
 	Pricing   map[string]models.ModelPricing `json:"pricing"`
 }
 

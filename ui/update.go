@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -314,23 +313,6 @@ func (m Model) renderStreamingView() string {
 		return m.streamDisplay.RenderHeader()
 	}
 }
-
-// renderSessionSummary renders a compact session summary
-func (m Model) renderSessionSummary() string {
-	if len(m.sessions) == 0 {
-		return "No active sessions"
-	}
-
-	active := 0
-	for _, session := range m.sessions {
-		if session.IsActive {
-			active++
-		}
-	}
-
-	return fmt.Sprintf("Sessions: %d total, %d active", len(m.sessions), active)
-}
-
 
 // renderLoading renders the loading screen
 func (m Model) renderLoading() string {

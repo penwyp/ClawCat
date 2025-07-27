@@ -71,13 +71,13 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 	for _, path := range paths {
 		// Use LoadUsageEntries with caching support
 		opts := fileio.LoadUsageEntriesOptions{
-			DataPath:           path,
-			Mode:               models.CostModeCalculated,
-			CacheStore:         cacheStore,
-			EnableSummaryCache: a.config.Data.SummaryCache.Enabled,
-			IsWatchMode:        false, // Analyze mode should write to cache
+			DataPath:            path,
+			Mode:                models.CostModeCalculated,
+			CacheStore:          cacheStore,
+			EnableSummaryCache:  a.config.Data.SummaryCache.Enabled,
+			IsWatchMode:         false, // Analyze mode should write to cache
 			EnableDeduplication: a.config.Data.Deduplication,
-			PricingProvider:    pricingProvider,
+			PricingProvider:     pricingProvider,
 		}
 
 		result, err := fileio.LoadUsageEntries(opts)

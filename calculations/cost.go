@@ -11,7 +11,7 @@ import (
 // CostCalculator provides precise cost calculations with multi-currency support
 type CostCalculator struct {
 	pricing  map[string]models.ModelPricing
-	rates    map[string]float64 // Currency conversion rates
+	rates    map[string]float64     // Currency conversion rates
 	provider models.PricingProvider // Optional pricing provider for dynamic pricing
 }
 
@@ -42,8 +42,8 @@ type BatchCostResult struct {
 // NewCostCalculator creates a new cost calculator with default pricing
 func NewCostCalculator() *CostCalculator {
 	return &CostCalculator{
-		pricing: models.GetAllPricings(),
-		rates:   map[string]float64{"USD": 1.0}, // Default to USD
+		pricing:  models.GetAllPricings(),
+		rates:    map[string]float64{"USD": 1.0}, // Default to USD
 		provider: nil,
 	}
 }
@@ -51,8 +51,8 @@ func NewCostCalculator() *CostCalculator {
 // NewCostCalculatorWithProvider creates a new cost calculator with a pricing provider
 func NewCostCalculatorWithProvider(provider models.PricingProvider) *CostCalculator {
 	return &CostCalculator{
-		pricing: nil, // Will use provider instead
-		rates:   map[string]float64{"USD": 1.0}, // Default to USD
+		pricing:  nil,                            // Will use provider instead
+		rates:    map[string]float64{"USD": 1.0}, // Default to USD
 		provider: provider,
 	}
 }
@@ -73,7 +73,7 @@ func (c *CostCalculator) Calculate(entry models.UsageEntry) (CostResult, error) 
 
 	var pricing models.ModelPricing
 	var err error
-	
+
 	// Use provider if available, otherwise fall back to static pricing
 	if c.provider != nil {
 		pricing, err = c.provider.GetPricing(context.Background(), entry.Model)
