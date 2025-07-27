@@ -16,8 +16,8 @@ import (
 	"github.com/penwyp/claudecat/logging"
 	"github.com/penwyp/claudecat/models"
 	"github.com/penwyp/claudecat/orchestrator"
+	"github.com/penwyp/claudecat/output"
 	"github.com/penwyp/claudecat/sessions"
-	"github.com/penwyp/claudecat/ui"
 )
 
 // EnhancedApplication represents the main application orchestrator using the new architecture
@@ -26,15 +26,18 @@ type EnhancedApplication struct {
 	orchestrator *orchestrator.MonitoringOrchestrator
 	metricsCalc  *calculations.EnhancedMetricsCalculator
 	cache        *cache.Store
-	ui           *ui.App
+	formatter    *output.ConsoleFormatter
 	errorHandler *errors.EnhancedErrorHandler
 
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	metrics *Metrics
-	logger  logging.LoggerInterface
+	metrics       *Metrics
+	logger        logging.LoggerInterface
+	currentData   orchestrator.MonitoringData
+	currentMetrics *calculations.RealtimeMetrics
+	dataMutex     sync.RWMutex
 
 	// Application state
 	running bool
@@ -148,20 +151,12 @@ func (ea *EnhancedApplication) bootstrap() error {
 		ea.config,
 	)
 
-	// Initialize UI
-	uiConfig := ui.Config{
-		RefreshRate:      ea.config.UI.RefreshRate,
-		Theme:            ea.config.UI.Theme,
-		ShowSpinner:      true,
-		CompactMode:      ea.config.UI.CompactMode,
-		ChartHeight:      10,
-		TablePageSize:    20,
-		SubscriptionPlan: ea.config.Subscription.Plan,
-		ViewMode:         ea.config.UI.ViewMode,
-		Timezone:         ea.config.UI.Timezone,
-		TimeFormat:       ea.config.UI.TimeFormat,
-	}
-	ea.ui = ui.NewApp(uiConfig)
+	// Initialize console formatter
+	ea.formatter = output.NewConsoleFormatter(
+		ea.config.Subscription.Plan,
+		ea.config.UI.Timezone,
+		ea.config.UI.TimeFormat,
+	)
 
 	return nil
 }
@@ -198,15 +193,40 @@ func (ea *EnhancedApplication) start() error {
 	return nil
 }
 
-// runInteractive starts the TUI application
+// runInteractive starts the console output application
 func (ea *EnhancedApplication) runInteractive() error {
-	ea.logger.Info("Starting interactive TUI mode")
+	ea.logger.Info("Starting interactive console mode")
 
-	// The UI data source will be updated via callbacks
-	// No need to set it directly since we use the callback mechanism
+	// Clear screen initially
+	fmt.Print("\033[H\033[2J")
 
-	// Start the UI application
-	return ea.ui.Start()
+	// Create ticker for refresh
+	refreshRate := ea.config.UI.RefreshRate
+	if refreshRate <= 0 {
+		refreshRate = time.Second
+	}
+	ticker := time.NewTicker(refreshRate)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ea.ctx.Done():
+			return nil
+		case <-ticker.C:
+			// Clear screen and move cursor to top
+			fmt.Print("\033[H\033[2J")
+			
+			// Get current data
+			ea.dataMutex.RLock()
+			metrics := ea.currentMetrics
+			blocks := ea.currentData.Data.Blocks
+			ea.dataMutex.RUnlock()
+			
+			// Format and print
+			output := ea.formatter.Format(metrics, blocks)
+			fmt.Print(output)
+		}
+	}
 }
 
 // runBackground runs in background mode without TUI
@@ -246,47 +266,35 @@ func (ea *EnhancedApplication) onDataUpdate(data orchestrator.MonitoringData) {
 	ea.logger.Debugf("Calculated metrics - Current tokens: %d, Current cost: $%.4f",
 		metrics.CurrentTokens, metrics.CurrentCost)
 
-	// Update UI if running interactively
-	if ea.ui != nil {
-		// Convert the data to the format expected by the UI
-		sessions := ea.convertBlocksToSessions(data.Data.Blocks)
-		entries := ea.extractEntriesFromBlocks(data.Data.Blocks)
-		ea.logger.Infof("Updating UI with %d sessions and %d entries", len(sessions), len(entries))
-		ea.ui.UpdateData(sessions, entries)
-
-		// Also send the metrics update
-		if metrics != nil {
-			// Convert enhanced metrics to realtime metrics for UI
-			burnRate := float64(0)
-			if metrics.BurnRate != nil {
-				burnRate = metrics.BurnRate.TokensPerMinute
-			}
-
-			// Convert model distribution
-			modelDistribution := make(map[string]calculations.ModelMetrics)
-			for model, stats := range metrics.ModelDistribution {
-				modelDistribution[model] = calculations.ModelMetrics{
-					TokenCount: stats.TotalTokens,
-					Cost:       stats.Cost,
-				}
-			}
-
-			realtimeMetrics := &calculations.RealtimeMetrics{
-				CurrentTokens:     metrics.CurrentTokens,
-				CurrentCost:       metrics.CurrentCost,
-				BurnRate:          burnRate,
-				SessionStart:      metrics.SessionStart,
-				SessionEnd:        metrics.SessionEnd,
-				ModelDistribution: modelDistribution,
-			}
-			ea.ui.SendMessage(ui.RealtimeMetricsMsg{Metrics: realtimeMetrics})
-
-			// Also send blocks for monitor view
-			ea.ui.SendMessage(ui.SessionBlocksMsg{Blocks: data.Data.Blocks})
+	// Store data for console output
+	ea.dataMutex.Lock()
+	ea.currentData = data
+	if metrics != nil {
+		// Convert enhanced metrics to realtime metrics
+		burnRate := float64(0)
+		if metrics.BurnRate != nil {
+			burnRate = metrics.BurnRate.TokensPerMinute
 		}
-	} else {
-		ea.logger.Info("UI is not initialized - skipping UI update")
+
+		// Convert model distribution
+		modelDistribution := make(map[string]calculations.ModelMetrics)
+		for model, stats := range metrics.ModelDistribution {
+			modelDistribution[model] = calculations.ModelMetrics{
+				TokenCount: stats.TotalTokens,
+				Cost:       stats.Cost,
+			}
+		}
+
+		ea.currentMetrics = &calculations.RealtimeMetrics{
+			CurrentTokens:     metrics.CurrentTokens,
+			CurrentCost:       metrics.CurrentCost,
+			BurnRate:          burnRate,
+			SessionStart:      metrics.SessionStart,
+			SessionEnd:        metrics.SessionEnd,
+			ModelDistribution: modelDistribution,
+		}
 	}
+	ea.dataMutex.Unlock()
 
 	// Update application metrics
 	ea.updateApplicationMetrics(metrics)
@@ -449,10 +457,8 @@ func (ea *EnhancedApplication) shutdown() error {
 		ea.metricsCalc.Close()
 	}
 
-	// Stop UI
-	if ea.ui != nil {
-		ea.ui.Stop()
-	}
+	// Clear screen on shutdown
+	fmt.Print("\033[H\033[2J")
 
 	return nil
 }

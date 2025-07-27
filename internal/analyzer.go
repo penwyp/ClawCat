@@ -99,6 +99,7 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 				TotalTokens:         entry.TotalTokens,
 				CostUSD:             entry.CostUSD,
 				Count:               1,
+				Project:             entry.Project,
 			}
 			allResults = append(allResults, analysisResult)
 		}

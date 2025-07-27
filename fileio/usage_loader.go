@@ -67,6 +67,34 @@ func hasAssistantMessages(filePath string) bool {
 	return false
 }
 
+// extractProjectFromPath extracts the project name from a Claude projects directory path
+// For example: /Users/user/.claude/projects/-Users-user-Dat-MoviePilot/conversation.jsonl -> MoviePilot
+func extractProjectFromPath(filePath string) string {
+	// Get the directory path
+	dir := filepath.Dir(filePath)
+	
+	// Get the project directory name (last component)
+	projectDir := filepath.Base(dir)
+	
+	// Handle the special format where paths are converted to dashes
+	// Format: -Users-user-path-to-project
+	if strings.HasPrefix(projectDir, "-") {
+		// Split by dash and get the last meaningful part
+		parts := strings.Split(projectDir, "-")
+		if len(parts) > 0 {
+			// Return the last non-empty part
+			for i := len(parts) - 1; i >= 0; i-- {
+				if parts[i] != "" {
+					return parts[i]
+				}
+			}
+		}
+	}
+	
+	// If not in the expected format, just return the directory name
+	return projectDir
+}
+
 // convertRawToUsageEntry converts raw JSON data to a UsageEntry with cost calculation
 func convertRawToUsageEntry(data map[string]interface{}, mode models.CostMode) (models.UsageEntry, error) {
 	entry, hasUsage := extractUsageEntry(data)
@@ -620,6 +648,9 @@ func processSingleFileWithDedup(filePath string, mode models.CostMode, cutoffTim
 
 		// Normalize model name
 		entry.NormalizeModel()
+		
+		// Extract project from file path
+		entry.Project = extractProjectFromPath(filePath)
 
 		entries = append(entries, entry)
 		processedLines++
@@ -706,6 +737,7 @@ func createEntriesFromSummary(summary *cache.FileSummary, cutoffTime *time.Time)
 						}
 
 						entry.NormalizeModel()
+						entry.Project = extractProjectFromPath(summary.Path)
 						entries = append(entries, entry)
 					}
 				}
@@ -772,6 +804,7 @@ func createEntriesFromSummary(summary *cache.FileSummary, cutoffTime *time.Time)
 						}
 
 						entry.NormalizeModel()
+						entry.Project = extractProjectFromPath(summary.Path)
 						entries = append(entries, entry)
 					}
 				}
@@ -794,6 +827,7 @@ func createEntriesFromSummary(summary *cache.FileSummary, cutoffTime *time.Time)
 				}
 
 				entry.NormalizeModel()
+				entry.Project = extractProjectFromPath(summary.Path)
 				entries = append(entries, entry)
 			}
 		}

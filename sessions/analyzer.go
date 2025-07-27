@@ -254,7 +254,7 @@ func (sa *SessionAnalyzer) checkForGap(lastBlock *models.SessionBlock, nextEntry
 
 // markActiveBlocks marks blocks as active if they're still ongoing
 func (sa *SessionAnalyzer) markActiveBlocks(blocks []models.SessionBlock) {
-	currentTime := time.Now()
+	currentTime := time.Now().UTC()
 
 	for i := range blocks {
 		if !blocks[i].IsGap && blocks[i].EndTime.After(currentTime) {

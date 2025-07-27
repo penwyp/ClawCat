@@ -40,7 +40,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "claudecat",
 	Short: "Claude Code Usage Monitor",
-	Long: `claudecat is a high-performance TUI application for monitoring Claude AI token usage and costs.
+	Long: `claudecat is a high-performance console application for monitoring Claude AI token usage and costs.
 
 It provides real-time monitoring, session analysis, cost calculations, and data export
 capabilities to help developers track their Claude API usage efficiently.`,
@@ -78,7 +78,7 @@ capabilities to help developers track their Claude API usage efficiently.`,
 		}
 
 		if verbose {
-			fmt.Fprintf(os.Stderr, "Starting claudecat enhanced TUI monitor...\n")
+			fmt.Fprintf(os.Stderr, "Starting claudecat console monitor...\n")
 			fmt.Fprintf(os.Stderr, "Configuration: %+v\n", cfg)
 		}
 

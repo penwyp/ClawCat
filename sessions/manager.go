@@ -245,12 +245,12 @@ func (s *Session) IsExpiring() bool {
 
 // IsExpired returns true if session has passed its end time
 func (s *Session) IsExpired() bool {
-	return time.Now().After(s.EndTime)
+	return time.Now().UTC().After(s.EndTime)
 }
 
 // TimeRemaining returns remaining time in the session
 func (s *Session) TimeRemaining() time.Duration {
-	remaining := time.Until(s.EndTime)
+	remaining := s.EndTime.Sub(time.Now().UTC())
 	if remaining < 0 {
 		return 0
 	}
@@ -259,7 +259,7 @@ func (s *Session) TimeRemaining() time.Duration {
 
 // PercentageComplete returns how much of the session has elapsed (0-100)
 func (s *Session) PercentageComplete() float64 {
-	elapsed := time.Since(s.StartTime)
+	elapsed := time.Now().UTC().Sub(s.StartTime)
 	if elapsed < 0 {
 		return 0
 	}

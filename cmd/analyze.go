@@ -22,19 +22,15 @@ import (
 )
 
 var (
-	analyzeOutput    string
-	analyzeFrom      string
-	analyzeTo        string
-	analyzeByModel   bool
-	analyzeByDay     bool
-	analyzeByHour    bool
-	analyzeFormat    string
-	analyzeSortBy    string
-	analyzeLimit     int
-	analyzeGroupBy   string
-	analyzeBreakdown bool
-	analyzeReset     bool
-	// Pricing and deduplication flags
+	analyzeOutput              string
+	analyzeFrom                string
+	analyzeTo                  string
+	analyzeFormat              string
+	analyzeSortBy              string
+	analyzeLimit               int
+	analyzeGroupBy             string
+	analyzeBreakdown           bool
+	analyzeReset               bool
 	analyzePricingSource       string
 	analyzePricingOffline      bool
 	analyzeEnableDeduplication bool
@@ -129,10 +125,7 @@ func init() {
 	analyzeCmd.Flags().StringVar(&analyzeTo, "to", "", "end date (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
 
 	// Grouping flags
-	analyzeCmd.Flags().BoolVar(&analyzeByModel, "by-model", false, "group results by model")
-	analyzeCmd.Flags().BoolVar(&analyzeByDay, "by-day", false, "group results by day")
-	analyzeCmd.Flags().BoolVar(&analyzeByHour, "by-hour", false, "group results by hour")
-	analyzeCmd.Flags().StringVar(&analyzeGroupBy, "group-by", "", "group by field (model, day, hour, week, month, session)")
+	analyzeCmd.Flags().StringVar(&analyzeGroupBy, "group-by", "", "group by field (model, project, day, week, month)")
 
 	// Sorting and limiting flags
 	analyzeCmd.Flags().StringVar(&analyzeSortBy, "sort-by", "timestamp", "sort by field (timestamp, cost, tokens, model)")
@@ -196,15 +189,6 @@ func applyAnalyzeFlags(cfg *config.Config, args []string) error {
 	if !found {
 		return fmt.Errorf("invalid output format: %s (valid options: %s)",
 			analyzeOutput, strings.Join(validOutputs, ", "))
-	}
-
-	// Set grouping based on boolean flags
-	if analyzeByModel {
-		analyzeGroupBy = "model"
-	} else if analyzeByDay {
-		analyzeGroupBy = "day"
-	} else if analyzeByHour {
-		analyzeGroupBy = "hour"
 	}
 
 	// Validate sort field
@@ -315,19 +299,20 @@ func applyGrouping(results []models.AnalysisResult) []models.AnalysisResult {
 		switch analyzeGroupBy {
 		case "model":
 			key = result.Model
+		case "project":
+			key = result.Project
+			if key == "" {
+				key = "unknown"
+			}
 		case "day":
-			// Include model in the key to avoid aggregating different models on the same day
-			key = fmt.Sprintf("%s|%s", result.Timestamp.Format("2006-01-02"), result.Model)
+			key = result.Timestamp.Format("2006-01-02")
 		case "hour":
-			// Include model in the key to avoid aggregating different models in the same hour
-			key = fmt.Sprintf("%s|%s", result.Timestamp.Format("2006-01-02 15:00"), result.Model)
+			key = result.Timestamp.Format("2006-01-02 15:00")
 		case "week":
 			year, week := result.Timestamp.ISOWeek()
-			// Include model in the key to avoid aggregating different models in the same week
-			key = fmt.Sprintf("%d-W%02d|%s", year, week, result.Model)
+			key = fmt.Sprintf("%d-W%02d", year, week)
 		case "month":
-			// Include model in the key to avoid aggregating different models in the same month
-			key = fmt.Sprintf("%s|%s", result.Timestamp.Format("2006-01"), result.Model)
+			key = result.Timestamp.Format("2006-01")
 		case "session":
 			key = result.SessionID
 		default:

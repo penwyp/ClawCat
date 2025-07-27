@@ -29,6 +29,7 @@ type UsageEntry struct {
 	MessageID           string    `json:"message_id"`
 	RequestID           string    `json:"request_id"`
 	SessionID           string    `json:"session_id"` // Claude Code session ID
+	Project             string    `json:"project"`     // Project name extracted from file path
 }
 
 // TokenCounts aggregates token counts with computed totals
@@ -253,6 +254,7 @@ type AnalysisResult struct {
 	CostUSD             float64   `json:"cost_usd"`
 	Count               int       `json:"count"`               // For grouped results
 	GroupKey            string    `json:"group_key,omitempty"` // For grouped results
+	Project             string    `json:"project"`              // Project name
 }
 
 // SummaryStats represents summary statistics for analysis results
