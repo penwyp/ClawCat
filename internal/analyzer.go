@@ -75,7 +75,6 @@ func (a *Analyzer) Analyze(paths []string) ([]models.AnalysisResult, error) {
 			Mode:                models.CostModeCalculated,
 			CacheStore:          cacheStore,
 			EnableSummaryCache:  a.config.Data.SummaryCache.Enabled,
-			IsWatchMode:         false, // Analyze mode should write to cache
 			EnableDeduplication: a.config.Data.Deduplication,
 			PricingProvider:     pricingProvider,
 		}

@@ -227,7 +227,6 @@ type LoadUsageEntriesOptions struct {
 	IncludeRaw          bool                   // Whether to return raw JSON data alongside entries
 	CacheStore          CacheStore             // Optional cache store for file summaries
 	EnableSummaryCache  bool                   // Whether to enable summary caching
-	IsWatchMode         bool                   // Whether loading is triggered by file watch (TUI mode)
 	EnableDeduplication bool                   // Whether to enable deduplication across all files
 	PricingProvider     models.PricingProvider // Optional pricing provider for cost calculations
 }
@@ -551,8 +550,7 @@ func processSingleFileWithCacheAndDedup(filePath string, opts LoadUsageEntriesOp
 	}
 
 	// If caching is enabled and we successfully processed the file, create and cache summary
-	// Skip caching if in watch mode (TUI) to avoid frequent writes
-	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 && !opts.IsWatchMode {
+	if opts.EnableSummaryCache && opts.CacheStore != nil && len(entries) > 0 {
 		// Get file info if we don't have it yet
 		if fileInfo, err := os.Stat(filePath); err == nil {
 			summary = createSummaryFromEntries(absPath, filePath, entries, fileInfo)

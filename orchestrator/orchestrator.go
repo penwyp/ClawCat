@@ -145,6 +145,9 @@ func (mo *MonitoringOrchestrator) Start() error {
 	// Reset the stop context
 	mo.stopEvent, mo.stopCancel = context.WithCancel(context.Background())
 
+	// Start DataManager background tasks
+	mo.dataManager.Start(mo.stopEvent)
+
 	// Start monitoring goroutine
 	mo.monitorThread = &Goroutine{
 		name: "MonitoringThread",
@@ -168,6 +171,9 @@ func (mo *MonitoringOrchestrator) Stop() {
 
 	mo.monitoring = false
 	mo.stopCancel()
+
+	// Stop DataManager background tasks
+	mo.dataManager.Stop()
 
 	// Wait for goroutine to finish with timeout
 	if mo.monitorThread != nil {

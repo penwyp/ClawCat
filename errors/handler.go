@@ -32,26 +32,6 @@ type ErrorHandler struct {
 	onUIRecover func()
 }
 
-// NewErrorHandler 创建错误处理器
-func NewErrorHandler(config RecoveryConfig) *ErrorHandler {
-	handler := &ErrorHandler{
-		recoveryManager: NewRecoveryManager(config),
-		errorLogger:     NewErrorLogger(LogConfig{}),
-		alertManager:    NewAlertManager(),
-		metrics:         NewErrorMetrics(),
-		errorBuffer:     NewRingBuffer(1000),
-		healthStatus:    HealthStatusHealthy,
-	}
-
-	// 注册恢复策略
-	handler.registerDefaultStrategies()
-
-	// 启动监控
-	go handler.monitorHealth()
-
-	return handler
-}
-
 // Handle 处理错误
 func (eh *ErrorHandler) Handle(err error, context *ErrorContext) error {
 	// 分类错误
