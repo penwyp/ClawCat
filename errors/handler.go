@@ -1,411 +1,323 @@
 package errors
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"net"
+	"log"
+	"math"
 	"os"
-	"runtime/debug"
-	"sync"
+	"runtime"
 	"time"
 )
 
-// ErrorHandler 全局错误处理器
-type ErrorHandler struct {
-	recoveryManager *RecoveryManager
-	errorLogger     *ErrorLogger
-	alertManager    *AlertManager
-	metrics         *ErrorMetrics
+// ErrorLevel represents the severity level of an error
+type ErrorLevel string
 
-	// 错误缓冲
-	errorBuffer *RingBuffer
-	bufferMu    sync.RWMutex
+const (
+	ErrorLevelInfo  ErrorLevel = "info"
+	ErrorLevelWarn  ErrorLevel = "warn"
+	ErrorLevelError ErrorLevel = "error"
+	ErrorLevelFatal ErrorLevel = "fatal"
+)
 
-	// 状态跟踪
-	healthStatus HealthStatus
-	degradedMode bool
-	uiDegraded   bool
-	mu           sync.RWMutex
-
-	// UI 降级回调
-	onUIDegrade func(error)
-	onUIRecover func()
+// ErrorContext contains contextual information about an error
+type ErrorContext struct {
+	Component     string                 `json:"component"`
+	ContextName   string                 `json:"context_name,omitempty"`
+	ContextData   map[string]interface{} `json:"context_data,omitempty"`
+	Tags          map[string]string      `json:"tags,omitempty"`
+	Timestamp     time.Time              `json:"timestamp"`
+	StackTrace    string                 `json:"stack_trace,omitempty"`
+	SystemContext SystemContext          `json:"system_context"`
 }
 
-// Handle 处理错误
-func (eh *ErrorHandler) Handle(err error, context *ErrorContext) error {
-	// 分类错误
-	classified := eh.classifyError(err)
+// SystemContext contains system-level context information
+type SystemContext struct {
+	GoVersion   string   `json:"go_version"`
+	Platform    string   `json:"platform"`
+	WorkingDir  string   `json:"working_dir"`
+	PID         int      `json:"pid"`
+	CommandLine []string `json:"command_line"`
+}
 
-	// 记录错误
-	eh.logError(classified, context)
+// EnhancedErrorHandler provides comprehensive error handling with retry mechanisms
+type EnhancedErrorHandler struct {
+	logger         *log.Logger
+	retryPolicy    *RetryPolicy
+	circuitBreaker *CircuitBreaker
+	errorReporter  *ErrorReporter
+}
 
-	// 更新指标
-	eh.updateMetrics(classified)
+// ErrorReporter handles error reporting and logging
+type ErrorReporter struct {
+	logger *log.Logger
+}
 
-	// 尝试恢复
-	if classified.CanRetry {
-		if recovered := eh.tryRecover(classified, context); recovered == nil {
+// RetryPolicy defines retry behavior with exponential backoff
+type RetryPolicy struct {
+	MaxRetries    int
+	BaseDelay     time.Duration
+	MaxDelay      time.Duration
+	BackoffFactor float64
+	Jitter        bool
+}
+
+// RetryableFunc represents a function that can be retried
+type RetryableFunc func() error
+
+// NewEnhancedErrorHandler creates a new enhanced error handler
+func NewEnhancedErrorHandler() *EnhancedErrorHandler {
+	logger := log.New(os.Stderr, "[ERROR] ", log.LstdFlags|log.Lshortfile)
+
+	retryPolicy := &RetryPolicy{
+		MaxRetries:    3,
+		BaseDelay:     100 * time.Millisecond,
+		MaxDelay:      30 * time.Second,
+		BackoffFactor: 2.0,
+		Jitter:        true,
+	}
+
+	circuitBreaker := &CircuitBreaker{
+		state:            StateClosed,
+		maxFailures:      5,
+		timeout:          60 * time.Second,
+		successThreshold: 3,
+	}
+
+	return &EnhancedErrorHandler{
+		logger:         logger,
+		retryPolicy:    retryPolicy,
+		circuitBreaker: circuitBreaker,
+		errorReporter:  &ErrorReporter{logger: logger},
+	}
+}
+
+// ReportError reports an error with standardized logging and context
+func (eeh *EnhancedErrorHandler) ReportError(
+	err error,
+	component string,
+	contextName string,
+	contextData map[string]interface{},
+	tags map[string]string,
+	level ErrorLevel,
+) {
+	if err == nil {
+		return
+	}
+
+	errorCtx := &ErrorContext{
+		Component:     component,
+		ContextName:   contextName,
+		ContextData:   contextData,
+		Tags:          tags,
+		Timestamp:     time.Now(),
+		StackTrace:    getStackTrace(),
+		SystemContext: getSystemContext(),
+	}
+
+	eeh.errorReporter.Report(err, errorCtx, level)
+}
+
+// ReportFileError reports file-related errors with standardized context
+func (eeh *EnhancedErrorHandler) ReportFileError(
+	err error,
+	filePath string,
+	operation string,
+	additionalContext map[string]interface{},
+) {
+	contextData := map[string]interface{}{
+		"file_path": filePath,
+		"operation": operation,
+	}
+
+	if additionalContext != nil {
+		for k, v := range additionalContext {
+			contextData[k] = v
+		}
+	}
+
+	tags := map[string]string{
+		"operation": operation,
+	}
+
+	eeh.ReportError(
+		err,
+		"file_handler",
+		"file_error",
+		contextData,
+		tags,
+		ErrorLevelError,
+	)
+}
+
+// ReportApplicationStartupError reports application startup errors
+func (eeh *EnhancedErrorHandler) ReportApplicationStartupError(
+	err error,
+	component string,
+	additionalContext map[string]interface{},
+) {
+	contextData := getSystemContextMap()
+
+	if additionalContext != nil {
+		for k, v := range additionalContext {
+			contextData[k] = v
+		}
+	}
+
+	tags := map[string]string{
+		"error_type": "startup",
+	}
+
+	eeh.ReportError(
+		err,
+		component,
+		"startup_error",
+		contextData,
+		tags,
+		ErrorLevelFatal,
+	)
+}
+
+// RetryWithBackoff executes a function with retry logic and exponential backoff
+func (eeh *EnhancedErrorHandler) RetryWithBackoff(
+	ctx context.Context,
+	fn RetryableFunc,
+	operation string,
+) error {
+	var lastErr error
+
+	for attempt := 0; attempt <= eeh.retryPolicy.MaxRetries; attempt++ {
+		// Check if circuit breaker allows the call
+		if !eeh.circuitBreaker.CanCall() {
+			return fmt.Errorf("circuit breaker is open for operation: %s", operation)
+		}
+
+		// Execute the function
+		err := fn()
+		if err == nil {
+			eeh.circuitBreaker.RecordSuccess()
+			if attempt > 0 {
+				eeh.logger.Printf("Operation %s succeeded after %d retries", operation, attempt)
+			}
 			return nil
 		}
-	}
 
-	// 检查是否需要降级
-	if eh.shouldDegrade(classified) {
-		eh.enterDegradedMode()
-	}
+		lastErr = err
+		eeh.circuitBreaker.RecordFailure()
 
-	// 检查是否需要 UI 降级
-	if eh.shouldDegradeUI(classified, context) {
-		eh.enterUIDegradedMode(classified)
-	}
-
-	// 发送告警
-	if classified.Severity >= SeverityHigh {
-		eh.alertManager.SendAlert(classified, context)
-	}
-
-	return classified
-}
-
-// HandlePanic 处理 panic
-func (eh *ErrorHandler) HandlePanic(context *ErrorContext) {
-	if r := recover(); r != nil {
-		// 获取堆栈信息
-		stack := debug.Stack()
-
-		// 创建 panic 错误
-		panicErr := &PanicError{
-			Value:     r,
-			Stack:     string(stack),
-			Timestamp: time.Now(),
-			Context:   context,
+		// Don't retry if this is the last attempt
+		if attempt == eeh.retryPolicy.MaxRetries {
+			break
 		}
 
-		// 记录严重错误
-		if err := eh.Handle(panicErr, context); err != nil {
-			// 记录失败，但不能中断恢复过程
-			fmt.Printf("Failed to handle panic error: %v\n", err)
-		}
+		// Calculate delay with exponential backoff
+		delay := eeh.calculateDelay(attempt)
 
-		// 尝试恢复
-		if eh.recoveryManager.CanRecoverFromPanic(panicErr) {
-			if err := eh.recoveryManager.RecoverFromPanic(panicErr); err != nil {
-				// 恢复失败，进行优雅关闭
-				eh.gracefulShutdown(panicErr)
-			}
-		} else {
-			// 无法恢复，优雅关闭
-			eh.gracefulShutdown(panicErr)
-		}
-	}
-}
+		eeh.logger.Printf("Operation %s failed (attempt %d/%d), retrying in %v: %v",
+			operation, attempt+1, eeh.retryPolicy.MaxRetries+1, delay, err)
 
-// classifyError 分类错误
-func (eh *ErrorHandler) classifyError(err error) *RecoverableError {
-	// 检查是否已经是分类错误
-	if re, ok := err.(*RecoverableError); ok {
-		return re
-	}
-
-	// 根据错误类型分类
-	classified := &RecoverableError{
-		Cause:     err,
-		Timestamp: time.Now(),
-	}
-
-	switch {
-	case isPermissionError(err):
-		classified.Type = ErrorTypePermission
-		classified.Severity = SeverityHigh
-		classified.RecoveryHint = "Check file permissions and user privileges"
-		classified.CanRetry = false
-
-	case isJSONError(err):
-		classified.Type = ErrorTypeDataFormat
-		classified.Severity = SeverityMedium
-		classified.RecoveryHint = "Skip corrupted entry and continue"
-		classified.CanRetry = false
-
-	case isNetworkError(err):
-		classified.Type = ErrorTypeNetwork
-		classified.Severity = SeverityMedium
-		classified.RecoveryHint = "Retry with exponential backoff"
-		classified.CanRetry = true
-		classified.RetryAfter = 5 * time.Second
-
-	case isResourceError(err):
-		classified.Type = ErrorTypeResource
-		classified.Severity = SeverityHigh
-		classified.RecoveryHint = "Free up system resources"
-		classified.CanRetry = true
-		classified.RetryAfter = 30 * time.Second
-
-	default:
-		classified.Type = ErrorTypeSystem
-		classified.Severity = SeverityMedium
-		classified.CanRetry = true
-	}
-
-	classified.Message = eh.generateErrorMessage(classified)
-
-	return classified
-}
-
-// tryRecover 尝试恢复
-func (eh *ErrorHandler) tryRecover(err *RecoverableError, context *ErrorContext) error {
-	// 获取恢复策略
-	strategies := eh.recoveryManager.GetStrategies(err.Type)
-
-	for _, strategy := range strategies {
-		if strategy.CanHandle(err) {
-			// 使用熔断器保护
-			result := eh.recoveryManager.circuitBreaker.Execute(func() error {
-				return strategy.Recover(err, context)
-			})
-
-			if result == nil {
-				// 恢复成功
-				eh.metrics.RecoverySuccess.Inc()
-				return nil
-			}
+		// Wait for the delay or context cancellation
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("retry cancelled: %w", ctx.Err())
+		case <-time.After(delay):
+			// Continue to next retry
 		}
 	}
 
-	// 所有策略都失败
-	eh.metrics.RecoveryFailed.Inc()
-	return err
-}
-
-// registerDefaultStrategies 注册默认恢复策略
-func (eh *ErrorHandler) registerDefaultStrategies() {
-	// 文件访问错误恢复
-	eh.recoveryManager.RegisterStrategy(ErrorTypePermission, &FileAccessRecovery{})
-
-	// JSON 解析错误恢复
-	eh.recoveryManager.RegisterStrategy(ErrorTypeDataFormat, &JSONParseRecovery{})
-
-	// 网络错误恢复
-	eh.recoveryManager.RegisterStrategy(ErrorTypeNetwork, &NetworkErrorRecovery{
-		retryPolicy: &RetryPolicy{
-			MaxRetries:    3,
-			BaseDelay:     1 * time.Second,
-			MaxDelay:      30 * time.Second,
-			BackoffFactor: 2.0,
-			Jitter:        true,
+	// Log final failure
+	eeh.ReportError(
+		lastErr,
+		"retry_handler",
+		"retry_exhausted",
+		map[string]interface{}{
+			"operation":   operation,
+			"max_retries": eeh.retryPolicy.MaxRetries,
+			"final_error": lastErr.Error(),
 		},
-	})
+		map[string]string{
+			"operation": operation,
+		},
+		ErrorLevelError,
+	)
 
-	// 资源错误恢复
-	eh.recoveryManager.RegisterStrategy(ErrorTypeResource, &ResourceErrorRecovery{})
+	return fmt.Errorf("operation %s failed after %d retries: %w",
+		operation, eeh.retryPolicy.MaxRetries+1, lastErr)
 }
 
-// shouldDegrade 检查是否应该降级
-func (eh *ErrorHandler) shouldDegrade(err *RecoverableError) bool {
-	if err.Severity >= SeverityCritical {
-		return true
+// calculateDelay calculates the delay for the next retry attempt
+func (eeh *EnhancedErrorHandler) calculateDelay(attempt int) time.Duration {
+	// Exponential backoff: baseDelay * (backoffFactor ^ attempt)
+	delay := float64(eeh.retryPolicy.BaseDelay) *
+		math.Pow(eeh.retryPolicy.BackoffFactor, float64(attempt))
+
+	// Apply maximum delay limit
+	if delay > float64(eeh.retryPolicy.MaxDelay) {
+		delay = float64(eeh.retryPolicy.MaxDelay)
 	}
 
-	// 检查错误频率
-	recentErrors := eh.errorBuffer.CountRecent(5 * time.Minute)
-	return recentErrors > 10
+	result := time.Duration(delay)
+
+	// Add jitter to prevent thundering herd
+	if eeh.retryPolicy.Jitter {
+		jitter := time.Duration(float64(result) * 0.1 * float64(2*time.Now().UnixNano()%2-1))
+		result += jitter
+	}
+
+	return result
 }
 
-// enterDegradedMode 进入降级模式
-func (eh *ErrorHandler) enterDegradedMode() {
-	eh.mu.Lock()
-	defer eh.mu.Unlock()
 
-	if !eh.degradedMode {
-		eh.degradedMode = true
-		eh.healthStatus = HealthStatusDegraded
-		// 通知其他组件进入降级模式
-		eh.notifyDegradedMode()
-	}
-}
+// Report handles the actual error reporting
+func (er *ErrorReporter) Report(err error, ctx *ErrorContext, level ErrorLevel) {
+	logMessage := fmt.Sprintf("[%s] Error in %s: %v",
+		string(level), ctx.Component, err)
 
-// monitorHealth 监控健康状态
-func (eh *ErrorHandler) monitorHealth() {
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		eh.checkHealth()
-	}
-}
-
-// checkHealth 检查健康状态
-func (eh *ErrorHandler) checkHealth() {
-	eh.mu.Lock()
-	defer eh.mu.Unlock()
-
-	// 检查最近错误数量
-	recentErrors := eh.errorBuffer.CountRecent(1 * time.Minute)
-
-	if recentErrors == 0 && eh.degradedMode {
-		// 恢复正常模式
-		eh.degradedMode = false
-		eh.healthStatus = HealthStatusHealthy
-		eh.notifyRecovery()
+	if ctx.ContextName != "" {
+		logMessage += fmt.Sprintf(" (context: %s)", ctx.ContextName)
 	}
 
-	// 检查 UI 降级状态
-	recentUIErrors := eh.countRecentUIErrors(1 * time.Minute)
-	if recentUIErrors == 0 && eh.uiDegraded {
-		// UI 恢复正常
-		eh.exitUIDegradedMode()
+	// Log with appropriate level
+	switch level {
+	case ErrorLevelFatal:
+		er.logger.Fatalf("%s\nContext: %+v\nStack: %s",
+			logMessage, ctx, ctx.StackTrace)
+	case ErrorLevelError:
+		er.logger.Printf("%s\nContext: %+v", logMessage, ctx)
+	case ErrorLevelWarn:
+		er.logger.Printf("WARN: %s", logMessage)
+	case ErrorLevelInfo:
+		er.logger.Printf("INFO: %s", logMessage)
 	}
 }
 
-// gracefulShutdown 优雅关闭
-func (eh *ErrorHandler) gracefulShutdown(panicErr *PanicError) {
-	// 记录致命错误
-	eh.errorLogger.LogFatal(panicErr)
-
-	// 尝试保存状态
-	eh.saveState()
-
-	// 退出程序
-	os.Exit(1)
+// Helper functions
+func getStackTrace() string {
+	buf := make([]byte, 4096)
+	n := runtime.Stack(buf, false)
+	return string(buf[:n])
 }
 
-// 辅助函数
-func isPermissionError(err error) bool {
-	return os.IsPermission(err)
-}
-
-func isJSONError(err error) bool {
-	_, ok := err.(*json.SyntaxError)
-	if ok {
-		return true
-	}
-	_, ok = err.(*json.UnmarshalTypeError)
-	return ok
-}
-
-func isNetworkError(err error) bool {
-	_, ok := err.(*net.OpError)
-	return ok
-}
-
-func isResourceError(err error) bool {
-	// 检查资源相关错误
-	return false // 简化实现
-}
-
-func (eh *ErrorHandler) generateErrorMessage(err *RecoverableError) string {
-	return fmt.Sprintf("%s error: %s", err.Type, err.Cause.Error())
-}
-
-func (eh *ErrorHandler) logError(err *RecoverableError, context *ErrorContext) {
-	// 记录到错误缓冲区
-	eh.errorBuffer.Add(err)
-
-	// 记录到日志
-	eh.errorLogger.LogError(err, context)
-}
-
-func (eh *ErrorHandler) updateMetrics(err *RecoverableError) {
-	eh.metrics.TotalErrors.Inc()
-	eh.metrics.ErrorsByType[err.Type].Inc()
-	eh.metrics.ErrorsBySeverity[err.Severity].Inc()
-}
-
-func (eh *ErrorHandler) notifyDegradedMode() {
-	// 通知其他组件
-}
-
-func (eh *ErrorHandler) notifyRecovery() {
-	// 通知恢复
-}
-
-func (eh *ErrorHandler) saveState() {
-	// 保存应用状态
-}
-
-// shouldDegradeUI 检查是否应该降级 UI
-func (eh *ErrorHandler) shouldDegradeUI(err *RecoverableError, context *ErrorContext) bool {
-	// UI 组件错误需要降级
-	if err.Type == ErrorTypeUI {
-		return true
-	}
-
-	// 渲染相关组件错误
-	if context.Component == "UI" || context.Component == "renderer" || context.Component == "dashboard" {
-		return true
-	}
-
-	// 严重错误影响 UI 显示
-	if err.Severity >= SeverityCritical {
-		return true
-	}
-
-	// 检查 UI 相关的错误频率
-	recentUIErrors := eh.countRecentUIErrors(2 * time.Minute)
-	return recentUIErrors > 3
-}
-
-// enterUIDegradedMode 进入 UI 降级模式
-func (eh *ErrorHandler) enterUIDegradedMode(err *RecoverableError) {
-	eh.mu.Lock()
-	defer eh.mu.Unlock()
-
-	if !eh.uiDegraded {
-		eh.uiDegraded = true
-
-		// 触发 UI 降级回调
-		if eh.onUIDegrade != nil {
-			go eh.onUIDegrade(err)
-		}
+func getSystemContext() SystemContext {
+	wd, _ := os.Getwd()
+	return SystemContext{
+		GoVersion:   runtime.Version(),
+		Platform:    runtime.GOOS,
+		WorkingDir:  wd,
+		PID:         os.Getpid(),
+		CommandLine: os.Args,
 	}
 }
 
-// exitUIDegradedMode 退出 UI 降级模式
-func (eh *ErrorHandler) exitUIDegradedMode() {
-	eh.mu.Lock()
-	defer eh.mu.Unlock()
-
-	if eh.uiDegraded {
-		eh.uiDegraded = false
-
-		// 触发 UI 恢复回调
-		if eh.onUIRecover != nil {
-			go eh.onUIRecover()
-		}
+func getSystemContextMap() map[string]interface{} {
+	ctx := getSystemContext()
+	return map[string]interface{}{
+		"go_version":   ctx.GoVersion,
+		"platform":     ctx.Platform,
+		"working_dir":  ctx.WorkingDir,
+		"pid":          ctx.PID,
+		"command_line": ctx.CommandLine,
 	}
 }
 
-// SetUICallbacks 设置 UI 降级回调
-func (eh *ErrorHandler) SetUICallbacks(onDegrade func(error), onRecover func()) {
-	eh.mu.Lock()
-	defer eh.mu.Unlock()
 
-	eh.onUIDegrade = onDegrade
-	eh.onUIRecover = onRecover
-}
-
-// IsUIDegraded 检查是否处于 UI 降级模式
-func (eh *ErrorHandler) IsUIDegraded() bool {
-	eh.mu.RLock()
-	defer eh.mu.RUnlock()
-	return eh.uiDegraded
-}
-
-// countRecentUIErrors 计算最近 UI 错误数量
-func (eh *ErrorHandler) countRecentUIErrors(duration time.Duration) int {
-	count := 0
-
-	eh.bufferMu.RLock()
-	defer eh.bufferMu.RUnlock()
-
-	// 简化实现 - 遍历错误缓冲区
-	for i := 0; i < eh.errorBuffer.Size(); i++ {
-		// 这里需要访问缓冲区的内部数据
-		// 简化为固定值
-		if count < 5 { // 模拟检查
-			count++
-		}
-	}
-
-	return count
-}
