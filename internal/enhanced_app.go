@@ -123,12 +123,7 @@ func (ea *EnhancedApplication) Run() error {
 func (ea *EnhancedApplication) bootstrap() error {
 	// Initialize cache with configuration
 	ea.cache = cache.NewStore(cache.StoreConfig{
-		MaxFileSize:       10 * 1024 * 1024,            // 10MB
-		MaxDiskSize:       ea.config.Cache.MaxDiskSize, // From config
-		DiskCacheDir:      ea.config.Cache.Dir,         // From config
-		CompressionLevel:  6,
-		EnableMetrics:     true,
-		EnableCompression: true,
+		MaxFileSize: 10 * 1024 * 1024, // 10MB
 	})
 
 	// Initialize metrics calculator

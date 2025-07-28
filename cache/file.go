@@ -46,7 +46,6 @@ type Serializer interface {
 // NewFileCache creates a new file cache with the specified maximum size
 func NewFileCache(maxSize int64) *FileCache {
 	cache := NewLRUCache(maxSize)
-	cache.SetPriority(2) // Higher priority than general cache
 
 	return &FileCache{
 		cache:      cache,
@@ -247,24 +246,6 @@ func (f *FileCache) Size() int {
 
 func (f *FileCache) Stats() CacheStats {
 	return f.cache.Stats()
-}
-
-// Implements ManagedCache interface
-
-func (f *FileCache) Priority() int {
-	return f.cache.Priority()
-}
-
-func (f *FileCache) CanEvict() bool {
-	return f.cache.CanEvict()
-}
-
-func (f *FileCache) EvictOldest(count int) error {
-	return f.cache.EvictOldest(count)
-}
-
-func (f *FileCache) MemoryUsage() int64 {
-	return f.cache.MemoryUsage()
 }
 
 // Private methods

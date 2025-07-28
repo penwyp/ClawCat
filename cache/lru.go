@@ -18,7 +18,6 @@ type LRUCache struct {
 	mu        sync.RWMutex
 	stats     CacheStats
 	onEvicted EvictionCallback
-	priority  int
 }
 
 // lruItem represents a node in the doubly-linked list
@@ -38,7 +37,6 @@ func NewLRUCache(capacity int64) *LRUCache {
 	c := &LRUCache{
 		capacity: capacity,
 		items:    make(map[string]*lruItem),
-		priority: 1,
 	}
 
 	// Initialize sentinel nodes
@@ -190,46 +188,6 @@ func (c *LRUCache) Stats() CacheStats {
 	stats := c.stats
 	stats.Size = int64(len(c.items))
 	return stats
-}
-
-// Priority returns the cache priority for memory management
-func (c *LRUCache) Priority() int {
-	return c.priority
-}
-
-// SetPriority sets the cache priority
-func (c *LRUCache) SetPriority(priority int) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.priority = priority
-}
-
-// CanEvict returns true if the cache can evict items
-func (c *LRUCache) CanEvict() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.items) > 0
-}
-
-// EvictOldest removes the specified number of oldest items
-func (c *LRUCache) EvictOldest(count int) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	for i := 0; i < count && len(c.items) > 0; i++ {
-		if err := c.evictOldest(); err != nil {
-			// If we can't evict any more, just break instead of erroring
-			break
-		}
-	}
-	return nil
-}
-
-// MemoryUsage returns the current memory usage in bytes
-func (c *LRUCache) MemoryUsage() int64 {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.size
 }
 
 // Resize changes the cache capacity

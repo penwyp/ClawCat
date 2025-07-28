@@ -43,14 +43,5 @@ func (s *CacheStats) UpdateHitRate() {
 	}
 }
 
-// ManagedCache extends Cache with memory management capabilities
-type ManagedCache interface {
-	Cache
-	Priority() int
-	CanEvict() bool
-	EvictOldest(count int) error
-	MemoryUsage() int64
-}
-
 // EvictionCallback is called when an entry is evicted from the cache
 type EvictionCallback func(key string, value interface{})

@@ -10,41 +10,18 @@ import (
 // Store provides a unified cache store with multiple backends
 type Store struct {
 	fileCache *FileCache
-	diskCache *DiskCache // L2: Disk cache
 	config    StoreConfig
 	mu        sync.RWMutex
 }
 
 // StoreConfig configures the cache store behavior
 type StoreConfig struct {
-	MaxFileSize       int64  `json:"max_file_size"`
-	MaxDiskSize       int64  `json:"max_disk_size"`  // L2 disk cache size
-	DiskCacheDir      string `json:"disk_cache_dir"` // Disk cache directory
-	CompressionLevel  int    `json:"compression_level"`
-	EnableMetrics     bool   `json:"enable_metrics"`
-	EnableCompression bool   `json:"enable_compression"`
+	MaxFileSize int64 `json:"max_file_size"`
 }
 
 // StoreStats provides overall cache store statistics
 type StoreStats struct {
 	FileCache FileCacheStats `json:"file_cache"`
-	DiskCache DiskCacheStats `json:"disk_cache"`
-}
-
-// TotalStats provides aggregate statistics across all caches
-type TotalStats struct {
-	TotalHits      int64   `json:"total_hits"`
-	TotalMisses    int64   `json:"total_misses"`
-	TotalSize      int64   `json:"total_size"`
-	TotalMemory    int64   `json:"total_memory"`
-	OverallHitRate float64 `json:"overall_hit_rate"`
-}
-
-// StoreMemoryStats provides memory usage statistics for the store
-type StoreMemoryStats struct {
-	Used       int64   `json:"used"`
-	Total      int64   `json:"total"`
-	Percentage float64 `json:"percentage"`
 }
 
 // NewStore creates a new cache store with the given configuration
@@ -53,32 +30,12 @@ func NewStore(config StoreConfig) *Store {
 	if config.MaxFileSize <= 0 {
 		config.MaxFileSize = 50 * 1024 * 1024 // 50MB
 	}
-	if config.MaxDiskSize <= 0 {
-		config.MaxDiskSize = 1024 * 1024 * 1024 // 1GB
-	}
-	if config.DiskCacheDir == "" {
-		config.DiskCacheDir = "~/.cache/claudecat"
-	}
-	if config.CompressionLevel <= 0 {
-		config.CompressionLevel = 6 // Default compression
-	}
 
 	// Create caches
 	fileCache := NewFileCache(config.MaxFileSize)
 
-	// Create disk cache if enabled
-	var diskCache *DiskCache
-	var err error
-	diskCache, err = NewDiskCache(config.DiskCacheDir, config.MaxDiskSize)
-	if err != nil {
-		// Log error but continue without disk cache
-		fmt.Printf("Warning: Failed to initialize disk cache: %v\n", err)
-		diskCache = nil
-	}
-
 	store := &Store{
 		fileCache: fileCache,
-		diskCache: diskCache,
 		config:    config,
 	}
 
