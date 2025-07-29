@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/penwyp/claudecat/cache"
 	"github.com/penwyp/claudecat/calculations"
 	"github.com/penwyp/claudecat/config"
 	"github.com/penwyp/claudecat/errors"
@@ -25,7 +24,6 @@ type EnhancedApplication struct {
 	config       *config.Config
 	orchestrator *orchestrator.MonitoringOrchestrator
 	metricsCalc  *calculations.EnhancedMetricsCalculator
-	cache        *cache.Store
 	formatter    *output.ConsoleFormatter
 	errorHandler *errors.EnhancedErrorHandler
 
@@ -121,11 +119,6 @@ func (ea *EnhancedApplication) Run() error {
 
 // bootstrap initializes all application components
 func (ea *EnhancedApplication) bootstrap() error {
-	// Initialize cache with configuration
-	ea.cache = cache.NewStore(cache.StoreConfig{
-		MaxFileSize: 10 * 1024 * 1024, // 10MB
-	})
-
 	// Initialize metrics calculator
 	ea.metricsCalc = calculations.NewEnhancedMetricsCalculator(ea.config)
 
